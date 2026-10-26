@@ -29,7 +29,7 @@ npm run serve        # python3 -m http.server 8000
 
 WebUSB and Web Serial only work in Chromium-based browsers (Chrome, Edge,
 Brave, Opera; Chrome on Android for USB) and only on `https://` or
-`localhost`. GitHub Pages works as-is. In other browsers you can still design
+`localhost`. GitHub Pages works as-is (see below). In other browsers you can still design
 and **Download PNG** at the printer's exact resolution.
 
 ## Per-OS setup
@@ -94,11 +94,15 @@ Protocol references: DYMO's open-source
 [ptouch-print](https://git.familie-radermacher.ch/linux/ptouch-print.git) and
 Brother's P-touch Raster Command Reference.
 
-## Tests
+## Tests and CI
 
 ```sh
 npm test
 ```
+
+`.github/workflows/ci.yml` runs the tests on every push and pull request, and
+deploys `main` to GitHub Pages. Enable that once under
+**Settings → Pages → Source: GitHub Actions**.
 
 Encoder tests check the command streams byte by byte and compare P-touch raster
 lines against ptouch-print's pixel mapping.
