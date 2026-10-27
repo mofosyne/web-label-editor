@@ -3,6 +3,7 @@
 // and tips. Shown once on the first visit and from the Help button.
 import { compatRows, NOT_PLANNED, STATUS_LABEL } from './compat.js';
 import { REPO_URL, printerReportUrl, labelRequestUrl } from './report.js';
+import { OTHER_TOOLS, OTHER_TOOLS_INTRO } from './others.js';
 
 export { REPO_URL };
 
@@ -107,26 +108,13 @@ function tips() {
   ];
 }
 
-// Other tools, in case this one isn't the right fit.
-const OTHER_TOOLS = [
-  ['gLabels', 'https://github.com/j-evins/glabels-qt', 'desktop label and card designer for Linux, built around label sheets; prints through CUPS.'],
-  ['ptouch-print', 'https://git.familie-radermacher.ch/linux/ptouch-print.git', 'command-line printing to Brother P-touch printers over USB on Linux.'],
-  ['ptlabel', 'https://github.com/shaag7967/ptlabel', 'Python label editor (GUI and command line) for the Brother PT-P750W over Wi-Fi, and USB on Linux.'],
-  ['TuxLabel', 'https://github.com/Neklor/TuxLabel', 'PyQt6 label editor for Brother P-touch printers on Linux with a WYSIWYG preview; prints through CUPS.'],
-  ['pLabels', 'https://github.com/Privatehive/pLabels', 'Qt GUI for Brother P-touch printers, built on ptouch-print.'],
-  ['ptouch-rs', 'https://github.com/mlloyd5/ptouch-rs', 'Rust driver with a command line and GUI for Brother P-touch printers over USB.'],
-  ['labelsmith', 'https://github.com/alexbrazier/labelsmith', 'another browser-based designer for Brother P-touch printers, over WebUSB or Bluetooth.'],
-  ['brother_ql', 'https://github.com/pklaus/brother_ql', 'Python command-line printing to Brother QL printers.'],
-  ['thermal-label', 'https://thermal-label.github.io/', 'open-source drivers (no editor) for DYMO, Brother and other label printers.'],
-  ['Labelle', 'https://github.com/labelle-org/labelle', 'Python GUI and command line for DYMO LabelManager tape printers, which this editor doesn\'t support.'],
-];
-
 function others() {
   return [
-    p('If this editor isn\'t right for you, one of these may be. Most of them are where we learned how the printers work.'),
-    el('ul', {}, ...OTHER_TOOLS.map(([name, href, what]) => li(link(href, name), `: ${what}`)),
-      li(b('The makers\' own'), ': DYMO Connect and Brother P-touch Editor (Windows and macOS), and their CUPS drivers for '
-        + 'printing from any Linux app.')),
+    p(OTHER_TOOLS_INTRO),
+    ...OTHER_TOOLS.flatMap(({ group, tools }) => [
+      el('h3', { textContent: group }),
+      el('ul', {}, ...tools.map(([name, href, what]) => li(href ? link(href, name) : b(name), `: ${what}`))),
+    ]),
   ];
 }
 
