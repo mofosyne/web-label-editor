@@ -18,7 +18,7 @@ function withTimeout(promise, ms, message) {
 
 const SHORT_REASON = {
   linux: {
-    open: 'Linux has not given your user permission to use this printer.',
+    open: 'Linux refused the browser access to the printer\'s USB device (your user has no permission on it).',
     claim: 'Another driver or program is holding the printer (usually the usblp kernel driver, or CUPS while printing).',
   },
   windows: 'The Windows printer driver owns this printer, so the browser cannot use it.',

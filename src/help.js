@@ -83,6 +83,17 @@ const GUIDES = {
       step('Using Chromium from a snap?', false,
         p('Snaps are sandboxed and need USB access granted once:'),
         commandBlock('sudo snap connect chromium:raw-usb')),
+      step('Still "access denied" after the rule and a replug?', false,
+        p('Find the printer\'s bus and device numbers, then check whether your user got access to it (replace 001/007 with them):'),
+        commandBlock('lsusb | grep -i -E "dymo|brother"\ngetfacl /dev/bus/usb/001/007'),
+        p('No "user:yourname:rw-" line: the rule did not apply. Check the ID from lsusb matches the rule, and that you are '
+          + 'logged in at the computer itself (uaccess only covers the active local session, not SSH or some remote desktops):'),
+        commandBlock('loginctl show-session $XDG_SESSION_ID -p Active -p Seat'),
+        p('To rule that out, let any user use the printer instead (replug afterwards):'),
+        commandBlock(`echo '${rules[0].replace('TAG+="uaccess"', 'MODE="0666"')}' | sudo tee /etc/udev/rules.d/60-label-printer.rules`),
+        p('The line is there but Chrome is still refused: restart the browser completely. A Flatpak browser cannot see USB '
+          + 'devices without permission, e.g. flatpak override --user --device=all com.google.Chrome, or use the '
+          + 'browser\'s regular package.')),
     ];
   },
   windows(ctx) {
