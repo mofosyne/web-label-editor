@@ -324,7 +324,10 @@ take a few seconds to send.
   other labels show a dimmed copy; Copies counts rows), *A different design
   on each* (click a label to add items to it, drag items between labels;
   Copies counts rows) or *Same design, one label at a time* (Copies counts
-  labels, filling each row from the top).
+  labels, filling each row from the top). The **🔓 Edit separately** button
+  on a dimmed copy switches to a design per label, starting from a copy of
+  the first; **🔗 Same as label 1** links it back (its own items are kept,
+  hidden, until you unlink again).
 - **Rulers** along the top and side of the preview measure in mm from the
   label's starting edge and from each label's top edge, and mark the
   selected item.

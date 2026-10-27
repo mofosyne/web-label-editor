@@ -87,7 +87,8 @@ function tips() {
       li(b('Overprint past the label edge'), ' (DYMO die-cut labels): the tinted border around the label is the liner; '
         + 'ink there makes a black background or border reach the edge even if the label sits a little off.'),
       li(b('Two labels per row'), ' (e.g. DYMO 30333): the preview shows the whole row. Choose the same design on '
-        + 'all, a different design on each (click a label to add to it, drag items between them), or one at a time.'),
+        + 'all, a different design on each (click a label to add to it, drag items between them), or one at a time. '
+        + 'The 🔓 Edit separately button on the dimmed copy unlinks it, starting from a copy of label 1.'),
       li(b('Rulers'), ' measure from the label\'s starting edge and from each label\'s top, and mark the selected item.')),
     el('h3', { textContent: 'Calibration and rolls' }),
     el('ul', {},

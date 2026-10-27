@@ -395,6 +395,7 @@ function draw() {
     }
   }
   drawRulers(selBounds);
+  placeLaneButtons(scale, lenPx);
 
   const lenMm = geo.length / dpmm;
   const lanes = med.lanes;
@@ -420,6 +421,60 @@ function draw() {
   updateCodeInfo();
   updateFitInfo();
   if (editing) positionEditor();
+}
+
+// On a 2-up row: a button on each dimmed copy to design that label
+// separately, and on the other labels of a separate design to link them
+// back to label 1. Rebuilt only when the layout changes, so a click isn't
+// lost to a redraw.
+let laneButtonsKey = '';
+function placeLaneButtons(scale, lenPx) {
+  const box = $('lane-buttons');
+  const slots = last.slots.filter((s) => s.lane > 0);
+  const key = `${last.mode}|${slots.map((s) => s.lane).join()}`;
+  if (key !== laneButtonsKey) {
+    laneButtonsKey = key;
+    box.replaceChildren(...slots.map((s) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'lane-button';
+      b.dataset.lane = s.lane;
+      if (last.mode === 'separate') {
+        b.textContent = '🔗 Same as label 1';
+        b.title = 'Print label 1\'s design on every label of the row again (this label\'s items are kept, hidden)';
+        b.onclick = () => setRowMode('same');
+      } else {
+        b.textContent = '🔓 Edit separately';
+        b.title = 'Give this label its own design, starting from a copy of label 1';
+        b.onclick = () => unlinkLanes();
+      }
+      return b;
+    }));
+  }
+  const canvas = $('canvas');
+  for (const b of box.children) {
+    const s = last.slots[Number(b.dataset.lane)];
+    b.style.left = `${canvas.offsetLeft + lenPx - 4}px`;
+    b.style.top = `${canvas.offsetTop + s.y * scale + 4}px`;
+  }
+}
+
+function setRowMode(value) {
+  design.options.rowMode = value;
+  delete design.options.fillRow;
+  refresh({ setup: true, props: true });
+}
+
+// Switches a row to a design per label. Labels that have no items of their
+// own yet start as a copy of label 1.
+function unlinkLanes() {
+  const count = laneCount();
+  const first = design.items.filter((it) => !(it.lane > 0));
+  for (let lane = 1; lane < count; lane++) {
+    if (design.items.some((it) => it.lane === lane)) continue;
+    design.items.push(...first.map((it) => ({ ...structuredClone(it), id: uid(), lane })));
+  }
+  setRowMode('separate');
 }
 
 // Rulers along the top (mm from the label's starting edge) and the side
@@ -593,8 +648,8 @@ function buildSetup() {
     );
     sel.value = mode();
     $('lanes-note').textContent = {
-      same: `${n} labels per row: the design prints on each of them. Copies counts rows.`,
-      separate: `${n} labels per row, each with its own design: click a label to add items to it, or drag items between them. Copies counts rows.`,
+      same: `${n} labels per row: the design prints on each of them. Copies counts rows. 🔓 Edit separately on the dimmed copy gives it its own design.`,
+      separate: `${n} labels per row, each with its own design: click a label to add items to it, or drag items between them. Copies counts rows. 🔗 Same as label 1 on a label links it back.`,
       each: `${n} labels per row: Copies counts labels, filling each row from the top.`,
     }[mode()];
   }
@@ -1197,7 +1252,7 @@ function buildProps() {
       item.y = round1(mg.top);
       item.h = round1(usableMm());
       if (medium().lengthDots) {
-        item.x = mg.left;
+        item.x = round1(mg.left);
         item.w = round1(medium().lengthDots / last.dpmm - mg.left - mg.right);
       }
       refresh({ props: true });
@@ -1208,7 +1263,7 @@ function buildProps() {
       item.y = round1(mg.top);
       item.h = round1(acrossMm() - mg.top - mg.bottom);
       if (medium().lengthDots) {
-        item.x = mg.left;
+        item.x = round1(mg.left);
         item.w = round1(medium().lengthDots / last.dpmm - mg.left - mg.right);
       }
       refresh({ props: true });
@@ -1685,9 +1740,8 @@ function wire() {
   };
   $('btn-labels').onclick = () => showLibrary();
   $('row-mode').onchange = (e) => {
-    design.options.rowMode = e.target.value;
-    delete design.options.fillRow;
-    refresh({ setup: true, props: true });
+    if (e.target.value === 'separate') unlinkLanes();
+    else setRowMode(e.target.value);
   };
   $('bleed').onchange = (e) => { design.bleedMm = Number(e.target.value) || 0; refresh({ setup: true }); };
   $('btn-lib-open').onclick = () => showLibrary();
@@ -1722,6 +1776,10 @@ function wire() {
   canvas.addEventListener('pointercancel', onPointerUp);
   canvas.addEventListener('keydown', onKey);
   document.addEventListener('keydown', onUndoKey);
+  // Clicks and menu/checkbox changes are separate actions: each starts its
+  // own undo step, while typing, nudging and dragging merge.
+  document.addEventListener('click', () => undo.checkpoint(), true);
+  document.addEventListener('change', () => undo.checkpoint(), true);
   $('undo').onclick = doUndo;
   $('redo').onclick = doRedo;
   updateUndoButtons();

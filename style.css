@@ -213,6 +213,16 @@ dialog.help .row { justify-content: flex-end; margin: 0; }
 }
 #canvas:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
 
+/* Buttons on the labels of a 2-up row (top-right corner of each). */
+.lane-button {
+  position: absolute;
+  z-index: 1;
+  transform: translateX(-100%);
+  padding: 2px 8px;
+  font-size: 12px;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+}
 /* In-place text editor, laid over the item on the label. */
 textarea.inplace {
   position: absolute;
