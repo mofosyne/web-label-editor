@@ -1,0 +1,41 @@
+name: Request a label or tape size
+description: Ask for a label, tape or roll size to be added to the catalogue.
+title: "Label request: "
+labels: ["label request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Label sizes live in `catalog/media.rec`. Pull requests that add a record are welcome too:
+        see "Adding a label or tape size" in the README.
+  - type: input
+    id: printer
+    attributes:
+      label: Printer model
+    validations:
+      required: true
+  - type: input
+    id: label
+    attributes:
+      label: Label name and part number
+      description: e.g. "DYMO 11352 Return Address" or "Brother DK-11204", or the brand and listing for third-party rolls.
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - Die-cut labels (fixed size, gaps between labels)
+        - Continuous roll or tape
+        - Not sure
+  - type: input
+    id: size
+    attributes:
+      label: Size
+      description: Width × length in mm (for continuous, just the width). Measured or from the packaging/datasheet.
+  - type: textarea
+    id: details
+    attributes:
+      label: Anything else
+      description: Where the size comes from (datasheet, driver file, measured), corner radius, and Grid test print results if you have them.

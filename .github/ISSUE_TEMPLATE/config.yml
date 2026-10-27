@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Open the label editor
+    url: https://mofosyne.github.io/web-label-editor/
+    about: The app itself, with Help → Printers for the current compatibility table.

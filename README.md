@@ -12,6 +12,26 @@ another Chromium browser on desktop to print; any browser to design)
 
 ![Editing an address label for a DYMO LabelWriter, with fitted text and a QR code](docs/screenshots/editor-dymo.png)
 
+## Motivation
+
+Label printers are simple machines: they take rows of dots and burn them onto
+paper or tape. Yet on Linux, using one is a chore:
+
+- **The makers' design software doesn't run on Linux.** DYMO Connect and
+  Brother's P-touch Editor are Windows and macOS only. Drivers exist, but
+  DYMO's Linux CUPS driver is an old release, and Brother's are closed,
+  mostly x86-only binaries.
+- **The existing Linux tools didn't fit the job.** glabels, for one, is
+  built around fixed label sheets and templates and prints through CUPS:
+  continuous rolls are awkward, and there's no auto-sizing text, so text gets
+  cut off.
+- **So Linux users end up second-class citizens** with hardware that works
+  fine everywhere else.
+
+A web page that talks to the printer directly fixes that for everyone at once:
+the same editor on Linux, Windows, macOS and ChromeOS, no installs, and
+continuous rolls treated as the normal case rather than an afterthought.
+
 ## Philosophy
 
 - **Modelled on the original DYMO Label software, not DYMO Connect.** The
@@ -66,8 +86,12 @@ another Chromium browser on desktop to print; any browser to design)
 | Brother QL-1115NWB | 🧪 Experimental | USB | DK rolls and labels, up to 104 mm |
 | Brother QL-500 / 550 / 560 / 570 / 580N / 650TD / 1050 / 1060N | ⬜ Unimplemented |  | Older models; same protocol family, not added yet. |
 
+**Tried a printer?** [Report how it went](https://github.com/mofosyne/web-label-editor/issues/new?template=printer-report.yml), whether it worked or not: reports are how
+printers move from 🧪 to ✅. **Missing a label or tape size?** [Request it](https://github.com/mofosyne/web-label-editor/issues/new?template=label-request.yml).
+The app links to these forms pre-filled with your printer, label, OS and browser.
+
 ✅ **Tested**: printed on real hardware. 🧪 **Experimental**: uses a protocol path checked against a
-reference implementation, but nobody has printed on that model with this app yet; reports welcome.
+reference implementation, but nobody has printed on that model with this app yet.
 ⬜ **Unimplemented**: not supported yet.
 
 - **DYMO LabelWriter 550 / 550 Turbo / 5XL**: not planned. Only print on DYMO labels with an authentication chip.
@@ -90,6 +114,8 @@ described [below](#adding-a-printer).
    permission as well.
 4. If prints land off position, use **Test prints** in the Printer panel to
    calibrate (see [Labels, margins and calibration](#labels-margins-and-calibration)).
+5. Printed on a 🧪 experimental printer? The app asks how it went, with a
+   pre-filled report. That's how printers become ✅ tested.
 
 The app has its own welcome page and **Help** with the same information.
 
@@ -302,6 +328,9 @@ Source: lw450.ppd 30252: 78.96 x 252 pt, imageable 4.32 4.32 76.08 235.44
 ```
 
 - Never rename or reuse an `Id`: saved designs refer to labels by it.
+- Not comfortable editing the file?
+  [Request the label size](https://github.com/mofosyne/web-label-editor/issues/new?template=label-request.yml)
+  instead (the app's *Missing a label size?* link pre-fills your printer).
 - Say where the numbers came from in `Source` (a driver file, a datasheet,
   or "measured").
 - Check the file with `recfix catalog/media.rec` (from the `recutils`
@@ -328,9 +357,9 @@ Designs stay JSON because they are nested and written by the app.
 3. Add its labels to the catalogue if it is a new family.
 4. Run `npm run docs` to regenerate the table above, and `npm test`.
 
-Tested a printer marked experimental? Please
-[open an issue](https://github.com/mofosyne/web-label-editor/issues) with how
-it went.
+Tested a printer marked experimental, or one that isn't listed?
+[Report how it went](https://github.com/mofosyne/web-label-editor/issues/new?template=printer-report.yml)
+(the app's report link pre-fills your printer, label, OS and browser).
 
 ## How it works
 

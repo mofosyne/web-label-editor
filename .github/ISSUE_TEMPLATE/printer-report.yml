@@ -1,0 +1,58 @@
+name: Printer report
+description: Tell us how printing went on your printer (works, partly works, or doesn't).
+title: "Printer report: "
+labels: ["printer report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing! Reports like this are how printers move from 🧪 Experimental to ✅ Tested.
+        If you came from the app, the printer, label, connection, OS and browser are already filled in.
+  - type: input
+    id: printer
+    attributes:
+      label: Printer model
+      description: Exactly as printed on the printer, e.g. "DYMO LabelWriter 450 Turbo" or "Brother QL-820NWB".
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: Did it print?
+      options:
+        - "Yes: printed correctly"
+        - "Partly: printed, but something was off (position, size, cut, feed…)"
+        - "No: did not print"
+    validations:
+      required: true
+  - type: input
+    id: label
+    attributes:
+      label: Label or tape used
+      description: The Media chosen in the app, and the brand/part number on the roll if different (genuine or third-party).
+  - type: dropdown
+    id: connection
+    attributes:
+      label: Connection
+      options:
+        - USB
+        - Bluetooth
+        - Other
+  - type: input
+    id: system
+    attributes:
+      label: Operating system and browser
+      description: e.g. "Ubuntu 24.04, Chromium (snap) 130"
+  - type: textarea
+    id: details
+    attributes:
+      label: What happened
+      description: |
+        Anything that was off, error messages from the app, and if you printed the Grid test print
+        (Printer panel → Position adjust → Test prints), where its numbered lines landed and how far
+        the print reached from each edge of the label.
+  - type: textarea
+    id: photo
+    attributes:
+      label: Photo (optional)
+      description: A photo of the printed label or grid helps a lot. Drag it into this box.

@@ -5,6 +5,11 @@
 //
 // Update the README table with:  npm run docs
 
+import { REPO_URL } from './report.js';
+
+export const PRINTER_REPORT_URL = `${REPO_URL}/issues/new?template=printer-report.yml`;
+export const LABEL_REQUEST_URL = `${REPO_URL}/issues/new?template=label-request.yml`;
+
 export const UNIMPLEMENTED = [
   { brand: 'DYMO', name: 'DYMO LabelWriter SE450', why: 'Same protocol with a narrower 448-dot head; not wired up yet.' },
   { brand: 'DYMO', name: 'DYMO LabelManager (D1 tape)', why: 'Different protocol, and it first appears as a USB drive.' },
@@ -69,8 +74,12 @@ export function compatMarkdown(models) {
   return [
     ...lines,
     '',
+    `**Tried a printer?** [Report how it went](${PRINTER_REPORT_URL}), whether it worked or not: reports are how`,
+    `printers move from 🧪 to ✅. **Missing a label or tape size?** [Request it](${LABEL_REQUEST_URL}).`,
+    'The app links to these forms pre-filled with your printer, label, OS and browser.',
+    '',
     '✅ **Tested**: printed on real hardware. 🧪 **Experimental**: uses a protocol path checked against a',
-    'reference implementation, but nobody has printed on that model with this app yet; reports welcome.',
+    'reference implementation, but nobody has printed on that model with this app yet.',
     '⬜ **Unimplemented**: not supported yet.',
     '',
     ...notPlanned,

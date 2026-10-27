@@ -2,8 +2,9 @@
 // printer compatibility table (generated from the models, like the README)
 // and tips. Shown once on the first visit and from the Help button.
 import { compatRows, NOT_PLANNED, STATUS_LABEL } from './compat.js';
+import { REPO_URL, printerReportUrl, labelRequestUrl } from './report.js';
 
-export const REPO_URL = 'https://github.com/mofosyne/web-label-editor';
+export { REPO_URL };
 
 function el(tag, attrs = {}, ...children) {
   const e = document.createElement(tag);
@@ -23,6 +24,9 @@ function welcome(go) {
     p('Design labels and print them ', b('straight from your browser'), ' to DYMO LabelWriter and Brother P-touch / QL '
       + 'label printers, with no drivers or software to install. Continuous rolls are first class: a label is as long as '
       + 'its content, or any length you choose.'),
+    p(b('Why:'), ' the makers\' own label editors don\'t run on Linux, and the Linux tools that exist don\'t handle '
+      + 'continuous rolls or auto-sizing text well. Linux users shouldn\'t be second-class citizens with label printers; a '
+      + 'web page that talks to the printer directly works the same everywhere.'),
     el('h3', { textContent: 'Philosophy' }),
     el('ul', {},
       li(b('Modelled on the original DYMO Label software'), ' (not DYMO Connect): a preview that shows exactly what will '
@@ -61,9 +65,11 @@ function printers(models) {
     ))));
   return [
     el('div', { className: 'table-scroll' }, table),
+    p(b('Tried a printer?'), ' ', link(printerReportUrl({ printer: '' }), 'Report how it went'), ', whether it worked or not: '
+      + 'reports are how printers move from 🧪 to ✅. ', b('Missing a label or tape size?'), ' ',
+    link(labelRequestUrl({ printer: '' }), 'Request it'), '.'),
     p(b('✅ Tested'), ': printed on real hardware. ', b('🧪 Experimental'), ': the protocol is checked against a reference '
-      + 'implementation, but nobody has printed on that model with this app yet. If you try one, ',
-    link(`${REPO_URL}/issues`, 'please report how it went'), '. ', b('⬜ Unimplemented'), ': not supported yet.'),
+      + 'implementation, but nobody has printed on that model with this app yet. ', b('⬜ Unimplemented'), ': not supported yet.'),
     ...NOT_PLANNED.map((n) => p(b(n.name), `: not planned. ${n.why}`)),
   ];
 }

@@ -5,6 +5,7 @@ import { UsbTransport, SerialTransport, support } from './transport.js';
 import { openHelp } from './help.js';
 import { openAbout } from './about.js';
 import { labels, history, openLibrary } from './library.js';
+import { printerReportUrl, labelRequestUrl } from './report.js';
 import { loadCatalog } from './catalog.js';
 import { testPatternDesign, shiftBitmap } from './calibration.js';
 import { newRollId, rollCode, parseRollCode } from './rolls.js';
@@ -350,6 +351,7 @@ function buildSetup() {
     return label;
   }));
   $('model-note').textContent = m.note ?? '';
+  updateReportLinks();
   const linked = design.labelId ? labels.get(design.labelId) : null;
   if (design.labelId && !linked) delete design.labelId;
   $('lib-current').hidden = !linked;
@@ -534,6 +536,19 @@ function addRollFromCode() {
   }
 }
 
+// Pre-filled GitHub issue links for this printer and label.
+function reportUrl() {
+  return printerReportUrl({ printer: model().name, label: medium().name, connection: transport?.label });
+}
+function updateReportLinks() {
+  const r = $('report-printer');
+  r.href = reportUrl();
+  r.textContent = model().status === 'tested'
+    ? 'Something not right with this printer? Report it'
+    : 'Experimental printer: tried it? Report how it went';
+  $('request-label').href = labelRequestUrl({ printer: model().name });
+}
+
 function setStatus(text, ok = false) {
   const pill = $('conn-status');
   pill.textContent = text;
@@ -647,7 +662,12 @@ async function print() {
     const copies = Math.max(1, Math.min(99, parseInt($('copies').value, 10) || 1));
     await sendBitmap(bitmap, copies);
     recordPrint(copies);
-    showBanner(loaded?.warnings.join('; ') ?? '');
+    if (model().status !== 'tested') {
+      showBanner(`Sent to the ${model().name}, which nobody has reported on yet. Did it print correctly?`,
+        { label: 'Report how it went', onClick: () => window.open(reportUrl(), '_blank', 'noopener') });
+    } else {
+      showBanner(loaded?.warnings.join('; ') ?? '');
+    }
   } catch (err) {
     if (err.usbProblem) showUsbProblem(err);
     else showBanner(`Print failed: ${err.message}`);
