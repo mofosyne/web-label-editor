@@ -149,6 +149,12 @@ it was added there.
   saved in the browser per label type on each printer (third-party label
   stock can sit differently from genuine labels), and moves the hatched
   border with it.
+- **My rolls (third-party label stock):** after calibrating, *Save as roll…*
+  gives the roll a name and a short ID (e.g. `K7QX`) to write on the roll's
+  core. It then appears under *My rolls* in the Media menu with its own
+  calibration. Its calibration code (e.g. `K7QX/30252/F5.0/A0.0`: ID, label
+  type, Feed and Across in mm) sets the same roll up on another computer via
+  *Add roll from code…*.
 - **Fit text in a box:** tick it on a text item to give it a fixed box; the
   font size is chosen automatically so the text fills it. *Fill printable
   area* makes the box cover the whole usable label. Drag the corner handle to

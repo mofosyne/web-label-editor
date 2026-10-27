@@ -5,6 +5,7 @@ import { UsbTransport, SerialTransport, support } from './transport.js';
 import { openHelp } from './help.js';
 import { loadCatalog } from './catalog.js';
 import { testPatternDesign, shiftBitmap } from './calibration.js';
+import { newRollId, rollCode, parseRollCode } from './rolls.js';
 
 const STORAGE_KEY = 'web-label-editor:design';
 const $ = (id) => document.getElementById(id);
@@ -96,11 +97,37 @@ let printerSettings = (() => {
     return {};
   }
 })();
+// Saved rolls ("My rolls", see rolls.js): [{ id, name, printer, medium, feedMm, acrossMm }].
+const ROLLS_KEY = 'web-label-editor:rolls';
+let rolls = (() => {
+  try {
+    return JSON.parse(localStorage.getItem(ROLLS_KEY)) ?? [];
+  } catch {
+    return [];
+  }
+})();
+function saveRolls() {
+  try {
+    localStorage.setItem(ROLLS_KEY, JSON.stringify(rolls));
+  } catch { /* storage unavailable */ }
+}
+// The roll the design is set to print on, if it still exists and matches.
+const currentRoll = () => rolls.find((r) => r.id === design.roll
+  && r.printer === design.printer && r.medium === medium().id) ?? null;
+
 const adjust = () => {
+  const roll = currentRoll();
+  if (roll) return { feedMm: roll.feedMm, acrossMm: roll.acrossMm };
   const { feedMm = 0, acrossMm = 0, media = {} } = printerSettings[design.printer] ?? {};
   return { feedMm, acrossMm, ...media[medium().id] };
 };
 function setAdjust(key, value) {
+  const roll = currentRoll();
+  if (roll) {
+    roll[key] = value;
+    saveRolls();
+    return;
+  }
   const forPrinter = printerSettings[design.printer] ?? {};
   const media = { ...forPrinter.media, [medium().id]: { ...adjust(), [key]: value } };
   printerSettings = { ...printerSettings, [design.printer]: { ...forPrinter, media } };
@@ -260,7 +287,18 @@ function buildSetup() {
   printerSel.replaceChildren(...Object.entries(MODELS).map(([id, mm]) => new Option(mm.name, id, false, id === design.printer)));
 
   const mediumSel = $('medium');
-  mediumSel.replaceChildren(...m.media.map((md) => new Option(md.name, md.id, false, md.id === medium().id)));
+  const roll = currentRoll();
+  const types = document.createElement('optgroup');
+  types.label = 'Label types';
+  types.append(...m.media.map((md) => new Option(md.name, md.id, false, !roll && md.id === medium().id)));
+  mediumSel.replaceChildren(types);
+  const mine = rolls.filter((r) => r.printer === design.printer && m.media.some((md) => md.id === r.medium));
+  if (mine.length) {
+    const group = document.createElement('optgroup');
+    group.label = 'My rolls';
+    group.append(...mine.map((r) => new Option(`${r.name} (${r.id})`, `roll:${r.id}`, false, roll?.id === r.id)));
+    mediumSel.append(group);
+  }
 
   const fixedLength = !!medium().lengthDots;
   $('length-controls').hidden = fixedLength;
@@ -328,7 +366,10 @@ function buildAdjust() {
   grid.append(input('Feed (mm)', 'feedMm'), input('Across (mm)', 'acrossMm'));
   const note = document.createElement('p');
   note.className = 'note';
-  note.textContent = `For ${medium().name} on this printer, saved in this browser. Each label type keeps its own. Use the test prints below to measure it.`;
+  const roll = currentRoll();
+  note.textContent = roll
+    ? `For your roll "${roll.name}" (${roll.id}), a ${medium().name}. Saved in this browser.`
+    : `Default for ${medium().name} on this printer, saved in this browser. Third-party rolls can be saved as their own roll below. Use the test prints to measure it.`;
 
   const tests = document.createElement('details');
   tests.className = 'tests';
@@ -350,7 +391,110 @@ function buildAdjust() {
     + 'if the 0 line is n mm inside the label, subtract n. The top edge does the same for Across. '
     + 'Full black: shows exactly where the printer can put ink. Both ignore the hatched margins and use the adjustment above.';
   tests.append(summary, row, how);
-  box.replaceChildren(grid, note, tests);
+  box.replaceChildren(grid, note, rollPanel(roll), tests);
+}
+
+// Chooses a catalogue label type, or one of "My rolls" ("roll:ID").
+function selectMedium(value) {
+  if (value.startsWith('roll:')) {
+    const roll = rolls.find((r) => r.id === value.slice(5));
+    if (!roll) return;
+    design.medium = roll.medium;
+    design.roll = roll.id;
+  } else {
+    design.medium = value;
+    delete design.roll;
+  }
+}
+
+function rollPanel(roll) {
+  const wrap = document.createElement('div');
+  const btn = (text, fn) => {
+    const b = document.createElement('button');
+    b.textContent = text;
+    b.onclick = fn;
+    return b;
+  };
+  const row = document.createElement('div');
+  row.className = 'row';
+  if (roll) {
+    const code = rollCode(roll);
+    const p = document.createElement('p');
+    p.className = 'roll-code';
+    p.innerHTML = 'Write on the roll: <strong></strong><br>Calibration code: <code></code>';
+    p.querySelector('strong').textContent = roll.id;
+    p.querySelector('code').textContent = code;
+    const copy = btn('Copy code', async () => {
+      try {
+        await navigator.clipboard.writeText(code);
+        copy.textContent = 'Copied';
+      } catch {
+        copy.textContent = 'Select the code to copy';
+      }
+    });
+    row.append(
+      copy,
+      btn('Rename…', () => {
+        const name = prompt('Name for this roll', roll.name);
+        if (name?.trim()) { roll.name = name.trim(); saveRolls(); refresh({ setup: true }); }
+      }),
+      btn('Forget roll', () => {
+        if (!confirm(`Forget roll "${roll.name}" (${roll.id})? Its calibration will be lost unless you kept the code.`)) return;
+        rolls = rolls.filter((r) => r !== roll);
+        saveRolls();
+        delete design.roll;
+        refresh({ setup: true });
+      }),
+    );
+    wrap.append(p);
+  } else {
+    row.append(btn('Save as roll…', () => {
+      const name = prompt(`Name this roll of ${medium().name} (e.g. brand or batch)`, `${medium().name.split(' ')[0]} roll`);
+      if (!name?.trim()) return;
+      const a = adjust();
+      const created = {
+        id: newRollId(rolls.map((r) => r.id)), name: name.trim(), printer: design.printer, medium: medium().id,
+        feedMm: a.feedMm, acrossMm: a.acrossMm,
+      };
+      rolls.push(created);
+      saveRolls();
+      design.roll = created.id;
+      refresh({ setup: true });
+    }));
+  }
+  row.append(btn('Add roll from code…', addRollFromCode));
+  wrap.append(row);
+  return wrap;
+}
+
+function addRollFromCode() {
+  const code = prompt('Calibration code from the roll (e.g. K7QX/30252/F5.0/A0.0)');
+  if (!code?.trim()) return;
+  const all = Object.entries(MODELS).flatMap(([printer, m]) => m.media.map((md) => ({ printer, id: md.id })));
+  try {
+    const parsed = parseRollCode(code, all.map((x) => x.id));
+    const printer = all.find((x) => x.id === parsed.medium).printer;
+    let roll = rolls.find((r) => r.id === parsed.id);
+    if (roll && !confirm(`Roll ${parsed.id} ("${roll.name}") is already saved. Replace its calibration with this code?`)) return;
+    if (roll) {
+      Object.assign(roll, { printer, medium: parsed.medium, feedMm: parsed.feedMm, acrossMm: parsed.acrossMm });
+    } else {
+      const name = prompt('Name for this roll', `Roll ${parsed.id}`) || `Roll ${parsed.id}`;
+      roll = { ...parsed, printer, name: name.trim() };
+      rolls.push(roll);
+    }
+    saveRolls();
+    if (design.printer !== printer) {
+      design.printer = printer;
+      disconnect();
+    }
+    design.medium = roll.medium;
+    design.roll = roll.id;
+    showBanner(`Roll ${roll.id} ready: ${roll.name}.`);
+    refresh({ setup: true });
+  } catch (err) {
+    showBanner(`Could not read that code: ${err.message}`);
+  }
 }
 
 function setStatus(text, ok = false) {
@@ -418,7 +562,10 @@ async function detect({ keep = false } = {}) {
     const status = await model().queryStatus(transport);
     if (!keep) await transport.release();
     loaded = status;
-    if (status.mediumId) design.medium = status.mediumId;
+    if (status.mediumId && status.mediumId !== design.medium) {
+      design.medium = status.mediumId;
+      delete design.roll;
+    }
     setStatus(`Connected: ${transport.label} · ${describeTape(status)}`, true);
     const notes = [...status.errors, ...status.warnings];
     showBanner(notes.length ? `Printer reports: ${notes.join('; ')}` : '');
@@ -1083,11 +1230,12 @@ function onKey(e) {
 function wire() {
   $('printer').onchange = (e) => {
     design.printer = e.target.value;
+    delete design.roll;
     loaded = null;
     design.medium = model().media[0].id;
     disconnect();
   };
-  $('medium').onchange = (e) => { design.medium = e.target.value; refresh({ setup: true }); };
+  $('medium').onchange = (e) => { selectMedium(e.target.value); refresh({ setup: true }); };
   document.querySelectorAll('input[name="lenmode"]').forEach((r) => {
     r.onchange = () => { design.length.mode = r.value; refresh({ setup: true }); };
   });

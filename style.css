@@ -252,3 +252,6 @@ textarea.inplace {
 
 details.tests { margin: 4px 0 10px; }
 details.tests summary { cursor: pointer; color: var(--accent); margin-bottom: 8px; }
+.roll-code { font-size: 13px; margin: 4px 0 8px; }
+.roll-code strong { font-size: 16px; letter-spacing: .08em; }
+.roll-code code { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; user-select: all; }
