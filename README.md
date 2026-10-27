@@ -92,8 +92,9 @@ user access. On a system without it, use `MODE="0666"` instead of
 - **Chromium from a snap:** also run `sudo snap connect chromium:raw-usb`.
 - **"Unable to claim interface":** the `usblp` kernel module grabbed the
   printer. Run `sudo modprobe -r usblp`, or to make it permanent, put
-  `blacklist usblp` in `/etc/modprobe.d/no-usblp.conf`. CUPS uses libusb
-  itself, so it does not need `usblp`.
+  `blacklist usblp` in `/etc/modprobe.d/no-usblp.conf`. CUPS on mainstream
+  distros talks to USB printers through libusb and does not need `usblp`; if
+  CUPS printing breaks afterwards, delete that file.
 
 ### Windows
 
