@@ -69,8 +69,8 @@ function fontString(item, px) {
   return `${item.italic ? 'italic ' : ''}${item.bold ? 'bold ' : ''}${px}px ${item.font || 'sans-serif'}`;
 }
 
-function textMetrics(ctx, item, dpmm) {
-  const px = Math.max(1, item.size * dpmm);
+function textMetrics(ctx, item, dpmm, sizeMm = item.size) {
+  const px = Math.max(1, sizeMm * dpmm);
   ctx.font = fontString(item, px);
   const m = ctx.measureText('Hg');
   const ascent = m.fontBoundingBoxAscent ?? px * 0.8;
@@ -85,14 +85,33 @@ function textMetrics(ctx, item, dpmm) {
   };
 }
 
+// Where a text item's lines go, in dots. Normal text is sized by item.size
+// and its box hugs the text. With item.fit the box is fixed (item.w × item.h
+// mm) and the largest size that fits is used, centred vertically and aligned
+// horizontally in the box.
+export function textLayout(ctx, item, dpmm) {
+  const x = item.x * dpmm;
+  const y = item.y * dpmm;
+  if (!item.fit) {
+    const m = textMetrics(ctx, item, dpmm);
+    return { ...m, sizeMm: item.size, box: { x, y, w: m.w, h: m.h }, blockX: x, blockY: y };
+  }
+  const boxW = Math.max(1, item.w * dpmm);
+  const boxH = Math.max(1, item.h * dpmm);
+  const ref = textMetrics(ctx, item, dpmm, 10);
+  const sizeMm = Math.max(0.3, 10 * Math.min(boxW / ref.w, boxH / ref.h) * 0.99);
+  const m = textMetrics(ctx, item, dpmm, sizeMm);
+  let blockX = x;
+  if (item.align === 'center') blockX = x + (boxW - m.w) / 2;
+  else if (item.align === 'right') blockX = x + boxW - m.w;
+  return { ...m, sizeMm, box: { x, y, w: boxW, h: boxH }, blockX, blockY: y + (boxH - m.h) / 2 };
+}
+
 // Item bounds in dots, relative to the printable strip.
 export function itemBounds(ctx, item, dpmm) {
   const x = item.x * dpmm;
   const y = item.y * dpmm;
-  if (item.type === 'text') {
-    const m = textMetrics(ctx, item, dpmm);
-    return { x, y, w: m.w, h: m.h };
-  }
+  if (item.type === 'text') return textLayout(ctx, item, dpmm).box;
   if (item.type === 'image') {
     const img = loadImage(item.src);
     const w = item.w * dpmm;
@@ -110,14 +129,15 @@ export function itemBounds(ctx, item, dpmm) {
 }
 
 function drawText(ctx, item, dpmm) {
-  const m = textMetrics(ctx, item, dpmm);
+  const m = textLayout(ctx, item, dpmm);
+  ctx.font = fontString(item, m.px);
   ctx.fillStyle = '#000';
   ctx.textBaseline = 'alphabetic';
   m.lines.forEach((line, i) => {
     let dx = 0;
     if (item.align === 'center') dx = (m.w - m.widths[i]) / 2;
     else if (item.align === 'right') dx = m.w - m.widths[i];
-    ctx.fillText(line, item.x * dpmm + dx, item.y * dpmm + i * m.lineH + m.ascent);
+    ctx.fillText(line, m.blockX + dx, m.blockY + i * m.lineH + m.ascent);
   });
 }
 
@@ -252,7 +272,8 @@ export function renderDesign(design, model, medium, onAssetLoad) {
   if (design.invert) for (let i = 0; i < data.length; i++) data[i] ^= 1;
 
   const bounds = design.items.map((item) => itemBounds(ctx, item, dpmm));
-  return { bitmap: { width, height, data }, bounds, dpmm };
+  const textLayouts = design.items.map((item) => (item.type === 'text' ? textLayout(ctx, item, dpmm) : null));
+  return { bitmap: { width, height, data }, bounds, textLayouts, dpmm };
 }
 
 // Turn a 1-bit bitmap into a canvas, e.g. for preview or PNG export.

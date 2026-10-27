@@ -1,4 +1,4 @@
-import { MODELS } from './printers/models.js';
+import { MODELS, mediumMargins } from './printers/models.js';
 import { renderDesign, bitmapToCanvas, itemError } from './render.js';
 import { SYMBOLOGIES } from './codes/barcode.js';
 import { UsbTransport, SerialTransport, support } from './transport.js';
@@ -68,6 +68,20 @@ const model = () => MODELS[design.printer] ?? MODELS['brother-pt-p710bt'];
 const medium = () => model().media.find((m) => m.id === design.medium) ?? model().media[0];
 const selected = () => design.items.find((i) => i.id === selectedId) ?? null;
 const acrossMm = () => (medium().acrossDots * 25.4) / model().dpi;
+const margins = () => mediumMargins(medium());
+// The printable band across the strip, in mm.
+const bandTop = () => margins().top;
+const usableMm = () => acrossMm() - margins().top - margins().bottom;
+const round1 = (v) => Math.round(v * 10) / 10;
+
+// Items that show a corner handle for resizing, and how a drag sets the size.
+const RESIZERS = {
+  box: (it, w, h) => { it.w = w; it.h = h; },
+  image: (it, w) => { it.w = w; },
+  qr: (it, w, h) => { it.size = Math.max(w, h); },
+  text: (it, w, h) => { it.w = w; it.h = h; },
+};
+const resizable = (it) => RESIZERS[it.type] && (it.type !== 'text' || it.fit);
 
 function option(id) {
   const def = model().options.find((o) => o.id === id);
@@ -110,6 +124,27 @@ function draw() {
   ctx.imageSmoothingEnabled = false;
   const colors = previewColors();
   ctx.drawImage(bitmapToCanvas(bitmap, colors.ink, colors.paper), 0, 0, cssW, cssH);
+  canvas.style.borderRadius = med.cornerMm ? `${med.cornerMm * zoom}px` : '0';
+
+  // Shade the border the printer cannot print on.
+  const mg = margins();
+  const lenMm = bitmap.width / dpmm;
+  const area = {
+    x0: mg.left * zoom, y0: mg.top * zoom,
+    x1: (lenMm - mg.right) * zoom, y1: (acrossMm() - mg.bottom) * zoom,
+  };
+  if (mg.left || mg.right || mg.top || mg.bottom) {
+    ctx.fillStyle = marginPattern(ctx);
+    ctx.fillRect(0, 0, cssW, area.y0);
+    ctx.fillRect(0, area.y1, cssW, cssH - area.y1);
+    ctx.fillRect(0, area.y0, area.x0, area.y1 - area.y0);
+    ctx.fillRect(area.x1, area.y0, cssW - area.x1, area.y1 - area.y0);
+    ctx.strokeStyle = 'rgba(120, 120, 120, .6)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.strokeRect(area.x0, area.y0, area.x1 - area.x0, area.y1 - area.y0);
+    ctx.setLineDash([]);
+  }
 
   const sel = design.items.findIndex((i) => i.id === selectedId);
   if (sel >= 0) {
@@ -118,20 +153,51 @@ function draw() {
     ctx.lineWidth = 1.5;
     ctx.setLineDash([4, 3]);
     ctx.strokeRect(b.x * scale - 2, b.y * scale - 2, b.w * scale + 4, b.h * scale + 4);
+    ctx.setLineDash([]);
+    if (resizable(design.items[sel])) {
+      const h = handleRect(b, scale);
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.fillRect(h.x, h.y, h.size, h.size);
+    }
   }
 
-  const lenMm = bitmap.width / dpmm;
   const tape = med.tapeMm ? `${med.tapeMm} mm tape, ${acrossMm().toFixed(1)} mm printable` : `${acrossMm().toFixed(1)} mm wide`;
-  // Font boxes include some blank space, so allow half a millimetre of slack.
-  const slack = dpmm * 0.5;
-  const offLabel = last.bounds.some((b) => b.x < -slack || b.y < -slack
-    || b.y + b.h > bitmap.height + slack || b.x + b.w > bitmap.width + slack);
+  if (med.margins) $('dims').title = 'Hatched border: the printer cannot print there (from DYMO\'s driver).';
+  // Font boxes include some blank space, so allow a little slack.
+  const slack = 0.3 * zoom;
+  const offLabel = last.bounds.some((b) => b.x * scale < area.x0 - slack || b.y * scale < area.y0 - slack
+    || (b.y + b.h) * scale > area.y1 + slack || (b.x + b.w) * scale > area.x1 + slack);
   const dims = $('dims');
   dims.textContent = `${tape} × ${lenMm.toFixed(1)} mm long  ·  ${bitmap.width} × ${bitmap.height} dots @ ${m.dpi} dpi`
-    + (offLabel ? '  ·  ⚠ Something runs off the printable area and will be cut off' : '');
+    + (offLabel ? '  ·  ⚠ Something is outside the printable area and will be cut off' : '');
   dims.classList.toggle('warn', offLabel);
   $('zoom-label').textContent = `${Math.round((zoom / 6) * 100)}%`;
   updateCodeInfo();
+  updateFitInfo();
+  if (editing) positionEditor();
+}
+
+let hatch = null;
+function marginPattern(ctx) {
+  if (!hatch) {
+    hatch = document.createElement('canvas');
+    hatch.width = hatch.height = 8;
+    const h = hatch.getContext('2d');
+    h.fillStyle = 'rgba(150, 150, 150, .18)';
+    h.fillRect(0, 0, 8, 8);
+    h.strokeStyle = 'rgba(120, 120, 120, .45)';
+    h.beginPath();
+    h.moveTo(0, 8);
+    h.lineTo(8, 0);
+    h.stroke();
+  }
+  return ctx.createPattern(hatch, 'repeat');
+}
+
+// Corner handle of a selected item, in screen px relative to the canvas.
+function handleRect(b, scale) {
+  const size = 8;
+  return { x: (b.x + b.w) * scale + 2 - size / 2, y: (b.y + b.h) * scale + 2 - size / 2, size };
 }
 
 // ---------- setup panel ----------
@@ -336,43 +402,41 @@ function addItem(item) {
 // X position (mm) just after the rightmost existing item.
 function nextX() {
   const right = last ? Math.max(0, ...last.bounds.map((b) => (b.x + b.w) / last.dpmm)) : 0;
-  return +(right + (right ? 3 : 2)).toFixed(1);
+  return round1(right ? right + 3 : Math.max(2, margins().left + 1));
 }
 
 function addText() {
-  const size = Math.max(1.5, +(acrossMm() * 0.6).toFixed(1));
+  const size = Math.max(1.5, round1(usableMm() * 0.6));
   addItem({
     type: 'text', text: 'Text', font: 'sans-serif', size, bold: false, italic: false, align: 'left',
-    x: nextX(), y: +((acrossMm() - size * 1.15) / 2).toFixed(1),
+    x: nextX(), y: round1(bandTop() + (usableMm() - size * 1.15) / 2),
   });
 }
 
 function addImage(file) {
   const reader = new FileReader();
   reader.onload = () => {
-    const h = acrossMm();
-    addItem({ type: 'image', src: reader.result, x: 2, y: 0, w: h, threshold: 128, dither: false, invert: false });
+    addItem({ type: 'image', src: reader.result, x: nextX(), y: bandTop(), w: round1(usableMm()), threshold: 128, dither: false, invert: false });
   };
   reader.readAsDataURL(file);
 }
 
 function addBox() {
-  const h = acrossMm();
-  addItem({ type: 'box', x: 1, y: 1, w: 20, h: Math.max(2, +(h - 2).toFixed(1)), stroke: 0.4, fill: false });
+  addItem({ type: 'box', x: nextX(), y: round1(bandTop() + 0.5), w: 20, h: Math.max(2, round1(usableMm() - 1)), stroke: 0.4, fill: false });
 }
 
 function addQr() {
-  const size = +Math.min(25, acrossMm() * 0.9).toFixed(1);
-  addItem({ type: 'qr', data: 'https://example.com', ecc: 'M', size, x: nextX(), y: +((acrossMm() - size) / 2).toFixed(1) });
+  const size = round1(Math.min(25, usableMm() * 0.9));
+  addItem({ type: 'qr', data: 'https://example.com', ecc: 'M', size, x: nextX(), y: round1(bandTop() + (usableMm() - size) / 2) });
 }
 
 function addBarcode() {
-  const textSize = Math.min(3, +(acrossMm() * 0.22).toFixed(1));
-  const height = Math.max(3, +Math.min(15, acrossMm() - textSize - 1.2).toFixed(1));
+  const textSize = Math.min(3, round1(usableMm() * 0.22));
+  const height = Math.max(3, round1(Math.min(15, usableMm() - textSize - 1.2)));
   const total = height + 0.4 + textSize;
   addItem({
     type: 'barcode', symbology: 'code128', data: 'ABC-12345', module: 0.3, height,
-    showText: true, textSize, x: nextX(), y: +Math.max(0, (acrossMm() - total) / 2).toFixed(1),
+    showText: true, textSize, x: nextX(), y: round1(bandTop() + Math.max(0, (usableMm() - total) / 2)),
   });
 }
 
@@ -457,7 +521,11 @@ function buildProps() {
     panel.append(
       field('Text', 'text', { type: 'textarea' }),
       field('Font', 'font', { type: 'select', choices: FONTS.map((f) => [f, f]) }),
-      pair(num('Size (mm)', 'size', 0.1, 0.5), field('Align', 'align', { type: 'select', choices: [['left', 'Left'], ['center', 'Centre'], ['right', 'Right']] })),
+      fitToggle(item),
+      ...(item.fit
+        ? [pair(num('Box width (mm)', 'w', 0.5, 1), num('Box height (mm)', 'h', 0.5, 1)), fitInfo()]
+        : [num('Size (mm)', 'size', 0.1, 0.5)]),
+      field('Align', 'align', { type: 'select', choices: [['left', 'Left'], ['center', 'Centre'], ['right', 'Right']] }),
       field('Bold', 'bold', { type: 'checkbox' }),
       field('Italic', 'italic', { type: 'checkbox' }),
     );
@@ -506,17 +574,28 @@ function buildProps() {
   row.append(
     btn('Centre across', () => {
       const i = design.items.indexOf(item);
-      const b = last.bounds[i];
-      item.y = +(((medium().acrossDots - b.h) / 2) / last.dpmm).toFixed(2);
+      const h = last.bounds[i].h / last.dpmm;
+      item.y = +(bandTop() + (usableMm() - h) / 2).toFixed(2);
       refresh({ props: true });
     }),
   );
-  if (item.type === 'text') {
+  if (item.type === 'text' && item.fit) {
+    row.append(btn('Fill printable area', () => {
+      const mg = margins();
+      item.y = bandTop();
+      item.h = round1(usableMm());
+      if (medium().lengthDots) {
+        item.x = mg.left;
+        item.w = round1(medium().lengthDots / last.dpmm - mg.left - mg.right);
+      }
+      refresh({ props: true });
+    }));
+  } else if (item.type === 'text') {
     row.append(btn('Fill height', () => {
       const i = design.items.indexOf(item);
       const ratio = last.bounds[i].h / last.dpmm / item.size;
-      item.size = +((acrossMm() * 0.95) / ratio).toFixed(2);
-      item.y = +((acrossMm() * 0.025)).toFixed(2);
+      item.size = +((usableMm() * 0.95) / ratio).toFixed(2);
+      item.y = +(bandTop() + usableMm() * 0.025).toFixed(2);
       refresh({ props: true });
     }));
   }
@@ -526,6 +605,41 @@ function buildProps() {
     btn('Delete', () => deleteItem(item)),
   );
   panel.append(row);
+}
+
+// "Fit text in box": switching on keeps the text where it is by starting
+// from its current bounds.
+function fitToggle(item) {
+  const l = document.createElement('label');
+  l.className = 'inline';
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.checked = !!item.fit;
+  input.onchange = () => {
+    if (input.checked) {
+      const b = last.bounds[design.items.indexOf(item)];
+      item.w = item.w ?? round1(b.w / last.dpmm);
+      item.h = item.h ?? round1(b.h / last.dpmm);
+    }
+    item.fit = input.checked;
+    refresh({ props: true });
+  };
+  l.append(input, ' Fit text in a fixed box (size is automatic)');
+  return l;
+}
+
+function fitInfo() {
+  const p = document.createElement('p');
+  p.id = 'fit-info';
+  p.className = 'note';
+  return p;
+}
+
+function updateFitInfo() {
+  const p = $('fit-info');
+  const i = design.items.findIndex((it) => it.id === selectedId);
+  const l = last?.textLayouts[i];
+  if (p && l) p.textContent = `Text size ${l.sizeMm.toFixed(1)} mm. Drag the box's corner handle to resize it.`;
 }
 
 // Live encoding details or the error for the selected QR/barcode item.
@@ -596,9 +710,26 @@ function hitTest(pt) {
   return null;
 }
 
+function onHandle(e) {
+  const item = selected();
+  if (!item || !last || !resizable(item)) return null;
+  const r = $('canvas').getBoundingClientRect();
+  const h = handleRect(last.bounds[design.items.indexOf(item)], zoom / last.dpmm);
+  const x = e.clientX - r.left;
+  const y = e.clientY - r.top;
+  const pad = 4;
+  return x >= h.x - pad && x <= h.x + h.size + pad && y >= h.y - pad && y <= h.y + h.size + pad ? item : null;
+}
+
 let drag = null;
 function onPointerDown(e) {
   const pt = canvasPointToMm(e);
+  const handled = onHandle(e);
+  if (handled) {
+    drag = { item: handled, resize: true };
+    $('canvas').setPointerCapture(e.pointerId);
+    return;
+  }
   const item = hitTest(pt);
   selectedId = item?.id ?? null;
   if (item) {
@@ -609,8 +740,18 @@ function onPointerDown(e) {
 }
 
 function onPointerMove(e) {
-  if (!drag) return;
+  const canvas = $('canvas');
+  if (!drag) {
+    canvas.style.cursor = onHandle(e) ? 'nwse-resize' : hitTest(canvasPointToMm(e)) ? 'move' : 'default';
+    return;
+  }
   const pt = canvasPointToMm(e);
+  if (drag.resize) {
+    const it = drag.item;
+    RESIZERS[it.type](it, Math.max(1, round1(pt.x - it.x)), Math.max(1, round1(pt.y - it.y)));
+    refresh();
+    return;
+  }
   drag.item.x = Math.round((pt.x - drag.dx) * 10) / 10;
   drag.item.y = Math.round((pt.y - drag.dy) * 10) / 10;
   refresh();
@@ -628,27 +769,15 @@ function onPointerUp() {
 let editing = null;
 
 function startEdit(item) {
-  const i = design.items.indexOf(item);
-  const b = last?.bounds[i];
-  if (!b) return;
-  const scale = zoom / last.dpmm;
-  const canvas = $('canvas');
-  const lines = Math.max(1, String(item.text).split('\n').length);
+  if (!last?.textLayouts[design.items.indexOf(item)]) return;
   const ta = document.createElement('textarea');
   ta.className = 'inplace';
   ta.value = item.text;
   ta.spellcheck = false;
   ta.setAttribute('aria-label', 'Edit label text');
-  Object.assign(ta.style, {
-    left: `${canvas.offsetLeft + b.x * scale - 2}px`,
-    top: `${canvas.offsetTop + b.y * scale}px`,
-    minWidth: `${Math.max(16, b.w * scale)}px`,
-    font: `${item.italic ? 'italic ' : ''}${item.bold ? 'bold ' : ''}${item.size * zoom}px ${item.font || 'sans-serif'}`,
-    lineHeight: `${(b.h * scale) / lines}px`,
-    textAlign: item.align || 'left',
-  });
   $('canvas-wrap').append(ta);
   editing = { item, ta, original: item.text };
+  positionEditor();
 
   ta.addEventListener('input', () => {
     item.text = ta.value;
@@ -669,6 +798,23 @@ function startEdit(item) {
   ta.addEventListener('blur', () => stopEdit());
   ta.focus();
   ta.select();
+}
+
+// Lays the editor over the text exactly where the renderer put it.
+function positionEditor() {
+  const { item, ta } = editing;
+  const l = last?.textLayouts[design.items.indexOf(item)];
+  if (!l) return;
+  const scale = zoom / last.dpmm;
+  const canvas = $('canvas');
+  Object.assign(ta.style, {
+    left: `${canvas.offsetLeft + l.blockX * scale - 2}px`,
+    top: `${canvas.offsetTop + l.blockY * scale}px`,
+    minWidth: `${Math.max(16, l.w * scale)}px`,
+    font: `${item.italic ? 'italic ' : ''}${item.bold ? 'bold ' : ''}${l.px * scale}px ${item.font || 'sans-serif'}`,
+    lineHeight: `${l.lineH * scale}px`,
+    textAlign: item.align || 'left',
+  });
 }
 
 // Commits the edit; an emptied text item is removed.
@@ -697,7 +843,7 @@ function onDoubleClick(e) {
     input?.select();
   } else if (!item) {
     // Double-clicking empty label space adds a text item there.
-    const size = Math.max(1.5, +(acrossMm() * 0.6).toFixed(1));
+    const size = Math.max(1.5, round1(usableMm() * 0.6));
     design.items.push({
       id: uid(), type: 'text', text: 'Text', font: 'sans-serif', size, bold: false, italic: false, align: 'left',
       x: +Math.max(0, pt.x).toFixed(1), y: +Math.max(0, pt.y - size * 0.6).toFixed(1),

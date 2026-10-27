@@ -138,6 +138,13 @@ it was added there.
 - **Items:** text (multi-line, any installed font), images (threshold or
   dithering), boxes, **QR codes** and **barcodes** (Code 128, EAN-13, UPC-A).
   Drag to move; arrow keys nudge.
+- **Printable area:** the hatched border in the preview is where the printer
+  can't print, taken from DYMO's own driver (about 5.8 mm at the end that
+  feeds out first, 1–1.5 mm elsewhere). Anything placed there is flagged.
+- **Fit text in a box:** tick it on a text item to give it a fixed box; the
+  font size is chosen automatically so the text fills it. *Fill printable
+  area* makes the box cover the whole usable label. Drag the corner handle to
+  resize boxes, images, QR codes and fitted text.
 - **QR codes and barcodes** are drawn on whole printer dots, so bar and module
   edges stay sharp. Bar width snaps to whole dots (the panel shows the actual
   size), and barcode quiet zones are part of the item width. Leave a few mm of
