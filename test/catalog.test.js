@@ -72,11 +72,18 @@ test('catalogue builds the expected media', () => {
   assert.equal(models['dymo-lw4xl'].media.find((m) => m.id === '1744907').acrossDots, 1233);
   assert.ok(!ids('brother-pt-e310bt').includes('tze-24'), 'PT-E310BT takes up to 18 mm');
   assert.ok(ids('brother-pt-e310bt').includes('tze-18'));
+  assert.ok(!ids('brother-ql-800').includes('ql-102'), '102 mm rolls need a QL-1100');
+  assert.ok(ids('brother-ql-1100').includes('ql-102') && ids('brother-ql-1100').includes('ql-62'));
+  const dk = models['brother-ql-800'].media.find((m) => m.id === 'ql-29x90');
+  assert.deepEqual([dk.acrossDots, dk.lengthDots, dk.offsetRightDots, dk.widthMm, dk.lengthMm], [306, 991, 6, 29, 90]);
 });
 
 test('catalogue loader rejects broken records', () => {
   const base = '%rec: Medium\n\nId: x\nFamily: dymo-lw\nName: X\nKind: continuous\nWidthMm: 10\nSource: test\n';
-  assert.doesNotThrow(() => applyCatalog(`${base}\nId: t\nFamily: brother-pt\nName: T\nKind: continuous\nWidthMm: 12\nPrintableDots: 76\nSource: test\n`, freshModels()));
+  const others = '\nId: t\nFamily: brother-pt\nName: T\nKind: continuous\nWidthMm: 12\nPrintableDots: 76\nSource: test\n'
+    + '\nId: q\nFamily: brother-ql\nName: Q\nKind: continuous\nWidthMm: 62\nPrintableDots: 696\nSource: test\n';
+  assert.doesNotThrow(() => applyCatalog(`${base}${others}`, freshModels()));
+  assert.throws(() => applyCatalog(base, freshModels()), /no media for brother-pt/);
   assert.throws(() => applyCatalog(base.replace('dymo-lw', 'nope'), freshModels()), /unknown family/);
   assert.throws(() => applyCatalog(base.replace('WidthMm: 10', 'WidthMm: wide'), freshModels()), /not a number/);
   assert.throws(() => applyCatalog(base.replace('Kind: continuous', 'Kind: roll'), freshModels()), /Kind must be/);

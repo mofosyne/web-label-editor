@@ -212,3 +212,259 @@ MarginTopMm: 1.02
 MarginBottomMm: 1.44
 CornerMm: 3
 Source: lw4xl.ppd 99019: 166.56 x 538.56 pt, imageable 4.08 4.32 163.68 522.72
+
+# ---------------------------------------------------------------------------
+# Brother QL (300 dpi), DK rolls
+#
+# From brother_ql's labels.py (ALL_LABELS): tape size in mm, printable dots
+# across (and along, for die-cut labels), right offset and feed margin in
+# dots. The editor's strip is the printable area, so these records have no
+# margins. 102 mm and wider rolls only fit the QL-1050/1100 series.
+
+Id: ql-12
+Family: brother-ql
+Name: 12 mm continuous roll
+Kind: continuous
+WidthMm: 12
+PrintableDots: 106
+OffsetRightDots: 29
+FeedMarginDots: 35
+Source: brother_ql labels.py "12": total 142 dots
+
+Id: ql-29
+Family: brother-ql
+Name: 29 mm continuous roll
+Kind: continuous
+WidthMm: 29
+PrintableDots: 306
+OffsetRightDots: 6
+FeedMarginDots: 35
+Source: brother_ql labels.py "29": total 342 dots
+
+Id: ql-38
+Family: brother-ql
+Name: 38 mm continuous roll
+Kind: continuous
+WidthMm: 38
+PrintableDots: 413
+OffsetRightDots: 12
+FeedMarginDots: 35
+Source: brother_ql labels.py "38": total 449 dots
+
+Id: ql-50
+Family: brother-ql
+Name: 50 mm continuous roll
+Kind: continuous
+WidthMm: 50
+PrintableDots: 554
+OffsetRightDots: 12
+FeedMarginDots: 35
+Source: brother_ql labels.py "50": total 590 dots
+
+Id: ql-54
+Family: brother-ql
+Name: 54 mm continuous roll
+Kind: continuous
+WidthMm: 54
+PrintableDots: 590
+OffsetRightDots: 0
+FeedMarginDots: 35
+Source: brother_ql labels.py "54": total 636 dots
+
+Id: ql-62
+Family: brother-ql
+Name: 62 mm continuous roll
+Kind: continuous
+WidthMm: 62
+PrintableDots: 696
+OffsetRightDots: 12
+FeedMarginDots: 35
+Source: brother_ql labels.py "62": total 732 dots
+
+Id: ql-102
+Family: brother-ql
+Name: 102 mm continuous roll
+Kind: continuous
+WidthMm: 102
+PrintableDots: 1164
+OffsetRightDots: 12
+FeedMarginDots: 35
+Source: brother_ql labels.py "102": total 1200 dots
+
+Id: ql-103
+Family: brother-ql
+Name: 104 mm continuous roll
+Kind: continuous
+WidthMm: 104
+PrintableDots: 1200
+OffsetRightDots: 12
+FeedMarginDots: 35
+Source: brother_ql labels.py "103": total 1224 dots
+
+Id: ql-17x54
+Family: brother-ql
+Name: 17 × 54 mm labels
+Kind: diecut
+WidthMm: 17
+LengthMm: 54
+PrintableDots: 165
+PrintableLengthDots: 566
+OffsetRightDots: 0
+CornerMm: 2
+Source: brother_ql labels.py "17x54": total 201 x 636 dots
+
+Id: ql-17x87
+Family: brother-ql
+Name: 17 × 87 mm labels
+Kind: diecut
+WidthMm: 17
+LengthMm: 87
+PrintableDots: 165
+PrintableLengthDots: 956
+OffsetRightDots: 0
+CornerMm: 2
+Source: brother_ql labels.py "17x87": total 201 x 1026 dots
+
+Id: ql-23x23
+Family: brother-ql
+Name: 23 × 23 mm labels
+Kind: diecut
+WidthMm: 23
+LengthMm: 23
+PrintableDots: 202
+PrintableLengthDots: 202
+OffsetRightDots: 42
+CornerMm: 2
+Source: brother_ql labels.py "23x23": total 272 x 272 dots
+
+Id: ql-29x42
+Family: brother-ql
+Name: 29 × 42 mm labels
+Kind: diecut
+WidthMm: 29
+LengthMm: 42
+PrintableDots: 306
+PrintableLengthDots: 425
+OffsetRightDots: 6
+CornerMm: 2
+Source: brother_ql labels.py "29x42": total 342 x 495 dots
+
+Id: ql-29x90
+Family: brother-ql
+Name: 29 × 90 mm labels
+Kind: diecut
+WidthMm: 29
+LengthMm: 90
+PrintableDots: 306
+PrintableLengthDots: 991
+OffsetRightDots: 6
+CornerMm: 2
+Source: brother_ql labels.py "29x90": total 342 x 1061 dots
+
+Id: ql-39x90
+Family: brother-ql
+Name: 38 × 90 mm labels
+Kind: diecut
+WidthMm: 38
+LengthMm: 90
+PrintableDots: 413
+PrintableLengthDots: 991
+OffsetRightDots: 12
+CornerMm: 2
+Source: brother_ql labels.py "39x90": total 449 x 1061 dots
+
+Id: ql-39x48
+Family: brother-ql
+Name: 39 × 48 mm labels
+Kind: diecut
+WidthMm: 39
+LengthMm: 48
+PrintableDots: 425
+PrintableLengthDots: 495
+OffsetRightDots: 6
+CornerMm: 2
+Source: brother_ql labels.py "39x48": total 461 x 565 dots
+
+Id: ql-52x29
+Family: brother-ql
+Name: 52 × 29 mm labels
+Kind: diecut
+WidthMm: 52
+LengthMm: 29
+PrintableDots: 578
+PrintableLengthDots: 271
+OffsetRightDots: 0
+CornerMm: 2
+Source: brother_ql labels.py "52x29": total 614 x 341 dots
+
+Id: ql-60x86
+Family: brother-ql
+Name: 60 × 87 mm labels
+Kind: diecut
+WidthMm: 60
+LengthMm: 87
+PrintableDots: 672
+PrintableLengthDots: 954
+OffsetRightDots: 18
+CornerMm: 2
+Source: brother_ql labels.py "60x86": total 708 x 1024 dots
+
+Id: ql-62x29
+Family: brother-ql
+Name: 62 × 29 mm labels
+Kind: diecut
+WidthMm: 62
+LengthMm: 29
+PrintableDots: 696
+PrintableLengthDots: 271
+OffsetRightDots: 12
+CornerMm: 2
+Source: brother_ql labels.py "62x29": total 732 x 341 dots
+
+Id: ql-62x100
+Family: brother-ql
+Name: 62 × 100 mm labels
+Kind: diecut
+WidthMm: 62
+LengthMm: 100
+PrintableDots: 696
+PrintableLengthDots: 1109
+OffsetRightDots: 12
+CornerMm: 2
+Source: brother_ql labels.py "62x100": total 732 x 1179 dots
+
+Id: ql-102x51
+Family: brother-ql
+Name: 102 × 51 mm labels
+Kind: diecut
+WidthMm: 102
+LengthMm: 51
+PrintableDots: 1164
+PrintableLengthDots: 526
+OffsetRightDots: 12
+CornerMm: 2
+Source: brother_ql labels.py "102x51": total 1200 x 596 dots
+
+Id: ql-102x152
+Family: brother-ql
+Name: 102 × 153 mm labels
+Kind: diecut
+WidthMm: 102
+LengthMm: 153
+PrintableDots: 1164
+PrintableLengthDots: 1660
+OffsetRightDots: 12
+CornerMm: 2
+Source: brother_ql labels.py "102x152": total 1200 x 1804 dots
+
+Id: ql-103x164
+Family: brother-ql
+Name: 104 × 164 mm labels
+Kind: diecut
+WidthMm: 104
+LengthMm: 164
+PrintableDots: 1200
+PrintableLengthDots: 1822
+OffsetRightDots: 12
+CornerMm: 2
+Source: brother_ql labels.py "103x164": total 1224 x 1941 dots

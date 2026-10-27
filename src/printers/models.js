@@ -14,6 +14,7 @@ import { encodeLabelWriter } from './dymo-labelwriter.js';
 import {
   encodePTouch, initCommand, STATUS_REQUEST, parseStatus, HEAD_DOTS,
 } from './brother-ptouch.js';
+import { encodeQL, qlParams, parseQLStatus } from './brother-ql.js';
 
 // ---- DYMO LabelWriter 400 / 450 / 4XL ----
 
@@ -97,6 +98,44 @@ function pTouch({ name, status, productId, maxTapeMm = 24, quirks = {}, bluetoot
   };
 }
 
+// ---- Brother QL (DK rolls, 300 dpi) ----
+// Model parameters from brother_ql; see brother-ql.js.
+
+const QL_NOTE = 'Brother QL: print 62 mm and narrower DK rolls; the QL-1100 series also takes 102 mm rolls.';
+const EDITOR_LITE = 'Turn off Editor Lite (hold its button until the light goes out): in that mode the printer appears as a USB drive, not a printer.';
+
+function brotherQL(name, { editorLite = false } = {}) {
+  const params = qlParams(name);
+  return {
+    brand: 'Brother QL',
+    name: `Brother ${name}`,
+    status: 'experimental',
+    devices: [{ name: `Brother ${name}`, status: 'experimental' }],
+    family: 'brother-ql',
+    dpi: 300,
+    headDots: params.bytesPerRow * 8,
+    transports: ['usb'],
+    usbFilters: [{ vendorId: 0x04f9, classCode: 7 }],
+    media: [],
+    options: [{ id: 'autoCut', label: 'Cut after label', type: 'checkbox', default: true }],
+    note: editorLite ? `${QL_NOTE} ${EDITOR_LITE}` : QL_NOTE,
+    encode(bitmap, medium, opts) {
+      return encodeQL(bitmap, medium, params, { cut: opts.autoCut ?? true });
+    },
+    async queryStatus(transport) {
+      const init = new Uint8Array(params.invalidateBytes + 5);
+      init.set([0x1b, 0x40, 0x1b, 0x69, 0x53], params.invalidateBytes); // invalidate, ESC @, ESC i S
+      await transport.write(init);
+      const parsed = parseQLStatus(await transport.read(32, 3000));
+      if (!parsed) throw new Error('Printer did not return a valid status reply.');
+      const medium = this.media.find((m) => Math.round(m.widthMm) === parsed.tapeMm
+        && m.continuous === parsed.continuous
+        && (m.continuous || Math.round(m.lengthMm) === parsed.lengthMm)) ?? null;
+      return { ...parsed, mediumId: medium?.id ?? null };
+    },
+  };
+}
+
 // Model ids are kept stable: saved designs refer to them.
 export const MODELS = {
   'dymo-lw450': labelWriter({
@@ -123,6 +162,17 @@ export const MODELS = {
   'brother-pt-d610bt': pTouch({ name: 'Brother PT-D610BT', status: 'experimental', productId: 0x20e1, bluetooth: true, quirks: { packbits: false, p700Init: true, infoCmd: true, magic: true } }),
   'brother-pt-e310bt': pTouch({ name: 'Brother PT-E310BT', status: 'experimental', productId: 0x2201, maxTapeMm: 18, bluetooth: true, quirks: { packbits: false, p700Init: true, infoCmd: true, precut: false, magic: true } }),
   'brother-pt-e560bt': pTouch({ name: 'Brother PT-E560BT', status: 'experimental', productId: 0x2203, bluetooth: true, quirks: { packbits: false, p700Init: true, infoCmd: true, precut: false, magic: true } }),
+
+  'brother-ql-700': brotherQL('QL-700', { editorLite: true }),
+  'brother-ql-710w': brotherQL('QL-710W'),
+  'brother-ql-720nw': brotherQL('QL-720NW'),
+  'brother-ql-800': brotherQL('QL-800', { editorLite: true }),
+  'brother-ql-810w': brotherQL('QL-810W', { editorLite: true }),
+  'brother-ql-820nwb': brotherQL('QL-820NWB', { editorLite: true }),
+  'brother-ql-1100': brotherQL('QL-1100'),
+  'brother-ql-1110nwb': brotherQL('QL-1110NWB'),
+  'brother-ql-1115nwb': brotherQL('QL-1115NWB'),
+
 };
 
 const NO_MARGINS = { left: 0, right: 0, top: 0, bottom: 0 };
