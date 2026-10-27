@@ -19,7 +19,7 @@ function withTimeout(promise, ms, message) {
 const SHORT_REASON = {
   linux: {
     open: 'Linux has not given your user permission to use this printer.',
-    claim: 'The Linux usblp kernel driver is holding the printer.',
+    claim: 'Another driver or program is holding the printer (usually the usblp kernel driver, or CUPS while printing).',
   },
   windows: 'The Windows printer driver owns this printer, so the browser cannot use it.',
   mac: 'Another program (such as DYMO Connect) is using the printer.',

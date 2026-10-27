@@ -90,11 +90,20 @@ user access. On a system without it, use `MODE="0666"` instead of
 `TAG+="uaccess"`.)
 
 - **Chromium from a snap:** also run `sudo snap connect chromium:raw-usb`.
-- **"Unable to claim interface":** the `usblp` kernel module grabbed the
-  printer. Run `sudo modprobe -r usblp`, or to make it permanent, put
-  `blacklist usblp` in `/etc/modprobe.d/no-usblp.conf`. CUPS on mainstream
-  distros talks to USB printers through libusb and does not need `usblp`; if
-  CUPS printing breaks afterwards, delete that file.
+- **"Unable to claim interface"** (only then): something else has the
+  printer. `lsusb -t` shows the printer's `Driver=`: `usblp` is the kernel
+  printer driver (below); `usbfs` means a program has it, usually CUPS mid-job,
+  so close it or `sudo systemctl stop cups` while printing from here. If
+  `modprobe -r usblp` reports the module is in use, stop CUPS first.
+  - Try it out, nothing saved: `sudo modprobe -r usblp`. It comes back on the
+    next plug-in or reboot.
+  - Keep it off: `echo 'blacklist usblp' | sudo tee /etc/modprobe.d/no-usblp.conf`.
+    This applies to every USB printer. Check `lpstat -v` first: a `usb://`
+    address means CUPS uses its own libusb backend and does not need `usblp`;
+    a `/dev/usb/lp0` address means it does, so use the temporary option.
+  - Undo: `sudo rm /etc/modprobe.d/no-usblp.conf && sudo modprobe usblp`.
+- **Undo the permission rule:** `sudo rm /etc/udev/rules.d/60-label-printer.rules`,
+  then replug.
 
 ### Windows
 
