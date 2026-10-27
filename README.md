@@ -32,9 +32,42 @@ Brave, Opera; Chrome on Android for USB) and only on `https://` or
 `localhost`. GitHub Pages works as-is (see below). In other browsers you can still design
 and **Download PNG** at the printer's exact resolution.
 
+## Direct USB instead of a printer driver
+
+This editor does not go through the operating system's print system (CUPS on
+Linux and macOS, the spooler on Windows). The browser opens the printer's USB
+or Bluetooth connection itself and sends the printer's own raster commands.
+
+Why:
+
+- **Works the same everywhere.** No driver to install, and nothing
+  Linux-specific: the same page works on Linux, Windows, macOS and ChromeOS.
+  DYMO's Linux driver is old, and Brother's are closed x86-only binaries.
+- **Continuous rolls without page-size gymnastics.** Print drivers think in
+  fixed paper sizes, so continuous tape means defining custom page sizes, and
+  some drivers cap the length. Here the label is simply as long as the design.
+- **Exact dots.** The page renders at the printer's resolution and sends those
+  dots unchanged. No driver scaling, margins or halftoning, so barcodes and QR
+  codes stay sharp.
+- **Two-way.** The printer can be asked what tape is loaded and whether
+  anything is wrong. A print queue is one-way.
+
+The trade-offs:
+
+- **The browser needs permission on the USB device.** Apps like glabels print
+  through CUPS, whose USB backend runs as a system user, so they never needed
+  it. Here the browser runs as you, so on Linux you add one udev rule (below).
+  That is the "Access denied" error.
+- **One user of the printer at a time.** CUPS printing keeps working, but not
+  while the editor is connected, and vice versa.
+- **Chromium-based browsers only** (Chrome, Edge, Brave, Opera), since WebUSB
+  and Web Serial exist only there.
+- **No print queue or network sharing.** For those, use **Download PNG** and
+  print the image through your normal printer driver.
+
 ## Per-OS setup
 
-The browser needs to open the printer's USB device itself. If you see
+The browser opens the printer's USB device itself (see above). If you see
 **"Failed to execute 'open' on 'USBDevice': Access denied"**, the operating
 system is keeping the browser out. The fix depends on the OS.
 

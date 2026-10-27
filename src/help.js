@@ -61,6 +61,9 @@ const GUIDES = {
       ? `echo '${rules[0]}' | sudo tee /etc/udev/rules.d/60-label-printer.rules`
       : `sudo tee /etc/udev/rules.d/60-label-printer.rules <<'EOF'\n${rules.join('\n')}\nEOF`;
     return [
+      el('li', { className: 'why' },
+        p('Why this is needed: this editor talks to the printer directly over USB from your browser, which runs as you. Apps like glabels print through CUPS instead, whose USB backend runs as a system user, so they never needed this. Linux gives your desktop user access to scanners and cameras by default, but not to printers.'),
+        p('CUPS printing keeps working alongside this; only one of the two can use the printer at a time.')),
       step('1. Allow your user to use the printer', ctx.stage === 'open',
         p('Linux only lets the browser open USB devices your user has permission for. This udev rule grants it to whoever is logged in at the desktop:'),
         commandBlock(`${install}\nsudo udevadm control --reload-rules && sudo udevadm trigger`),
@@ -68,7 +71,7 @@ const GUIDES = {
       step('2. Unplug the printer and plug it back in', false,
         p('The new permission applies when the device is reconnected.')),
       step('3. If it now says the interface can\'t be claimed', ctx.stage === 'claim',
-        p('The usblp kernel printer driver has grabbed the printer. Unload it and stop it loading again (CUPS does not need it):'),
+        p('The usblp kernel printer driver has grabbed the printer. Unload it and stop it loading again. CUPS on mainstream distros talks to USB printers without it; if CUPS printing stops working afterwards, delete the blacklist file.'),
         commandBlock("echo 'blacklist usblp' | sudo tee /etc/modprobe.d/no-usblp.conf\nsudo modprobe -r usblp"),
         p('Then unplug and replug the printer.')),
       step('Using Chromium from a snap?', false,
