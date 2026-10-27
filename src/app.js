@@ -121,7 +121,14 @@ function draw() {
 
   const lenMm = bitmap.width / dpmm;
   const tape = med.tapeMm ? `${med.tapeMm} mm tape, ${acrossMm().toFixed(1)} mm printable` : `${acrossMm().toFixed(1)} mm wide`;
-  $('dims').textContent = `${tape} × ${lenMm.toFixed(1)} mm long  ·  ${bitmap.width} × ${bitmap.height} dots @ ${m.dpi} dpi`;
+  // Font boxes include some blank space, so allow half a millimetre of slack.
+  const slack = dpmm * 0.5;
+  const offLabel = last.bounds.some((b) => b.x < -slack || b.y < -slack
+    || b.y + b.h > bitmap.height + slack || b.x + b.w > bitmap.width + slack);
+  const dims = $('dims');
+  dims.textContent = `${tape} × ${lenMm.toFixed(1)} mm long  ·  ${bitmap.width} × ${bitmap.height} dots @ ${m.dpi} dpi`
+    + (offLabel ? '  ·  ⚠ Something runs off the printable area and will be cut off' : '');
+  dims.classList.toggle('warn', offLabel);
   $('zoom-label').textContent = `${Math.round((zoom / 6) * 100)}%`;
   updateCodeInfo();
 }
@@ -591,6 +598,93 @@ function onPointerUp() {
   }
 }
 
+// ---------- in-place text editing ----------
+
+let editing = null;
+
+function startEdit(item) {
+  const i = design.items.indexOf(item);
+  const b = last?.bounds[i];
+  if (!b) return;
+  const scale = zoom / last.dpmm;
+  const canvas = $('canvas');
+  const lines = Math.max(1, String(item.text).split('\n').length);
+  const ta = document.createElement('textarea');
+  ta.className = 'inplace';
+  ta.value = item.text;
+  ta.spellcheck = false;
+  ta.setAttribute('aria-label', 'Edit label text');
+  Object.assign(ta.style, {
+    left: `${canvas.offsetLeft + b.x * scale - 2}px`,
+    top: `${canvas.offsetTop + b.y * scale}px`,
+    minWidth: `${Math.max(16, b.w * scale)}px`,
+    font: `${item.italic ? 'italic ' : ''}${item.bold ? 'bold ' : ''}${item.size * zoom}px ${item.font || 'sans-serif'}`,
+    lineHeight: `${(b.h * scale) / lines}px`,
+    textAlign: item.align || 'left',
+  });
+  $('canvas-wrap').append(ta);
+  editing = { item, ta, original: item.text };
+
+  ta.addEventListener('input', () => {
+    item.text = ta.value;
+    refresh();
+    updateListLabel();
+  });
+  ta.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      item.text = editing.original;
+      stopEdit();
+    } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      stopEdit();
+    }
+  });
+  ta.addEventListener('blur', () => stopEdit());
+  ta.focus();
+  ta.select();
+}
+
+// Commits the edit; an emptied text item is removed.
+function stopEdit() {
+  if (!editing) return;
+  const { item, ta } = editing;
+  editing = null;
+  ta.remove();
+  if (!String(item.text).trim()) deleteItem(item);
+  else refresh({ props: true });
+  $('canvas').focus({ preventScroll: true });
+}
+
+function onDoubleClick(e) {
+  const pt = canvasPointToMm(e);
+  const item = hitTest(pt);
+  drag = null;
+  if (item?.type === 'text') {
+    selectedId = item.id;
+    startEdit(item);
+  } else if (item?.type === 'qr' || item?.type === 'barcode') {
+    selectedId = item.id;
+    refresh({ props: true });
+    const input = $('item-props').querySelector(item.type === 'qr' ? 'textarea' : 'input[type="text"]');
+    input?.focus();
+    input?.select();
+  } else if (!item) {
+    // Double-clicking empty label space adds a text item there.
+    const size = Math.max(1.5, +(acrossMm() * 0.6).toFixed(1));
+    design.items.push({
+      id: uid(), type: 'text', text: 'Text', font: 'sans-serif', size, bold: false, italic: false, align: 'left',
+      x: +Math.max(0, pt.x).toFixed(1), y: +Math.max(0, pt.y - size * 0.6).toFixed(1),
+    });
+    const created = design.items.at(-1);
+    selectedId = created.id;
+    buildProps();
+    draw();
+    startEdit(created);
+  }
+}
+
 function onKey(e) {
   const item = selected();
   if (!item) return;
@@ -637,8 +731,8 @@ function wire() {
   $('add-box').onclick = addBox;
   $('add-qr').onclick = addQr;
   $('add-barcode').onclick = addBarcode;
-  $('zoom-in').onclick = () => { zoom = Math.min(30, zoom * 1.25); refresh(); };
-  $('zoom-out').onclick = () => { zoom = Math.max(1, zoom / 1.25); refresh(); };
+  $('zoom-in').onclick = () => { stopEdit(); zoom = Math.min(30, zoom * 1.25); refresh(); };
+  $('zoom-out').onclick = () => { stopEdit(); zoom = Math.max(1, zoom / 1.25); refresh(); };
 
   $('btn-export').onclick = () => download(new Blob([JSON.stringify(design, null, 2)], { type: 'application/json' }), 'label.json');
   $('btn-import').onclick = () => $('import-file').click();
@@ -669,6 +763,7 @@ function wire() {
   canvas.addEventListener('pointerup', onPointerUp);
   canvas.addEventListener('pointercancel', onPointerUp);
   canvas.addEventListener('keydown', onKey);
+  canvas.addEventListener('dblclick', onDoubleClick);
 
   if (support.usb) {
     navigator.usb.addEventListener('disconnect', (e) => {

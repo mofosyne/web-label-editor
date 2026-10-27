@@ -144,21 +144,44 @@ label.inline { display: flex; align-items: center; gap: 6px; color: var(--text);
 #zoom-label { min-width: 48px; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .canvas-wrap {
+  position: relative;
   background: var(--stage);
   border-radius: 8px;
   padding: 24px;
   overflow: auto;
 }
+/* Left-anchored so a growing label extends to the right and items stay put. */
 #canvas {
   display: block;
-  margin: 0 auto;
+  margin: 0;
   box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
   touch-action: none;
   outline: none;
 }
 #canvas:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
 
+/* In-place text editor, laid over the item on the label. */
+textarea.inplace {
+  position: absolute;
+  z-index: 2;
+  box-sizing: content-box;
+  width: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0 2px;
+  border: none;
+  border-radius: 0;
+  outline: 2px solid var(--accent);
+  background: rgba(255, 255, 255, .94);
+  color: #111;
+  resize: none;
+  overflow: hidden;
+  white-space: pre;
+  field-sizing: content;
+}
+
 .dims { color: var(--text); font-variant-numeric: tabular-nums; margin: 10px 0 2px; }
+.dims.warn { color: var(--danger); }
 .hint { color: var(--muted); font-size: 12px; margin: 0; }
 
 .item-list { list-style: none; padding: 0; margin: 0 0 12px; }
