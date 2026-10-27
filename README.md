@@ -66,8 +66,12 @@ open the printer's serial profile directly from the port picker once paired.
   length.
 - **Items:** text (multi-line, any installed font), images (threshold or
   dithering), and boxes. Drag to move; arrow keys nudge.
-- **Detect loaded tape** (P-touch) reads the printer status and selects the
-  matching tape width.
+- **Tape detection** (P-touch): on connect and before every print the app
+  reads the printer status: tape width, type (laminated, fabric, heat-shrink…)
+  and tape/ink colours. It switches the layout to the loaded width, shows the
+  preview in the real colours, and stops a print if the tape changed or the
+  printer reports a problem (no tape, cover open, incompatible tape). The
+  LabelWriter 450 has no media sensing, so pick its labels yourself.
 - **Save / Open** stores the design as JSON. The current design also persists in
   the browser.
 - The PT-P710BT always feeds about 25 mm of leader tape before printing; that is

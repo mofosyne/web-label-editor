@@ -24,6 +24,7 @@ export const MODELS = {
       { id: '11354', name: '11354 Multi-purpose 57 × 32 mm', acrossDots: 672, lengthDots: ptToDots(90, 300) },
       { id: '11355', name: '11355 Multi-purpose 19 × 51 mm', acrossDots: ptToDots(54, 300), lengthDots: ptToDots(144, 300) },
     ],
+    note: 'The LabelWriter 450 cannot report which labels are loaded, so pick the media yourself.',
     options: [
       { id: 'density', label: 'Darkness', type: 'select', default: 'normal', choices: ['light', 'medium', 'normal', 'dark'] },
     ],

@@ -120,3 +120,25 @@ test('P-touch: status parsing', () => {
   assert.deepEqual(s.errors, ['Cover open']);
   assert.equal(parseStatus(new Uint8Array(10)), null);
 });
+
+test('P-touch: status reports tape type and colours', () => {
+  const buf = new Uint8Array(32);
+  buf[0] = 0x80;
+  buf[1] = 0x20;
+  buf[10] = 12;
+  buf[11] = 0x01;
+  buf[24] = 0x06;
+  buf[25] = 0x08;
+  const s = parseStatus(buf);
+  assert.equal(s.mediaType.name, 'Laminated tape');
+  assert.deepEqual([s.tapeColor.name, s.tapeColor.hex], ['Yellow', '#f6d32b']);
+  assert.equal(s.textColor.name, 'Black');
+  assert.deepEqual(s.errors, []);
+
+  buf[11] = 0x17;
+  assert.equal(parseStatus(buf).warnings.length, 1);
+  buf[24] = 0xf0;
+  assert.deepEqual(parseStatus(buf).errors, ['Cleaning tape loaded']);
+  buf[11] = 0xff;
+  assert.ok(parseStatus(buf).errors.includes('Incompatible tape'));
+});

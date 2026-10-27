@@ -45,6 +45,22 @@ let selectedId = design.items[0]?.id ?? null;
 let zoom = 6; // screen px per mm
 let transport = null;
 let last = null; // last render result
+let loaded = null; // last tape status reported by the printer
+
+const hexToRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+
+// Preview in the loaded tape's colours when the printer told us what they are.
+function previewColors() {
+  if (loaded?.mediumId === design.medium && loaded.tapeColor.hex && loaded.textColor.hex) {
+    return { ink: hexToRgb(loaded.textColor.hex), paper: hexToRgb(loaded.tapeColor.hex) };
+  }
+  return { ink: [17, 17, 17], paper: [255, 255, 255] };
+}
+
+function describeTape(s) {
+  if (!s.tapeMm) return 'no tape detected';
+  return `${s.tapeMm} mm ${s.mediaType.name.toLowerCase()}, ${s.textColor.name.toLowerCase()} on ${s.tapeColor.name.toLowerCase()}`;
+}
 
 const model = () => MODELS[design.printer] ?? MODELS['brother-pt-p710bt'];
 const medium = () => model().media.find((m) => m.id === design.medium) ?? model().media[0];
@@ -90,7 +106,8 @@ function draw() {
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(bitmapToCanvas(bitmap, [17, 17, 17], [255, 255, 255]), 0, 0, cssW, cssH);
+  const colors = previewColors();
+  ctx.drawImage(bitmapToCanvas(bitmap, colors.ink, colors.paper), 0, 0, cssW, cssH);
 
   const sel = design.items.findIndex((i) => i.id === selectedId);
   if (sel >= 0) {
@@ -188,6 +205,7 @@ async function connect(kind) {
     if (model().queryStatus) await detect();
   } catch (err) {
     transport = null;
+    loaded = null;
     if (err.name !== 'NotFoundError') showBanner(err.message);
     refresh({ setup: true });
   }
@@ -196,23 +214,42 @@ async function connect(kind) {
 async function disconnect() {
   try { await transport?.close(); } catch { /* ignore */ }
   transport = null;
+  loaded = null;
   setStatus('Not connected');
   refresh({ setup: true });
 }
 
+// Reads the loaded tape and switches the layout to it. Returns the status,
+// or null if the printer could not be read.
 async function detect() {
   try {
     const status = await model().queryStatus(transport);
-    if (status.mediumId) {
-      design.medium = status.mediumId;
-      refresh({ setup: true });
-    }
-    const tape = status.tapeMm ? `${status.tapeMm} mm tape loaded` : 'no tape detected';
-    setStatus(`Connected: ${transport.label} · ${tape}`, true);
-    showBanner(status.errors.length ? `Printer reports: ${status.errors.join(', ')}` : '');
+    loaded = status;
+    if (status.mediumId) design.medium = status.mediumId;
+    setStatus(`Connected: ${transport.label} · ${describeTape(status)}`, true);
+    const notes = [...status.errors, ...status.warnings];
+    showBanner(notes.length ? `Printer reports: ${notes.join('; ')}` : '');
+    refresh({ setup: true });
+    return status;
   } catch (err) {
     showBanner(`Could not read printer status: ${err.message}`);
+    return null;
   }
+}
+
+// Before printing, make sure the loaded tape matches the layout so a wrong
+// tape doesn't waste a label. Printing goes ahead if status can't be read.
+async function checkTapeBeforePrint() {
+  if (!model().queryStatus) return true;
+  const before = design.medium;
+  const status = await detect();
+  if (!status) return true;
+  if (status.errors.length) return false;
+  if (design.medium !== before) {
+    showBanner(`The loaded tape is ${describeTape(status)}. The layout was switched to match: check the preview, then print again.`);
+    return false;
+  }
+  return true;
 }
 
 async function print() {
@@ -221,12 +258,13 @@ async function print() {
   btn.disabled = true;
   btn.textContent = 'Printing…';
   try {
+    if (!(await checkTapeBeforePrint())) return;
     const { bitmap } = renderDesign(design, model(), medium());
     const opts = Object.fromEntries(model().options.map((o) => [o.id, option(o.id)]));
     const job = model().encode(bitmap, medium(), opts);
     const copies = Math.max(1, Math.min(99, parseInt($('copies').value, 10) || 1));
     for (let i = 0; i < copies; i++) await transport.write(job);
-    showBanner('');
+    showBanner(loaded?.warnings.join('; ') ?? '');
   } catch (err) {
     showBanner(`Print failed: ${err.message}`);
   } finally {
@@ -495,6 +533,7 @@ function onKey(e) {
 function wire() {
   $('printer').onchange = (e) => {
     design.printer = e.target.value;
+    loaded = null;
     design.medium = model().media[0].id;
     disconnect();
   };
