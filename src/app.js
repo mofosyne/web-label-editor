@@ -80,7 +80,12 @@ const model = () => MODELS[design.printer] ?? MODELS['brother-pt-p710bt'];
 const medium = () => model().media.find((m) => m.id === design.medium) ?? model().media[0];
 const selected = () => design.items.find((i) => i.id === selectedId) ?? null;
 const acrossMm = () => (medium().acrossDots * 25.4) / model().dpi;
-// Per-printer position adjustment (mm), measured with the calibration label.
+// Position adjustment (mm), measured with the grid test print. It is kept
+// per label type on each printer, since third-party label stock can sit
+// differently from genuine labels:
+//   { [printer]: { feedMm, acrossMm, media: { [mediumId]: { feedMm, acrossMm } } } }
+// The printer-level values are the fallback for label types not yet
+// calibrated (and hold settings saved before adjustments were per label).
 // Positive feed moves the print towards the end that comes out last;
 // positive across moves it down (towards the bottom of the preview).
 const SETTINGS_KEY = 'web-label-editor:printers';
@@ -91,9 +96,14 @@ let printerSettings = (() => {
     return {};
   }
 })();
-const adjust = () => ({ feedMm: 0, acrossMm: 0, ...printerSettings[design.printer] });
+const adjust = () => {
+  const { feedMm = 0, acrossMm = 0, media = {} } = printerSettings[design.printer] ?? {};
+  return { feedMm, acrossMm, ...media[medium().id] };
+};
 function setAdjust(key, value) {
-  printerSettings = { ...printerSettings, [design.printer]: { ...adjust(), [key]: value } };
+  const forPrinter = printerSettings[design.printer] ?? {};
+  const media = { ...forPrinter.media, [medium().id]: { ...adjust(), [key]: value } };
+  printerSettings = { ...printerSettings, [design.printer]: { ...forPrinter, media } };
   try {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(printerSettings));
   } catch { /* storage unavailable */ }
@@ -318,7 +328,7 @@ function buildAdjust() {
   grid.append(input('Feed (mm)', 'feedMm'), input('Across (mm)', 'acrossMm'));
   const note = document.createElement('p');
   note.className = 'note';
-  note.textContent = 'Saved for this printer in this browser. Use the test prints below to measure it.';
+  note.textContent = `For ${medium().name} on this printer, saved in this browser. Each label type keeps its own. Use the test prints below to measure it.`;
 
   const tests = document.createElement('details');
   tests.className = 'tests';

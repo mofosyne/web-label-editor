@@ -146,7 +146,9 @@ it was added there.
   numbered from where the label should start: the number at the label's left
   edge is how far to adjust **Feed** (the top edge gives **Across**).
   **Full black** shows everything the printer can reach. The adjustment is
-  saved per printer in the browser and moves the hatched border with it.
+  saved in the browser per label type on each printer (third-party label
+  stock can sit differently from genuine labels), and moves the hatched
+  border with it.
 - **Fit text in a box:** tick it on a text item to give it a fixed box; the
   font size is chosen automatically so the text fills it. *Fill printable
   area* makes the box cover the whole usable label. Drag the corner handle to
