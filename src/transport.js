@@ -1,6 +1,8 @@
 // Transports deliver raw printer bytes. Both expose write(bytes),
 // read(length, timeoutMs) and close().
 
+import { detectPlatform } from './help.js';
+
 const SPP_UUID = '00001101-0000-1000-8000-00805f9b34fb';
 const USB_CHUNK = 4096;
 
@@ -12,6 +14,26 @@ function withTimeout(promise, ms, message) {
       timer = setTimeout(() => reject(new Error(message)), ms);
     }),
   ]).finally(() => clearTimeout(timer));
+}
+
+const SHORT_REASON = {
+  linux: {
+    open: 'Linux has not given your user permission to use this printer.',
+    claim: 'The Linux usblp kernel driver is holding the printer.',
+  },
+  windows: 'The Windows printer driver owns this printer, so the browser cannot use it.',
+  mac: 'Another program (such as DYMO Connect) is using the printer.',
+  chromeos: 'ChromeOS is holding the printer.',
+  android: 'Android blocked access to the printer.',
+};
+
+// A short, OS-specific explanation; the app offers the full fix in a dialog.
+function usbAccessError(err, stage, device) {
+  const os = detectPlatform();
+  const reason = SHORT_REASON[os];
+  const e = new Error(typeof reason === 'string' ? reason : reason[stage]);
+  e.usbProblem = { os, stage, device, error: err.message };
+  return e;
 }
 
 export const support = {
@@ -34,7 +56,11 @@ export class UsbTransport {
 
   async open() {
     const d = this.device;
-    await d.open();
+    try {
+      await d.open();
+    } catch (err) {
+      throw usbAccessError(err, 'open', d);
+    }
     if (!d.configuration) await d.selectConfiguration(1);
 
     // Prefer the USB Printer class interface; fall back to any with a bulk OUT.
@@ -48,11 +74,8 @@ export class UsbTransport {
       try {
         await d.claimInterface(iface.interfaceNumber);
       } catch (err) {
-        throw new Error(
-          `Could not claim the printer's USB interface (${err.message}). ` +
-          'Another driver owns it: on Windows replace the driver with WinUSB (Zadig); ' +
-          'on Linux unload/unbind the usblp kernel module. See the README.',
-        );
+        await d.close().catch(() => {});
+        throw usbAccessError(err, 'claim', d);
       }
       this.interfaceNumber = iface.interfaceNumber;
       this.epOut = out.endpointNumber;

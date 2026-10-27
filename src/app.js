@@ -2,6 +2,7 @@ import { MODELS } from './printers/models.js';
 import { renderDesign, bitmapToCanvas, itemError } from './render.js';
 import { SYMBOLOGIES } from './codes/barcode.js';
 import { UsbTransport, SerialTransport, support } from './transport.js';
+import { openHelp } from './help.js';
 
 const STORAGE_KEY = 'web-label-editor:design';
 const $ = (id) => document.getElementById(id);
@@ -195,10 +196,21 @@ function setStatus(text, ok = false) {
   pill.classList.toggle('ok', ok);
 }
 
-function showBanner(text) {
+// Shows a message, optionally with one action button (e.g. "How to fix…").
+function showBanner(text, action) {
   const b = $('banner');
   b.textContent = text;
+  if (text && action) {
+    const btn = document.createElement('button');
+    btn.textContent = action.label;
+    btn.onclick = action.onClick;
+    b.append(' ', btn);
+  }
   b.hidden = !text;
+}
+
+function showUsbHelp(problem = {}) {
+  openHelp($('help-dialog'), { ...problem, onRetry: problem.stage ? () => connect('usb') : null });
 }
 
 // ---------- printer connection ----------
@@ -215,7 +227,11 @@ async function connect(kind) {
   } catch (err) {
     transport = null;
     loaded = null;
-    if (err.name !== 'NotFoundError') showBanner(err.message);
+    if (err.usbProblem) {
+      showBanner(err.message, { label: 'How to fix…', onClick: () => showUsbHelp(err.usbProblem) });
+    } else if (err.name !== 'NotFoundError') {
+      showBanner(err.message);
+    }
     refresh({ setup: true });
   }
 }
@@ -719,6 +735,7 @@ function wire() {
   $('border').onchange = (e) => { design.border = e.target.checked; refresh(); };
   $('invert').onchange = (e) => { design.invert = e.target.checked; refresh(); };
   $('btn-detect').onclick = detect;
+  $('btn-usb-help').onclick = () => showUsbHelp();
   $('btn-print').onclick = print;
   $('btn-png').onclick = downloadPng;
 

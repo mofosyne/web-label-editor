@@ -34,30 +34,54 @@ and **Download PNG** at the printer's exact resolution.
 
 ## Per-OS setup
 
-The browser needs to own the printer's USB interface. Whether that works out
-of the box depends on whether the OS has already bound a printer driver to it.
+The browser needs to open the printer's USB device itself. If you see
+**"Failed to execute 'open' on 'USBDevice': Access denied"**, the operating
+system is keeping the browser out. The fix depends on the OS.
 
-**macOS, ChromeOS, Android:** usually works out of the box.
+### Linux
 
-**Windows:** Windows binds its USB printer driver (`usbprint`), so the
-browser cannot claim the device. Either
-- use **Bluetooth** for the PT-P710BT (pair it in Windows Settings first; it
-  appears in the browser's serial-port picker), or
-- replace the driver with **WinUSB** using [Zadig](https://zadig.akeo.ie/).
-  This makes the printer unavailable to DYMO Connect / P-touch Editor until you
-  reinstall their driver.
+Give your desktop user access to the printers with a udev rule:
 
-**Linux:** give your user access to the device and keep the `usblp` kernel
-module off it. Example udev rule, `/etc/udev/rules.d/60-label-printers.rules`:
-
-```
+```sh
+sudo tee /etc/udev/rules.d/60-label-printers.rules <<'RULES'
+# DYMO LabelWriter
 SUBSYSTEM=="usb", ATTRS{idVendor}=="0922", TAG+="uaccess"
+# Brother PT-P710BT
 SUBSYSTEM=="usb", ATTRS{idVendor}=="04f9", ATTRS{idProduct}=="20af", TAG+="uaccess"
+RULES
+sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
-If connecting reports that the interface cannot be claimed, `usblp` has it:
-`sudo modprobe -r usblp` (or blacklist it). For Bluetooth, recent Chrome can
-open the printer's serial profile directly from the port picker once paired.
+Then unplug and replug the printer. (`uaccess` grants the logged-in desktop
+user access. On a system without it, use `MODE="0666"` instead of
+`TAG+="uaccess"`.)
+
+- **Chromium from a snap:** also run `sudo snap connect chromium:raw-usb`.
+- **"Unable to claim interface":** the `usblp` kernel module grabbed the
+  printer. Run `sudo modprobe -r usblp`, or to make it permanent, put
+  `blacklist usblp` in `/etc/modprobe.d/no-usblp.conf`. CUPS uses libusb
+  itself, so it does not need `usblp`.
+
+### Windows
+
+Windows' own printer driver (`usbprint`) owns the device. Either
+- use **Bluetooth** (Brother PT-P710BT only; pair it in Windows Settings
+  first, then pick it in the browser's port list), or
+- switch the printer to **WinUSB** with [Zadig](https://zadig.akeo.ie/):
+  *Options → List All Devices*, pick the printer, choose **WinUSB**, *Replace
+  Driver*. DYMO Connect / P-touch Editor won't see the printer until you
+  reinstall their driver (Device Manager → Update driver).
+
+### macOS
+
+Usually works. If access is denied, another program has the printer: quit
+DYMO Connect, the DYMO Web Service (menu bar) or P-touch Editor, then unplug
+and replug.
+
+### ChromeOS, Android
+
+Usually works. On ChromeOS, remove the printer from *Settings → Printers* if
+it was added there.
 
 ## Using it
 
