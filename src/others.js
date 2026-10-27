@@ -8,9 +8,40 @@
 
 const gh = (path) => `https://github.com/${path}`;
 
+// Where this editor aims to be the right tool, and where another one is.
+export const AIMS = [
+  'You have a **DYMO LabelWriter** (400 / 450 family) and/or a **Brother P-touch** (or QL) and want one editor for both, in the browser on Linux, Windows, macOS and ChromeOS (Windows needs a one-time driver switch for USB).',
+  'You print on **continuous rolls or tape**, where the label is as long as its content.',
+  'Your text has to **fit**: sized automatically to a box, never cut off, as in the original DYMO Label software.',
+  'Position matters: the preview shows the **true printable area**, and test prints and **per-roll calibration** handle third-party label stock.',
+];
+
+export const LOOK_ELSEWHERE = [
+  ['You mostly print batches from a spreadsheet, or onto A4 / Letter sticker sheets', 'burnmark', 'https://burnmark.app'],
+  ['You only use a Brother P-touch and want templates, CSV data or P-touch Editor files', 'labelpeel', gh('LookLeft/labelpeel')],
+  ['You want a print server that phones or other computers print through', 'brother_ql_web', gh('pklaus/brother_ql_web')],
+  ['You have a DYMO LabelManager or LetraTag tape printer', 'Labelle', gh('labelle-org/labelle')],
+  ['You have a DYMO LabelWriter 550 / 5XL (not supported here; they need DYMO\'s chip-locked labels)', 'burnmark', 'https://burnmark.app'],
+];
+
+export function aimsMarkdown() {
+  return [
+    'This editor is for you if:',
+    '',
+    ...AIMS.map((a) => `- ${a}`),
+    '',
+    'Another tool may suit you better if:',
+    '',
+    ...LOOK_ELSEWHERE.map(([need, name, url]) => `- ${need}: try [${name}](${url}).`),
+    '',
+    'More in [Other tools](#other-tools).',
+  ].join('\n');
+}
+
 export const OTHER_TOOLS_INTRO = 'Low-level libraries for these printers are plentiful; label editors are rarer, '
-  + 'mostly cover one brand, and often print through CUPS or a small server. If one of these fits you better, use it. '
-  + 'Developers: the libraries are where most of the protocol knowledge lives.';
+  + 'mostly cover one brand, and often print through CUPS or a small server. This one aims at DYMO LabelWriter and '
+  + 'Brother printers together, continuous rolls, text that fits, and a true preview of the printable area; if one of '
+  + 'these fits you better, use it. Developers: the libraries are where most of the protocol knowledge lives.';
 
 export const OTHER_TOOLS = [
   {

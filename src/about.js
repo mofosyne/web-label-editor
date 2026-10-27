@@ -3,7 +3,7 @@
 // and tips. Shown once on the first visit and from the Help button.
 import { compatRows, NOT_PLANNED, STATUS_LABEL } from './compat.js';
 import { REPO_URL, printerReportUrl, labelRequestUrl } from './report.js';
-import { OTHER_TOOLS, OTHER_TOOLS_INTRO } from './others.js';
+import { OTHER_TOOLS, OTHER_TOOLS_INTRO, AIMS, LOOK_ELSEWHERE } from './others.js';
 
 export { REPO_URL };
 
@@ -99,6 +99,7 @@ function tips() {
     el('ul', {},
       li(b('Ctrl+C / Ctrl+X / Ctrl+V'), ': copy, cut, paste items. Paste text or images from other apps too.'),
       li(b('Ctrl+D'), ': duplicate. ', b('Delete'), ': remove. ', b('Arrows'), ': nudge 0.1 mm (Shift: 1 mm).'),
+      li(b('Ctrl+Z'), ': undo. ', b('Ctrl+Shift+Z'), ' or ', b('Ctrl+Y'), ': redo (also the ↶ ↷ buttons).'),
       li(b('Double-click'), ' text to edit it on the label; double-click empty space to add text.')),
     el('h3', { textContent: 'Your designs' }),
     p('The ', b('Labels'), ' button keeps your saved labels (open one, or use it as a template for a new label) and the '
@@ -108,8 +109,18 @@ function tips() {
   ];
 }
 
+// Text with **bold** runs, as in the shared README wording.
+function rich(text) {
+  return text.split('**').map((part, i) => (i % 2 ? b(part) : part));
+}
+
 function others() {
   return [
+    el('h3', { textContent: 'Who this editor is for' }),
+    el('ul', {}, ...AIMS.map((a) => li(...rich(a)))),
+    p('Another tool may suit you better if:'),
+    el('ul', {}, ...LOOK_ELSEWHERE.map(([need, name, url]) => li(`${need}: try `, link(url, name), '.'))),
+    el('h3', { textContent: 'Other tools' }),
     p(OTHER_TOOLS_INTRO),
     ...OTHER_TOOLS.flatMap(({ group, tools }) => [
       el('h3', { textContent: group }),

@@ -96,6 +96,8 @@
         <button id="add-barcode">+ Barcode</button>
         <input id="image-file" type="file" accept="image/*" hidden>
         <span class="spacer"></span>
+        <button id="undo" aria-label="Undo" title="Undo (Ctrl+Z)">↶</button>
+        <button id="redo" aria-label="Redo" title="Redo (Ctrl+Shift+Z)">↷</button>
         <button id="zoom-out" aria-label="Zoom out">−</button>
         <span id="zoom-label">100%</span>
         <button id="zoom-in" aria-label="Zoom in">+</button>
@@ -109,7 +111,7 @@
         </div>
       </div>
       <p id="dims" class="dims"></p>
-      <p class="hint">Drag items to move them. Double-click text to edit it, or empty space to add text. Ctrl+C / Ctrl+V copy and paste items, or paste text and images from other apps; Ctrl+D duplicates. Arrow keys nudge (Shift for 1 mm). Delete removes. The preview shows the exact dots that will print.</p>
+      <p class="hint">Drag items to move them. Double-click text to edit it, or empty space to add text. Ctrl+C / Ctrl+V copy and paste items, or paste text and images from other apps; Ctrl+D duplicates; Ctrl+Z undoes. Arrow keys nudge (Shift for 1 mm). Delete removes. The preview shows the exact dots that will print.</p>
     </section>
 
     <aside class="panel" id="props">

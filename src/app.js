@@ -12,6 +12,7 @@ import {
   viewGeometry, jobBitmap, rowMode, itemLane, itemVisible, canOverprint, blit, blankBitmap, MAX_BLEED_MM,
 } from './layout.js';
 import { newRollId, rollCode, parseRollCode } from './rolls.js';
+import { UndoHistory } from './undo.js';
 
 const STORAGE_KEY = 'web-label-editor:design';
 const $ = (id) => document.getElementById(id);
@@ -50,9 +51,12 @@ function loadDesign() {
 }
 
 function saveDesign() {
+  const json = JSON.stringify(design);
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(design));
+    localStorage.setItem(STORAGE_KEY, json);
   } catch { /* storage unavailable or full */ }
+  // A drag is one undo step however long it takes.
+  if (undo.record(json, { merge: !!drag })) updateUndoButtons();
 }
 
 // Labels and tapes come from catalog/media.rec; nothing works without them.
@@ -66,6 +70,7 @@ try {
 }
 
 let design = loadDesign();
+const undo = new UndoHistory(JSON.stringify(design));
 let selectedId = design.items[0]?.id ?? null;
 let zoom = 6; // screen px per mm
 let transport = null;
@@ -1357,6 +1362,7 @@ function onPointerDown(e) {
   const pt = canvasPointToMm(e);
   const handled = onHandle(e);
   if (handled) {
+    undo.checkpoint();
     drag = { item: handled, resize: true };
     $('canvas').setPointerCapture(e.pointerId);
     return;
@@ -1364,6 +1370,7 @@ function onPointerDown(e) {
   const item = hitTest(pt);
   selectedId = item?.id ?? null;
   if (item) {
+    undo.checkpoint();
     activeLane = laneOf(item);
     drag = { item, dx: pt.x - item.x, dy: pt.y - item.y };
     $('canvas').setPointerCapture(e.pointerId);
@@ -1581,6 +1588,40 @@ function onPaste(e) {
   }
 }
 
+// ---------- undo ----------
+
+function updateUndoButtons() {
+  $('undo').disabled = !undo.canUndo;
+  $('redo').disabled = !undo.canRedo;
+}
+
+function applyUndo(state) {
+  if (state == null) return;
+  stopEdit();
+  drag = null;
+  design = JSON.parse(state);
+  if (!design.items.some((i) => i.id === selectedId)) selectedId = null;
+  updateUndoButtons();
+  refresh({ setup: true, props: true });
+}
+const doUndo = () => applyUndo(undo.undo());
+const doRedo = () => applyUndo(undo.redo());
+
+// Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y anywhere but in a text field, where the
+// browser's own undo applies.
+function onUndoKey(e) {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey || typingInField() || editing) return;
+  const key = e.key.toLowerCase();
+  if (key === 'z') {
+    e.preventDefault();
+    if (e.shiftKey) doRedo();
+    else doUndo();
+  } else if (key === 'y') {
+    e.preventDefault();
+    doRedo();
+  }
+}
+
 function onKey(e) {
   const item = selected();
   if (!item) return;
@@ -1680,6 +1721,10 @@ function wire() {
   canvas.addEventListener('pointerup', onPointerUp);
   canvas.addEventListener('pointercancel', onPointerUp);
   canvas.addEventListener('keydown', onKey);
+  document.addEventListener('keydown', onUndoKey);
+  $('undo').onclick = doUndo;
+  $('redo').onclick = doRedo;
+  updateUndoButtons();
   canvas.addEventListener('dblclick', onDoubleClick);
   document.addEventListener('copy', (e) => onCopy(e));
   document.addEventListener('cut', (e) => onCopy(e, true));
