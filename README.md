@@ -65,7 +65,12 @@ open the printer's serial profile directly from the port picker once paired.
   rightmost item plus padding) or *Fixed*. Die-cut labels always use their own
   length.
 - **Items:** text (multi-line, any installed font), images (threshold or
-  dithering), and boxes. Drag to move; arrow keys nudge.
+  dithering), boxes, **QR codes** and **barcodes** (Code 128, EAN-13, UPC-A).
+  Drag to move; arrow keys nudge.
+- **QR codes and barcodes** are drawn on whole printer dots, so bar and module
+  edges stay sharp. Bar width snaps to whole dots (the panel shows the actual
+  size), and barcode quiet zones are part of the item width. Leave a few mm of
+  blank space around QR codes.
 - **Tape detection** (P-touch): on connect and before every print the app
   reads the printer status: tape width, type (laminated, fabric, heat-shrink…)
   and tape/ink colours. It switches the layout to the loaded width, shows the
@@ -76,6 +81,24 @@ open the printer's serial profile directly from the port picker once paired.
   the browser.
 - The PT-P710BT always feeds about 25 mm of leader tape before printing; that is
   the hardware, not the app.
+
+## Bluetooth
+
+The **PT-P710BT** prints over Bluetooth Classic (Serial Port Profile), which
+browsers reach through **Web Serial**. It is not Web Bluetooth, which only
+covers Bluetooth Low Energy.
+
+1. Pair the printer in your OS Bluetooth settings (hold the Bluetooth button
+   until its light blinks).
+2. Click **Connect Bluetooth / serial** and pick the printer. On Windows and
+   macOS it may also be listed as a serial/COM port created by the pairing.
+
+This needs Chrome or Edge 117 or later on the desktop. Android support for
+Bluetooth serial is not confirmed. On Windows this is the easiest route
+because it needs no driver swap. Printing over Bluetooth is slower than USB,
+so long labels take a few seconds to send.
+
+The **LabelWriter 450** has no Bluetooth; it is USB only.
 
 ## How it works
 
@@ -92,6 +115,10 @@ design (mm) ──render──▶ 1-bit strip bitmap (printer dpi)
 - `src/printers/brother-ptouch.js`: P-touch raster mode (`ESC i R`,
   PackBits `G` lines, `ESC i M` auto-cut, status `ESC i S`).
 - `src/transport.js`: WebUSB and Web Serial.
+- `src/codes/qr.js`, `src/codes/barcode.js`: QR (byte mode, versions 1–40,
+  levels L/M/Q/H), Code 128 (sets B/C), EAN-13 and UPC-A encoders. Verified by
+  decoding all 160 QR version/level combinations at full capacity, plus the
+  linear codes, with the zxing-cpp reader.
 
 Protocol references: DYMO's open-source
 [dymo-cups-drivers](https://github.com/matthiasbock/dymo-cups-drivers),
@@ -113,7 +140,6 @@ lines against ptouch-print's pixel mapping.
 
 ## Roadmap
 
-- QR codes and barcodes
 - More models (LabelWriter 4XL, Brother QL, more P-touch)
 - Desktop build (e.g. Tauri) with native USB and raw network printing, so
   Windows needs no driver swap and Wi-Fi models work

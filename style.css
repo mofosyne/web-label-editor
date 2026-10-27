@@ -136,6 +136,7 @@ label.inline { display: flex; align-items: center; gap: 6px; color: var(--text);
 
 .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 .note { color: var(--muted); font-size: 12px; margin: 6px 0; }
+.note.error { color: var(--danger); }
 
 .stage { padding: 16px; min-width: 0; }
 .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }

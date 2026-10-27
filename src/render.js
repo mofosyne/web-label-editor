@@ -2,7 +2,57 @@
 // Strip coordinates: x runs along the label length, y across the tape/head.
 // Design units are millimetres; (0,0) is the top-left of the printable area.
 
+import { encodeQr } from './codes/qr.js';
+import { SYMBOLOGIES } from './codes/barcode.js';
+
 const imageCache = new Map();
+const codeCache = new Map();
+
+// Encodes a QR or barcode item, caching by content. Returns { code } or { error }.
+export function encodeItem(item) {
+  const key = item.type === 'qr'
+    ? `qr|${item.ecc}|${item.data}`
+    : `bc|${item.symbology}|${item.data}`;
+  if (!codeCache.has(key)) {
+    try {
+      const code = item.type === 'qr'
+        ? encodeQr(item.data ?? '', item.ecc ?? 'M')
+        : SYMBOLOGIES[item.symbology].encode(item.data ?? '');
+      codeCache.set(key, { code });
+    } catch (err) {
+      codeCache.set(key, { error: err.message });
+    }
+    if (codeCache.size > 200) codeCache.delete(codeCache.keys().next().value);
+  }
+  return codeCache.get(key);
+}
+
+export function itemError(item) {
+  if (item.type !== 'qr' && item.type !== 'barcode') return null;
+  return encodeItem(item).error ?? null;
+}
+
+// Geometry of a QR/barcode item in whole dots, so every module is crisp.
+function codeLayout(ctx, item, dpmm) {
+  const { code, error } = encodeItem(item);
+  const x = Math.round(item.x * dpmm);
+  const y = Math.round(item.y * dpmm);
+  if (error) return { x, y, w: Math.round(5 * dpmm), h: Math.round(5 * dpmm), error };
+  if (item.type === 'qr') {
+    const m = Math.max(1, Math.floor((item.size * dpmm) / code.size));
+    return { x, y, w: code.size * m, h: code.size * m, m, code };
+  }
+  const m = Math.max(1, Math.round(item.module * dpmm));
+  const barH = Math.max(1, Math.round(item.height * dpmm));
+  const w = (code.quietLeft + code.modules.length + code.quietRight) * m;
+  let textPx = 0;
+  if (item.showText) {
+    textPx = Math.max(1, item.textSize * dpmm);
+    ctx.font = `${textPx}px ${item.font || 'monospace'}`;
+  }
+  const gap = item.showText ? Math.round(0.4 * dpmm) : 0;
+  return { x, y, w, h: barH + gap + Math.ceil(textPx), m, barH, gap, textPx, code };
+}
 
 export function loadImage(src, onLoad) {
   let img = imageCache.get(src);
@@ -51,6 +101,10 @@ export function itemBounds(ctx, item, dpmm) {
   }
   if (item.type === 'box') {
     return { x, y, w: item.w * dpmm, h: item.h * dpmm };
+  }
+  if (item.type === 'qr' || item.type === 'barcode') {
+    const l = codeLayout(ctx, item, dpmm);
+    return { x: l.x, y: l.y, w: l.w, h: l.h };
   }
   return { x, y, w: 0, h: 0 };
 }
@@ -114,6 +168,29 @@ function drawImage(ctx, item, dpmm, onLoad) {
   ctx.drawImage(tmp, Math.round(b.x), Math.round(b.y));
 }
 
+function drawCode(ctx, item, dpmm) {
+  const l = codeLayout(ctx, item, dpmm);
+  if (l.error) return;
+  ctx.fillStyle = '#000';
+  if (item.type === 'qr') {
+    l.code.modules.forEach((row, my) => row.forEach((dark, mx) => {
+      if (dark) ctx.fillRect(l.x + mx * l.m, l.y + my * l.m, l.m, l.m);
+    }));
+    return;
+  }
+  const left = l.x + l.code.quietLeft * l.m;
+  l.code.modules.forEach((bar, i) => {
+    if (bar) ctx.fillRect(left + i * l.m, l.y, l.m, l.barH);
+  });
+  if (item.showText) {
+    ctx.font = `${l.textPx}px ${item.font || 'monospace'}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(l.code.text, l.x + l.w / 2, l.y + l.barH + l.gap);
+    ctx.textAlign = 'start';
+  }
+}
+
 function drawBox(ctx, item, dpmm) {
   const x = item.x * dpmm;
   const y = item.y * dpmm;
@@ -161,6 +238,7 @@ export function renderDesign(design, model, medium, onAssetLoad) {
     if (item.type === 'text') drawText(ctx, item, dpmm);
     else if (item.type === 'image') drawImage(ctx, item, dpmm, onAssetLoad);
     else if (item.type === 'box') drawBox(ctx, item, dpmm);
+    else if (item.type === 'qr' || item.type === 'barcode') drawCode(ctx, item, dpmm);
   }
   if (design.border) drawBox(ctx, { x: 0, y: 0, w: width / dpmm, h: height / dpmm, stroke: 0.4 }, dpmm);
 

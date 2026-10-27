@@ -1,5 +1,6 @@
 import { MODELS } from './printers/models.js';
-import { renderDesign, bitmapToCanvas } from './render.js';
+import { renderDesign, bitmapToCanvas, itemError } from './render.js';
+import { SYMBOLOGIES } from './codes/barcode.js';
 import { UsbTransport, SerialTransport, support } from './transport.js';
 
 const STORAGE_KEY = 'web-label-editor:design';
@@ -122,6 +123,7 @@ function draw() {
   const tape = med.tapeMm ? `${med.tapeMm} mm tape, ${acrossMm().toFixed(1)} mm printable` : `${acrossMm().toFixed(1)} mm wide`;
   $('dims').textContent = `${tape} × ${lenMm.toFixed(1)} mm long  ·  ${bitmap.width} × ${bitmap.height} dots @ ${m.dpi} dpi`;
   $('zoom-label').textContent = `${Math.round((zoom / 6) * 100)}%`;
+  updateCodeInfo();
 }
 
 // ---------- setup panel ----------
@@ -258,6 +260,11 @@ async function print() {
   btn.disabled = true;
   btn.textContent = 'Printing…';
   try {
+    const broken = design.items.find((it) => itemError(it));
+    if (broken) {
+      showBanner(`Can't print: ${itemError(broken)} (${broken.type === 'qr' ? 'QR code' : 'barcode'} "${broken.data}").`);
+      return;
+    }
     if (!(await checkTapeBeforePrint())) return;
     const { bitmap } = renderDesign(design, model(), medium());
     const opts = Object.fromEntries(model().options.map((o) => [o.id, option(o.id)]));
@@ -294,12 +301,17 @@ function addItem(item) {
   refresh({ props: true });
 }
 
+// X position (mm) just after the rightmost existing item.
+function nextX() {
+  const right = last ? Math.max(0, ...last.bounds.map((b) => (b.x + b.w) / last.dpmm)) : 0;
+  return +(right + (right ? 3 : 2)).toFixed(1);
+}
+
 function addText() {
   const size = Math.max(1.5, +(acrossMm() * 0.6).toFixed(1));
-  const right = last ? Math.max(0, ...last.bounds.map((b) => (b.x + b.w) / last.dpmm)) : 0;
   addItem({
     type: 'text', text: 'Text', font: 'sans-serif', size, bold: false, italic: false, align: 'left',
-    x: +(right + (right ? 3 : 2)).toFixed(1), y: +((acrossMm() - size * 1.15) / 2).toFixed(1),
+    x: nextX(), y: +((acrossMm() - size * 1.15) / 2).toFixed(1),
   });
 }
 
@@ -317,9 +329,27 @@ function addBox() {
   addItem({ type: 'box', x: 1, y: 1, w: 20, h: Math.max(2, +(h - 2).toFixed(1)), stroke: 0.4, fill: false });
 }
 
+function addQr() {
+  const size = +Math.min(25, acrossMm() * 0.9).toFixed(1);
+  addItem({ type: 'qr', data: 'https://example.com', ecc: 'M', size, x: nextX(), y: +((acrossMm() - size) / 2).toFixed(1) });
+}
+
+function addBarcode() {
+  const textSize = Math.min(3, +(acrossMm() * 0.22).toFixed(1));
+  const height = Math.max(3, +Math.min(15, acrossMm() - textSize - 1.2).toFixed(1));
+  const total = height + 0.4 + textSize;
+  addItem({
+    type: 'barcode', symbology: 'code128', data: 'ABC-12345', module: 0.3, height,
+    showText: true, textSize, x: nextX(), y: +Math.max(0, (acrossMm() - total) / 2).toFixed(1),
+  });
+}
+
 function describe(item) {
+  const warn = itemError(item) ? '⚠ ' : '';
   if (item.type === 'text') return item.text.split('\n')[0] || '(empty)';
   if (item.type === 'image') return `${item.w} mm wide`;
+  if (item.type === 'qr') return `${warn}${item.data.split('\n')[0] || '(empty)'}`;
+  if (item.type === 'barcode') return `${warn}${SYMBOLOGIES[item.symbology].name}: ${item.data}`;
   return `${item.w} × ${item.h} mm`;
 }
 
@@ -378,7 +408,8 @@ function buildProps() {
       else if (attrs.type === 'number' || attrs.type === 'range') item[key] = parseFloat(input.value) || 0;
       else item[key] = input.value;
       refresh();
-      if (key === 'text' || key === 'w' || key === 'h') updateListLabel();
+      if (['text', 'w', 'h', 'data', 'symbology', 'ecc'].includes(key)) updateListLabel();
+      if (['data', 'symbology', 'ecc', 'size', 'module'].includes(key)) updateCodeInfo();
     });
     return l;
   };
@@ -404,6 +435,24 @@ function buildProps() {
       field('Threshold', 'threshold', { type: 'range', min: 1, max: 254, step: 1 }),
       field('Dither (for photos)', 'dither', { type: 'checkbox' }),
       field('Invert', 'invert', { type: 'checkbox' }),
+    );
+  } else if (item.type === 'qr') {
+    panel.append(
+      field('Content (text or URL)', 'data', { type: 'textarea' }),
+      pair(
+        num('Size (mm)', 'size', 0.5, 1),
+        field('Error correction', 'ecc', { type: 'select', choices: [['L', 'L (7%)'], ['M', 'M (15%)'], ['Q', 'Q (25%)'], ['H', 'H (30%)']] }),
+      ),
+      codeInfo(),
+    );
+  } else if (item.type === 'barcode') {
+    panel.append(
+      field('Type', 'symbology', { type: 'select', choices: Object.entries(SYMBOLOGIES).map(([id, s]) => [id, s.name]) }),
+      field('Content', 'data', { type: 'text' }),
+      pair(num('Bar width (mm)', 'module', 0.05, 0.1), num('Height (mm)', 'height', 0.5, 1)),
+      field('Show digits/text', 'showText', { type: 'checkbox' }),
+      num('Text size (mm)', 'textSize', 0.1, 0.5),
+      codeInfo(),
     );
   } else if (item.type === 'box') {
     panel.append(
@@ -445,6 +494,36 @@ function buildProps() {
     btn('Delete', () => deleteItem(item)),
   );
   panel.append(row);
+}
+
+// Live encoding details or the error for the selected QR/barcode item.
+function codeInfo() {
+  const p = document.createElement('p');
+  p.id = 'code-info';
+  p.className = 'note';
+  queueMicrotask(updateCodeInfo);
+  return p;
+}
+
+function updateCodeInfo() {
+  const p = $('code-info');
+  const item = selected();
+  if (!p || !item) return;
+  const err = itemError(item);
+  p.classList.toggle('error', !!err);
+  if (err) {
+    p.textContent = err;
+    return;
+  }
+  const dpmm = model().dpi / 25.4;
+  if (item.type === 'qr') {
+    const i = design.items.indexOf(item);
+    const b = last?.bounds[i];
+    p.textContent = b ? `Prints ${(b.w / dpmm).toFixed(1)} mm square. Leave a few mm clear around it for scanning.` : '';
+  } else {
+    const dots = Math.max(1, Math.round(item.module * dpmm));
+    p.textContent = `Bars snap to ${dots} dot${dots > 1 ? 's' : ''} (${(dots / dpmm).toFixed(2)} mm). Quiet zones are included in the item width.`;
+  }
 }
 
 function updateListLabel() {
@@ -556,6 +635,8 @@ function wire() {
     e.target.value = '';
   };
   $('add-box').onclick = addBox;
+  $('add-qr').onclick = addQr;
+  $('add-barcode').onclick = addBarcode;
   $('zoom-in').onclick = () => { zoom = Math.min(30, zoom * 1.25); refresh(); };
   $('zoom-out').onclick = () => { zoom = Math.max(1, zoom / 1.25); refresh(); };
 

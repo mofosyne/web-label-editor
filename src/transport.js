@@ -106,7 +106,8 @@ export class SerialTransport {
 
   constructor(port) {
     this.port = port;
-    this.label = 'Serial / Bluetooth';
+    const info = port.getInfo?.() ?? {};
+    this.label = info.bluetoothServiceClassId ? 'Bluetooth' : 'Serial port';
   }
 
   async write(bytes) {
