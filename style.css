@@ -255,3 +255,18 @@ details.tests summary { cursor: pointer; color: var(--accent); margin-bottom: 8p
 .roll-code { font-size: 13px; margin: 4px 0 8px; }
 .roll-code strong { font-size: 16px; letter-spacing: .08em; }
 .roll-code code { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; user-select: all; }
+
+dialog.about { width: min(820px, calc(100vw - 32px)); }
+dialog.about .about-body { max-height: calc(100vh - 220px); overflow-y: auto; margin-bottom: 14px; }
+dialog.about h3 { font-size: 14px; margin: 16px 0 6px; }
+dialog.about ul, dialog.about ol { margin: 6px 0; padding-left: 20px; }
+dialog.about li { margin-bottom: 4px; }
+dialog.about a, button.linklike { color: var(--accent); }
+button.linklike { border: none; background: none; padding: 0; font: inherit; cursor: pointer; text-decoration: underline; }
+.table-scroll { overflow-x: auto; }
+table.compat { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.compat th, table.compat td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+table.compat th { color: var(--muted); font-weight: 600; }
+table.compat tr.tested td:first-child { font-weight: 600; }
+table.compat tr.unimplemented td { color: var(--muted); }
+table.compat td:nth-child(2), table.compat td:nth-child(3) { white-space: nowrap; }

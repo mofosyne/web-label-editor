@@ -48,7 +48,7 @@ function codeLayout(ctx, item, dpmm) {
   let textPx = 0;
   if (item.showText) {
     textPx = Math.max(1, item.textSize * dpmm);
-    ctx.font = `${textPx}px ${item.font || 'monospace'}`;
+    ctx.font = `bold ${textPx}px ${item.font || 'monospace'}`;
   }
   const gap = item.showText ? Math.round(0.4 * dpmm) : 0;
   return { x, y, w, h: barH + gap + Math.ceil(textPx), m, barH, gap, textPx, code };
@@ -203,7 +203,7 @@ function drawCode(ctx, item, dpmm) {
     if (bar) ctx.fillRect(left + i * l.m, l.y, l.m, l.barH);
   });
   if (item.showText) {
-    ctx.font = `${l.textPx}px ${item.font || 'monospace'}`;
+    ctx.font = `bold ${l.textPx}px ${item.font || 'monospace'}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillText(l.code.text, l.x + l.w / 2, l.y + l.barH + l.gap);

@@ -3,6 +3,7 @@ import { renderDesign, bitmapToCanvas, itemError } from './render.js';
 import { SYMBOLOGIES } from './codes/barcode.js';
 import { UsbTransport, SerialTransport, support } from './transport.js';
 import { openHelp } from './help.js';
+import { openAbout } from './about.js';
 import { loadCatalog } from './catalog.js';
 import { testPatternDesign, shiftBitmap } from './calibration.js';
 import { newRollId, rollCode, parseRollCode } from './rolls.js';
@@ -15,14 +16,18 @@ const FONTS = ['sans-serif', 'serif', 'monospace', 'Arial', 'Helvetica', 'Verdan
 function newDesign() {
   return {
     version: 1,
-    printer: 'brother-pt-p710bt',
-    medium: 'tze-12',
+    // The tested printer, with a text box filling the printable area.
+    printer: 'dymo-lw450',
+    medium: '30252',
     options: {},
     length: { mode: 'auto', mm: 60, padMm: 2 },
     border: false,
     invert: false,
     items: [
-      { id: uid(), type: 'text', x: 2, y: 1.5, text: 'Hello label', font: 'sans-serif', size: 7.5, bold: true, italic: false, align: 'left' },
+      {
+        id: uid(), type: 'text', text: 'Hello label', font: 'sans-serif', size: 7.5, bold: true, italic: false,
+        align: 'center', fit: true, x: 6, y: 1.5, w: 80, h: 24,
+      },
     ],
   };
 }
@@ -1259,6 +1264,7 @@ function wire() {
   $('invert').onchange = (e) => { design.invert = e.target.checked; refresh(); };
   $('btn-detect').onclick = detect;
   $('btn-usb-help').onclick = () => showUsbHelp();
+  $('btn-help').onclick = () => showAbout();
   $('btn-print').onclick = print;
   $('btn-png').onclick = downloadPng;
 
@@ -1318,5 +1324,22 @@ function wire() {
 if (!support.usb && !support.serial) {
   showBanner('This browser cannot talk to printers directly (WebUSB / Web Serial need Chrome, Edge or another Chromium browser). You can still design labels and download them as PNG.');
 }
+function showAbout(tab) {
+  openAbout($('about-dialog'), { models: MODELS, tab, onConnectHelp: () => showUsbHelp() });
+}
+
+// Welcome page on the first visit.
+const WELCOMED_KEY = 'web-label-editor:welcomed';
+function welcomeOnce() {
+  try {
+    if (localStorage.getItem(WELCOMED_KEY)) return;
+    localStorage.setItem(WELCOMED_KEY, '1');
+  } catch {
+    return; // storage unavailable: don't nag on every load
+  }
+  showAbout('welcome');
+}
+
 wire();
 refresh({ setup: true, props: true });
+welcomeOnce();
