@@ -83,12 +83,11 @@ function tips() {
         + 'die cut may trim them.'),
       li(b('Fit text in a fixed box'), ' picks the largest size that fits; ', b('Fill safe area'), ' makes the box '
         + 'cover the safe area, ', b('Fill to edge'), ' the whole label. Drag the corner handle to resize.'),
-      li(b('Two labels per row'), ' (e.g. DYMO 30333): design one; each print fills the row with it, or untick ',
-        b('Same label on all'), ' to print them one at a time.'),
-      li(b('Continuous rolls'), ': choose ', b('Fit to content'), ' to make the label as long as what is on it, or ',
-        b('Fixed'), ' for a set length.'),
-      li(b('QR codes and barcodes'), ' snap to whole printer dots so they scan reliably; leave a little blank space '
-        + 'around them.')),
+      li(b('Overprint past the label edge'), ' (DYMO die-cut labels): the tinted border around the label is the liner; '
+        + 'ink there makes a black background or border reach the edge even if the label sits a little off.'),
+      li(b('Two labels per row'), ' (e.g. DYMO 30333): the preview shows the whole row. Choose the same design on '
+        + 'all, a different design on each (click a label to add to it, drag items between them), or one at a time.'),
+      li(b('Rulers'), ' measure from the label\'s starting edge and from each label\'s top, and mark the selected item.')),
     el('h3', { textContent: 'Calibration and rolls' }),
     el('ul', {},
       li('Print the ', b('Grid'), ' test: each numbered line should sit that many mm from the label\'s starting edge. If '
@@ -108,7 +107,30 @@ function tips() {
   ];
 }
 
-const TABS = [['welcome', 'Welcome'], ['printers', 'Printers'], ['tips', 'Tips'], ['connect', 'Connecting']];
+// Other tools, in case this one isn't the right fit.
+const OTHER_TOOLS = [
+  ['gLabels', 'https://github.com/j-evins/glabels-qt', 'desktop label and card designer for Linux, built around label sheets; prints through CUPS.'],
+  ['ptouch-print', 'https://git.familie-radermacher.ch/linux/ptouch-print.git', 'command-line printing to Brother P-touch printers over USB on Linux.'],
+  ['ptlabel', 'https://github.com/shaag7967/ptlabel', 'Python label editor (GUI and command line) for the Brother PT-P750W over Wi-Fi, and USB on Linux.'],
+  ['TuxLabel', 'https://github.com/Neklor/TuxLabel', 'PyQt6 label editor for Brother P-touch printers on Linux with a WYSIWYG preview; prints through CUPS.'],
+  ['pLabels', 'https://github.com/Privatehive/pLabels', 'Qt GUI for Brother P-touch printers, built on ptouch-print.'],
+  ['ptouch-rs', 'https://github.com/mlloyd5/ptouch-rs', 'Rust driver with a command line and GUI for Brother P-touch printers over USB.'],
+  ['labelsmith', 'https://github.com/alexbrazier/labelsmith', 'another browser-based designer for Brother P-touch printers, over WebUSB or Bluetooth.'],
+  ['brother_ql', 'https://github.com/pklaus/brother_ql', 'Python command-line printing to Brother QL printers.'],
+  ['thermal-label', 'https://thermal-label.github.io/', 'open-source drivers (no editor) for DYMO, Brother and other label printers.'],
+  ['Labelle', 'https://github.com/labelle-org/labelle', 'Python GUI and command line for DYMO LabelManager tape printers, which this editor doesn\'t support.'],
+];
+
+function others() {
+  return [
+    p('If this editor isn\'t right for you, one of these may be. Most of them are where we learned how the printers work.'),
+    el('ul', {}, ...OTHER_TOOLS.map(([name, href, what]) => li(link(href, name), `: ${what}`)),
+      li(b('The makers\' own'), ': DYMO Connect and Brother P-touch Editor (Windows and macOS), and their CUPS drivers for '
+        + 'printing from any Linux app.')),
+  ];
+}
+
+const TABS = [['welcome', 'Welcome'], ['printers', 'Printers'], ['tips', 'Tips'], ['others', 'Other tools'], ['connect', 'Connecting']];
 
 // ctx: { models, tab, onConnectHelp }
 export function openAbout(dialog, ctx) {
@@ -134,7 +156,7 @@ export function openAbout(dialog, ctx) {
     close.onclick = () => dialog.close();
     const done = el('button', { type: 'button', className: 'primary', textContent: tab === 'welcome' ? 'Start designing' : 'Close' });
     done.onclick = () => dialog.close();
-    const body = { welcome: () => welcome(go), printers: () => printers(ctx.models), tips }[tab]();
+    const body = { welcome: () => welcome(go), printers: () => printers(ctx.models), tips, others }[tab]();
     dialog.replaceChildren(
       el('header', {}, el('h2', { textContent: 'Web Label Editor' }), close),
       tabs,

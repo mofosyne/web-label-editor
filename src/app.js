@@ -7,7 +7,10 @@ import { openAbout } from './about.js';
 import { labels, history, openLibrary } from './library.js';
 import { printerReportUrl, labelRequestUrl } from './report.js';
 import { loadCatalog } from './catalog.js';
-import { testPatternDesign, shiftBitmap, composeRow } from './calibration.js';
+import { testPatternDesign } from './calibration.js';
+import {
+  viewGeometry, jobBitmap, rowMode, itemLane, itemVisible, canOverprint, blit, blankBitmap, MAX_BLEED_MM,
+} from './layout.js';
 import { newRollId, rollCode, parseRollCode } from './rolls.js';
 
 const STORAGE_KEY = 'web-label-editor:design';
@@ -143,27 +146,55 @@ function setAdjust(key, value) {
   } catch { /* storage unavailable */ }
 }
 
-// Two kinds of margin. Hard: where the printer cannot put ink at all. A
-// position adjustment shifts what is sent, which makes the edge it shifts
-// away from unreachable: e.g. Feed -6 (printer starts 6 mm late) means
-// nothing can print in the first 6 mm; the LabelWriter also never prints its
-// leading margin (see skipLeadingMargin). Safe: the catalogue margins (DYMO's
-// driver), where the head can print but the die-cut edge or a slightly
-// misplaced label may trim it off. Printing into the safe margin, up to the
-// label edge, is allowed: that is how to overprint (bleed) to the edge.
-const hardMargins = () => {
-  const mg = mediumMargins(medium());
-  const a = adjust();
+// Two kinds of margin, in mm from the label's edges. Hard: where the
+// printer cannot put ink at all. A position adjustment shifts what is sent,
+// which makes the edge it shifts away from unreachable: e.g. Feed -6
+// (printer starts 6 mm late) means nothing can print in the first 6 mm; the
+// LabelWriter also never prints its leading margin (see skipLeadingMargin).
+// A negative hard margin is reachable space past the label edge, which an
+// overprint border can use. Safe: the catalogue margins (DYMO's driver),
+// where the head can print but the die-cut edge or a slightly misplaced
+// label may trim it off. Printing past the safe area is allowed: that is
+// how to overprint (bleed) to the edge.
+const dpmmNow = () => model().dpi / 25.4;
+const bleedMm = () => (canOverprint(model(), medium()) ? Math.min(MAX_BLEED_MM, design.bleedMm ?? 0) : 0);
+function geometry(length = 0, adj = adjust()) {
+  const dpmm = dpmmNow();
+  return viewGeometry(model(), medium(), {
+    length,
+    bleed: Math.round(bleedMm() * dpmm),
+    feed: Math.round(adj.feedMm * dpmm),
+    across: Math.round(adj.acrossMm * dpmm),
+  });
+}
+// The row's labels: which one new items go on ('separate' mode).
+let activeLane = 0;
+const mode = () => rowMode(design, medium());
+const laneCount = () => medium().lanes?.count ?? 1;
+const laneOf = (item) => itemLane(item, mode(), laneCount());
+const currentLane = () => Math.min(mode() === 'separate' ? activeLane : 0, laneCount() - 1);
+
+// Reach past each edge of a label, in mm: { left, right, top, bottom } with
+// the hard margin as a positive number and reachable space past the edge
+// as a negative one.
+function reachMm(lane = currentLane()) {
+  const g = geometry();
+  const s = g.slots[lane];
+  const dpmm = dpmmNow();
   return {
-    left: Math.max(model().skipLeadingMargin ? mg.left : 0, -a.feedMm),
-    right: Math.max(0, a.feedMm),
-    top: Math.max(0, -a.acrossMm),
-    bottom: Math.max(0, a.acrossMm),
+    left: g.reach.x0 / dpmm,
+    right: (g.length - g.reach.x1) / dpmm,
+    top: (g.reach.y0 - s.y) / dpmm,
+    bottom: (s.y + g.labelDots - g.reach.y1) / dpmm,
   };
+}
+const hardMargins = (lane) => {
+  const r = reachMm(lane);
+  return { left: Math.max(0, r.left), right: Math.max(0, r.right), top: Math.max(0, r.top), bottom: Math.max(0, r.bottom) };
 };
-const margins = () => {
+const margins = (lane) => {
   const mg = mediumMargins(medium());
-  const hard = hardMargins();
+  const hard = hardMargins(lane);
   return {
     left: Math.max(mg.left, hard.left),
     right: Math.max(mg.right, hard.right),
@@ -171,6 +202,66 @@ const margins = () => {
     bottom: Math.max(mg.bottom, hard.bottom),
   };
 };
+// The whole area an item can cover, overprint border included (mm, label
+// coordinates): the label plus its overprint border, within reach.
+function edgeArea(lane = currentLane()) {
+  const g = geometry();
+  const s = g.slots[lane];
+  const r = reachMm(lane);
+  const dpmm = dpmmNow();
+  return {
+    left: Math.max(0, r.left),
+    right: Math.max(-s.ext.right / dpmm, r.right),
+    top: Math.max(-s.ext.top / dpmm, r.top),
+    bottom: Math.max(-s.ext.bottom / dpmm, r.bottom),
+  };
+}
+
+// Renders a design as the editor shows it: every label of the row (with
+// copies of the design on the others, unless each has its own) and the
+// overprint border. Bounds and text layouts are per design item, in view
+// dots (null for an item not shown). `filled` leaves later labels of the row
+// blank, for printing one label at a time.
+function renderView(d = design, m = model(), med = medium(), { filled, adj, onAssetLoad } = {}) {
+  const dpmm = m.dpi / 25.4;
+  const a = adj ?? { feedMm: 0, acrossMm: 0 };
+  const md = rowMode(d, med);
+  const count = med.lanes?.count ?? 1;
+  const opts = {
+    bleed: canOverprint(m, med) ? Math.round(Math.min(MAX_BLEED_MM, d.bleedMm ?? 0) * dpmm) : 0,
+    feed: Math.round(a.feedMm * dpmm),
+    across: Math.round(a.acrossMm * dpmm),
+  };
+  const shown = d.items.filter((it) => itemVisible(it, md, count));
+  let length;
+  const slots = viewGeometry(m, med, { ...opts, length: 0 }).slots.map((s) => {
+    const items = md === 'separate' ? shown.filter((it) => itemLane(it, md, count) === s.lane) : shown;
+    const r = renderDesign(d, m, med, onAssetLoad, { items, ext: s.ext, length });
+    length = r.length;
+    return { ...s, items, r, copy: md !== 'separate' && s.lane > 0 };
+  });
+  const geo = viewGeometry(m, med, { ...opts, length });
+  const bitmap = blankBitmap(geo.width, geo.height);
+  slots.forEach((s, k) => { if (filled == null || k < filled) blit(bitmap, s.r.bitmap, 0, s.y - s.ext.top); });
+
+  const bounds = d.items.map(() => null);
+  const textLayouts = d.items.map(() => null);
+  const lanes = d.items.map(() => null);
+  for (const s of slots) {
+    if (s.copy) continue;
+    s.items.forEach((it, j) => {
+      const i = d.items.indexOf(it);
+      const b = s.r.bounds[j];
+      bounds[i] = { ...b, y: b.y + s.y };
+      lanes[i] = s.lane;
+      const l = s.r.textLayouts[j];
+      if (l) textLayouts[i] = { ...l, blockY: l.blockY + s.y, box: { ...l.box, y: l.box.y + s.y } };
+    });
+  }
+  const hidden = d.items.length - shown.length;
+  return { bitmap, geo, slots, bounds, textLayouts, lanes, hidden, dpmm, mode: md };
+}
+
 // The printable band across the strip, in mm.
 const bandTop = () => margins().top;
 const usableMm = () => acrossMm() - margins().top - margins().bottom;
@@ -208,8 +299,8 @@ function refresh({ props = false, setup = false } = {}) {
 function draw() {
   const m = model();
   const med = medium();
-  last = renderDesign(design, m, med, () => refresh());
-  const { bitmap, dpmm } = last;
+  last = renderView(design, m, med, { adj: adjust(), onAssetLoad: () => refresh() });
+  const { bitmap, dpmm, geo, slots } = last;
 
   const canvas = $('canvas');
   const scale = zoom / dpmm; // screen px per dot
@@ -226,33 +317,67 @@ function draw() {
   ctx.imageSmoothingEnabled = false;
   const colors = previewColors();
   ctx.drawImage(bitmapToCanvas(bitmap, colors.ink, colors.paper), 0, 0, cssW, cssH);
-  canvas.style.borderRadius = med.cornerMm ? `${med.cornerMm * zoom}px` : '0';
 
-  // Hatch the border the printer cannot print on; a dashed line marks the
-  // safe area (printing past it overprints towards the label edge).
-  const lenMm = bitmap.width / dpmm;
-  const toArea = (mg) => ({
-    x0: mg.left * zoom, y0: mg.top * zoom,
-    x1: (lenMm - mg.right) * zoom, y1: (acrossMm() - mg.bottom) * zoom,
-  });
-  const hard = toArea(hardMargins());
-  const area = toArea(margins());
+  // Label outlines: the canvas itself when it is just one label; otherwise
+  // each label is outlined and the liner around them tinted.
+  const lenPx = geo.length * scale;
+  const labelPx = geo.labelDots * scale;
+  const radius = (med.cornerMm ?? 0) * zoom;
+  const plain = slots.length === 1 && !geo.top && !geo.bottom && !geo.right;
+  canvas.style.borderRadius = plain && radius ? `${radius}px` : '0';
+  if (!plain) {
+    const shapes = new Path2D();
+    for (const s of slots) shapes.roundRect(0, s.y * scale, lenPx, labelPx, radius);
+    const liner = new Path2D();
+    liner.rect(0, 0, cssW, cssH);
+    liner.addPath(shapes);
+    ctx.fillStyle = 'rgba(230, 190, 110, .45)';
+    ctx.fill(liner, 'evenodd');
+    // A light halo keeps the outline visible over black (inverted) labels.
+    ctx.strokeStyle = 'rgba(255, 255, 255, .8)';
+    ctx.lineWidth = 3;
+    ctx.stroke(shapes);
+    ctx.strokeStyle = 'rgba(70, 70, 70, .9)';
+    ctx.lineWidth = 1;
+    ctx.stroke(shapes);
+  }
+  // Labels that repeat the design: dimmed and not editable.
+  for (const s of slots.filter((x) => x.copy)) {
+    ctx.fillStyle = 'rgba(255, 255, 255, .45)';
+    ctx.fillRect(0, s.y * scale, lenPx, labelPx);
+    ctx.fillStyle = 'rgba(90, 90, 90, .9)';
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.fillText(last.mode === 'each' ? 'next label' : 'copy', 4, s.y * scale + 12);
+  }
+
+  // Hatch where the printer cannot print; a dashed line marks each label's
+  // safe area (printing past it overprints towards and past the edge).
+  const r = geo.reach;
+  const hard = { x0: r.x0 * scale, y0: r.y0 * scale, x1: r.x1 * scale, y1: r.y1 * scale };
   ctx.fillStyle = marginPattern(ctx);
   ctx.fillRect(0, 0, cssW, hard.y0);
   ctx.fillRect(0, hard.y1, cssW, cssH - hard.y1);
   ctx.fillRect(0, hard.y0, hard.x0, hard.y1 - hard.y0);
   ctx.fillRect(hard.x1, hard.y0, cssW - hard.x1, hard.y1 - hard.y0);
-  if (area.x0 || area.y0 || area.x1 < cssW || area.y1 < cssH) {
-    ctx.strokeStyle = 'rgba(120, 120, 120, .6)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    ctx.strokeRect(area.x0, area.y0, area.x1 - area.x0, area.y1 - area.y0);
-    ctx.setLineDash([]);
+  const safe = slots.map((s) => {
+    const mg = margins(s.lane);
+    return {
+      x0: mg.left * zoom, y0: s.y * scale + mg.top * zoom,
+      x1: lenPx - mg.right * zoom, y1: s.y * scale + labelPx - mg.bottom * zoom,
+    };
+  });
+  ctx.strokeStyle = 'rgba(120, 120, 120, .6)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  for (const a of safe) {
+    if (a.x0 || a.x1 < lenPx || a.y0 > 0 || a.y1 < cssH) ctx.strokeRect(a.x0, a.y0, a.x1 - a.x0, a.y1 - a.y0);
   }
+  ctx.setLineDash([]);
 
   const sel = design.items.findIndex((i) => i.id === selectedId);
-  if (sel >= 0) {
-    const b = last.bounds[sel];
+  const selBounds = sel >= 0 ? last.bounds[sel] : null;
+  if (selBounds) {
+    const b = selBounds;
     ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2463eb';
     ctx.lineWidth = 1.5;
     ctx.setLineDash([4, 3]);
@@ -264,26 +389,105 @@ function draw() {
       ctx.fillRect(h.x, h.y, h.size, h.size);
     }
   }
+  drawRulers(selBounds);
 
+  const lenMm = geo.length / dpmm;
+  const lanes = med.lanes;
   let tape = med.tapeMm ? `${med.tapeMm} mm tape, ${acrossMm().toFixed(1)} mm printable` : `${acrossMm().toFixed(1)} mm wide`;
-  if (med.lanes) tape = `One of ${med.lanes.count} labels per row, ${tape}`;
+  if (lanes) tape = `${lanes.count} labels per row, each ${tape}`;
   $('dims').title = 'Hatched: the printer cannot print there. Dashed line: the safe area (from the label maker\'s driver); '
-    + 'items past it still print, overprinting towards the label edge, but the die cut may trim them.';
+    + 'items past it still print, overprinting towards the label edge, but the die cut may trim them.'
+    + (geo.top || geo.bottom || geo.right ? ' Tinted: the liner around the label, which an overprint border prints on.' : '');
   // Font boxes include some blank space, so allow a little slack.
   const slack = 0.3 * zoom;
-  const outside = (a) => last.bounds.some((b) => b.x * scale < a.x0 - slack || b.y * scale < a.y0 - slack
-    || (b.y + b.h) * scale > a.y1 + slack || (b.x + b.w) * scale > a.x1 + slack);
-  const offLabel = outside(hard);
-  const overprint = !offLabel && outside(area);
+  const outside = (b, a) => b.x * scale < a.x0 - slack || b.y * scale < a.y0 - slack
+    || (b.y + b.h) * scale > a.y1 + slack || (b.x + b.w) * scale > a.x1 + slack;
+  const shownBounds = last.bounds.map((b, i) => (b ? { b, lane: last.lanes[i] } : null)).filter(Boolean);
+  const offLabel = shownBounds.some(({ b }) => outside(b, hard));
+  const overprint = !offLabel && shownBounds.some(({ b, lane }) => outside(b, safe[lane]));
   const dims = $('dims');
-  dims.textContent = `${tape} × ${lenMm.toFixed(1)} mm long  ·  ${bitmap.width} × ${bitmap.height} dots @ ${m.dpi} dpi`
+  dims.textContent = `${tape} × ${lenMm.toFixed(1)} mm long  ·  ${geo.width} × ${geo.height} dots @ ${m.dpi} dpi`
     + (offLabel ? '  ·  ⚠ Something is where the printer cannot print and will be cut off' : '')
-    + (overprint ? '  ·  Overprinting past the safe area (the die cut may trim it)' : '');
+    + (overprint ? '  ·  Overprinting past the safe area (the die cut may trim it)' : '')
+    + (last.hidden ? `  ·  ${last.hidden} item${last.hidden > 1 ? 's' : ''} on the other label${lanes?.count > 2 ? 's' : ''} hidden (choose "A different design on each")` : '');
   dims.classList.toggle('warn', offLabel);
   $('zoom-label').textContent = `${Math.round((zoom / 6) * 100)}%`;
   updateCodeInfo();
   updateFitInfo();
   if (editing) positionEditor();
+}
+
+// Rulers along the top (mm from the label's starting edge) and the side
+// (mm from each label's top edge), with the selected item's extent marked.
+function drawRulers(sel) {
+  const { geo, slots, dpmm } = last;
+  const scale = zoom / dpmm;
+  const css = getComputedStyle(document.documentElement);
+  const ink = css.getPropertyValue('--muted').trim() || '#777';
+  const accent = css.getPropertyValue('--accent').trim() || '#2463eb';
+  const dpr = window.devicePixelRatio || 1;
+  const setup = (id, w, h) => {
+    const c = $(id);
+    c.style.width = `${w}px`;
+    c.style.height = `${h}px`;
+    c.width = Math.round(w * dpr);
+    c.height = Math.round(h * dpr);
+    const ctx = c.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.font = '9px system-ui, sans-serif';
+    ctx.fillStyle = ink;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 1;
+    return ctx;
+  };
+  const T = 18; // ruler thickness, px
+  const step = zoom >= 4 ? 1 : 5; // mm between ticks
+  const every = zoom >= 2.5 ? 10 : 20; // mm between numbers
+
+  const top = setup('ruler-top', geo.width * scale, T);
+  if (sel) {
+    top.fillStyle = `${accent}33`;
+    top.fillRect(sel.x * scale, 0, sel.w * scale, T);
+    top.fillStyle = ink;
+  }
+  for (let mm = 0; mm * zoom <= geo.width * scale; mm += step) {
+    const x = Math.round(mm * zoom) + 0.5;
+    const len = mm % every === 0 ? T : mm % 5 === 0 ? T * 0.55 : T * 0.3;
+    top.beginPath();
+    top.moveTo(x, T);
+    top.lineTo(x, T - len);
+    top.stroke();
+    if (mm % every === 0) top.fillText(String(mm), x + 2, 9);
+  }
+
+  const side = setup('ruler-left', T, geo.height * scale);
+  if (sel) {
+    side.fillStyle = `${accent}33`;
+    side.fillRect(0, sel.y * scale, T, sel.h * scale);
+    side.fillStyle = ink;
+  }
+  for (const s of slots) {
+    const y0 = s.y * scale;
+    for (let mm = 0; mm <= geo.labelDots / dpmm + 0.001; mm += step) {
+      const y = Math.round(y0 + mm * zoom) + 0.5;
+      const len = mm % every === 0 ? T : mm % 5 === 0 ? T * 0.55 : T * 0.3;
+      side.beginPath();
+      side.moveTo(T, y);
+      side.lineTo(T - len, y);
+      side.stroke();
+      if (mm % every === 0 && mm > 0) {
+        side.save();
+        side.translate(9, y - 2);
+        side.rotate(-Math.PI / 2);
+        side.fillText(String(mm), 0, 0);
+        side.restore();
+      }
+    }
+    // Each label starts its own scale.
+    side.fillStyle = accent;
+    side.fillRect(0, y0, T, 1.5);
+    side.fillStyle = ink;
+  }
 }
 
 let hatch = null;
@@ -375,12 +579,23 @@ function buildSetup() {
   const lanes = medium().lanes;
   $('lanes-box').hidden = !lanes;
   if (lanes) {
-    $('fill-row').checked = fillRow();
-    $('fill-row-text').textContent = `Same label on all ${lanes.count} in each row`;
-    $('lanes-note').textContent = fillRow()
-      ? `${lanes.count} labels per row: you design one, and each row prints it ${lanes.count} times. Copies counts rows.`
-      : `${lanes.count} labels per row: you design one, and Copies counts labels, filling each row from the top.`;
+    const n = lanes.count;
+    const sel = $('row-mode');
+    sel.replaceChildren(
+      new Option(`Same design on all ${n}`, 'same'),
+      new Option(`A different design on each`, 'separate'),
+      new Option('Same design, one label at a time', 'each'),
+    );
+    sel.value = mode();
+    $('lanes-note').textContent = {
+      same: `${n} labels per row: the design prints on each of them. Copies counts rows.`,
+      separate: `${n} labels per row, each with its own design: click a label to add items to it, or drag items between them. Copies counts rows.`,
+      each: `${n} labels per row: Copies counts labels, filling each row from the top.`,
+    }[mode()];
   }
+  const overprintable = canOverprint(m, medium());
+  $('bleed-box').hidden = !overprintable;
+  if (overprintable) $('bleed').value = String(design.bleedMm ?? 0);
   updateReportLinks();
   const linked = design.labelId ? labels.get(design.labelId) : null;
   if (design.labelId && !linked) delete design.labelId;
@@ -688,9 +903,8 @@ async function print() {
       return;
     }
     if (!(await checkTapeBeforePrint())) return;
-    const { bitmap } = renderDesign(design, model(), medium());
     const copies = Math.max(1, Math.min(99, parseInt($('copies').value, 10) || 1));
-    await sendBitmap(bitmap, copies);
+    await sendRows(rowsFor(copies));
     recordPrint(copies);
     if (model().status !== 'tested') {
       showBanner(`Sent to the ${model().name}, which nobody has reported on yet. Did it print correctly?`,
@@ -708,36 +922,35 @@ async function print() {
   }
 }
 
-// Applies the position adjustment, encodes and sends.
-// Multi-up labels: is the design repeated in every slot of a row?
-const fillRow = () => design.options.fillRow ?? true;
-
-// The rows to print for `copies` of a label. On a multi-up label ("2 up")
-// the design goes into each slot of a row: with fillRow every slot and
-// copies counts rows, otherwise copies counts labels and the last row may be
-// partly blank. `wholeRow` sends a bitmap that already spans the row.
-function rowsFor(bitmap, copies, wholeRow) {
-  const lanes = medium().lanes;
-  if (!lanes || wholeRow) return Array(copies).fill(bitmap);
-  if (fillRow()) return Array(copies).fill(composeRow(bitmap, lanes));
+// The rows to print for `copies`, as view bitmaps. On a multi-up label
+// ("2 up") each row fills every label, except 'each' mode, where copies
+// counts labels and the last row may be partly blank.
+function rowsFor(copies) {
+  const adj = adjust();
+  const count = laneCount();
+  if (mode() !== 'each' || count === 1) {
+    const { bitmap, geo } = renderView(design, model(), medium(), { adj });
+    return Array(copies).fill({ bitmap, geo });
+  }
   const rows = [];
-  for (let left = copies; left > 0; left -= lanes.count) rows.push(composeRow(bitmap, lanes, Math.min(left, lanes.count)));
+  const byFill = new Map();
+  for (let left = copies; left > 0; left -= count) {
+    const filled = Math.min(left, count);
+    if (!byFill.has(filled)) byFill.set(filled, renderView(design, model(), medium(), { adj, filled }));
+    rows.push(byFill.get(filled));
+  }
   return rows;
 }
 
-// Applies the position adjustment, encodes and sends.
-async function sendBitmap(bitmap, copies = 1, { wholeRow = false } = {}) {
+// Applies the position adjustment, encodes and sends each row.
+async function sendRows(rows, med = medium()) {
   const dpmm = model().dpi / 25.4;
   const a = adjust();
-  let dx = Math.round(a.feedMm * dpmm);
-  if (model().skipLeadingMargin) dx -= Math.round(mediumMargins(medium()).left * dpmm);
+  const shift = { feed: Math.round(a.feedMm * dpmm), across: Math.round(a.acrossMm * dpmm), grow: !med.lengthDots };
   const opts = Object.fromEntries(model().options.map((o) => [o.id, option(o.id)]));
   const jobs = new Map(); // identical rows share one encoded job
-  for (const row of rowsFor(bitmap, copies, wholeRow)) {
-    if (!jobs.has(row)) {
-      const shifted = shiftBitmap(row, dx, Math.round(a.acrossMm * dpmm), { grow: !medium().lengthDots });
-      jobs.set(row, model().encode(shifted, medium(), opts));
-    }
+  for (const row of rows) {
+    if (!jobs.has(row)) jobs.set(row, model().encode(jobBitmap(row.bitmap, row.geo, model(), shift), med, opts));
     await transport.write(jobs.get(row));
   }
 }
@@ -749,11 +962,13 @@ async function printTestPattern(pattern) {
   const dpmm = model().dpi / 25.4;
   const lengthMm = med.lengthDots ? med.lengthDots / dpmm : 60;
   // Test prints cover the whole row of a multi-up label.
-  const rowMedium = med.lanes ? { ...med, acrossDots: med.lanes.pageDots } : med;
+  const rowMedium = med.lanes ? { ...med, acrossDots: med.lanes.pageDots, lanes: undefined } : med;
   const test = testPatternDesign(pattern, lengthMm, rowMedium.acrossDots / dpmm, dpmm, { printer: design.printer, medium: med.id });
   try {
-    const { bitmap } = renderDesign(test, model(), rowMedium);
-    await sendBitmap(bitmap, 1, { wholeRow: true });
+    const { bitmap, length } = renderDesign(test, model(), rowMedium);
+    const a = adjust();
+    const geo = viewGeometry(model(), rowMedium, { length, feed: Math.round(a.feedMm * dpmm), across: Math.round(a.acrossMm * dpmm) });
+    await sendRows([{ bitmap, geo }], rowMedium);
     showBanner(pattern === 'grid'
       ? 'Grid sent. Measure a numbered line from the label\'s starting edge: if line n is at n + d mm, set Feed to −d (at n − d mm, +d). Same from the top edge for Across.'
       : 'Full black sent. The black area is everything the printer can reach on this label.');
@@ -766,7 +981,7 @@ async function printTestPattern(pattern) {
 }
 
 function downloadPng() {
-  const { bitmap } = renderDesign(design, model(), medium());
+  const { bitmap } = renderView();
   bitmapToCanvas(bitmap).toBlob((blob) => download(blob, 'label.png'));
 }
 
@@ -781,14 +996,16 @@ function download(blob, name) {
 // ---------- items ----------
 
 function addItem(item) {
-  design.items.push({ id: uid(), ...item });
+  design.items.push({ id: uid(), ...item, ...(mode() === 'separate' ? { lane: currentLane() } : {}) });
   selectedId = design.items.at(-1).id;
   refresh({ props: true });
 }
 
 // X position (mm) just after the rightmost existing item.
 function nextX() {
-  const right = last ? Math.max(0, ...last.bounds.map((b) => (b.x + b.w) / last.dpmm)) : 0;
+  const lane = currentLane();
+  const mine = last ? last.bounds.filter((b, i) => b && last.lanes[i] === lane) : [];
+  const right = Math.max(0, ...mine.map((b) => (b.x + b.w) / last.dpmm));
   return round1(right ? right + 3 : Math.max(2, margins().left + 1));
 }
 
@@ -844,8 +1061,10 @@ function buildProps() {
     const kind = document.createElement('span');
     kind.className = 'kind';
     kind.textContent = item.type;
-    li.append(kind, describe(item));
-    li.onclick = () => { selectedId = item.id; refresh({ props: true }); };
+    const where = mode() === 'separate' && laneCount() > 1 ? `L${laneOf(item) + 1} ` : '';
+    li.append(kind, where + describe(item));
+    if (!itemVisible(item, mode(), laneCount())) li.classList.add('hidden-item');
+    li.onclick = () => { selectedId = item.id; activeLane = laneOf(item); refresh({ props: true }); };
     return li;
   }));
   if (!design.items.length) {
@@ -960,16 +1179,17 @@ function buildProps() {
   };
   row.append(
     btn('Centre across', () => {
-      const i = design.items.indexOf(item);
-      const h = last.bounds[i].h / last.dpmm;
+      const b = last.bounds[design.items.indexOf(item)];
+      if (!b) return;
+      const h = b.h / last.dpmm;
       item.y = +(bandTop() + (usableMm() - h) / 2).toFixed(2);
       refresh({ props: true });
     }),
   );
   if (item.type === 'text' && item.fit) {
     row.append(btn('Fill safe area', () => {
-      const mg = margins();
-      item.y = bandTop();
+      const mg = margins(laneOf(item));
+      item.y = round1(mg.top);
       item.h = round1(usableMm());
       if (medium().lengthDots) {
         item.x = mg.left;
@@ -979,8 +1199,8 @@ function buildProps() {
     }));
     row.append(btn('Fill to edge', () => {
       // Overprint: the whole label the printer can reach, ignoring the safe area.
-      const mg = hardMargins();
-      item.y = mg.top;
+      const mg = edgeArea(laneOf(item));
+      item.y = round1(mg.top);
       item.h = round1(acrossMm() - mg.top - mg.bottom);
       if (medium().lengthDots) {
         item.x = mg.left;
@@ -990,8 +1210,9 @@ function buildProps() {
     }));
   } else if (item.type === 'text') {
     row.append(btn('Fill height', () => {
-      const i = design.items.indexOf(item);
-      const ratio = last.bounds[i].h / last.dpmm / item.size;
+      const b = last.bounds[design.items.indexOf(item)];
+      if (!b) return;
+      const ratio = b.h / last.dpmm / item.size;
       item.size = +((usableMm() * 0.95) / ratio).toFixed(2);
       item.y = +(bandTop() + usableMm() * 0.025).toFixed(2);
       refresh({ props: true });
@@ -1016,7 +1237,7 @@ function fitToggle(item) {
   input.checked = !!item.fit;
   input.onchange = () => {
     if (input.checked) {
-      const b = last.bounds[design.items.indexOf(item)];
+      const b = last.bounds[design.items.indexOf(item)] ?? { w: 20 * last.dpmm, h: 5 * last.dpmm };
       item.w = item.w ?? round1(b.w / last.dpmm);
       item.h = item.h ?? round1(b.h / last.dpmm);
     }
@@ -1102,6 +1323,7 @@ function hitTest(pt) {
   if (!last) return null;
   for (let i = design.items.length - 1; i >= 0; i--) {
     const b = last.bounds[i];
+    if (!b) continue;
     const x = pt.x * last.dpmm;
     const y = pt.y * last.dpmm;
     if (x >= b.x - 2 && x <= b.x + b.w + 2 && y >= b.y - 2 && y <= b.y + b.h + 2) return design.items[i];
@@ -1111,14 +1333,24 @@ function hitTest(pt) {
 
 function onHandle(e) {
   const item = selected();
-  if (!item || !last || !resizable(item)) return null;
+  const b = last?.bounds[design.items.indexOf(item)];
+  if (!b || !resizable(item)) return null;
   const r = $('canvas').getBoundingClientRect();
-  const h = handleRect(last.bounds[design.items.indexOf(item)], zoom / last.dpmm);
+  const h = handleRect(b, zoom / last.dpmm);
   const x = e.clientX - r.left;
   const y = e.clientY - r.top;
   const pad = 4;
   return x >= h.x - pad && x <= h.x + h.size + pad && y >= h.y - pad && y <= h.y + h.size + pad ? item : null;
 }
+
+// The label of the row under a point (view mm), or null outside them.
+function slotAt(pt) {
+  if (!last) return null;
+  const y = pt.y * last.dpmm;
+  return last.slots.find((s) => y >= s.y - s.ext.top && y < s.y + last.geo.labelDots + s.ext.bottom) ?? null;
+}
+// Where an item's label starts in the view, mm.
+const labelTopMm = (item) => (last ? last.slots[laneOf(item)].y / last.dpmm : 0);
 
 let drag = null;
 function onPointerDown(e) {
@@ -1132,8 +1364,11 @@ function onPointerDown(e) {
   const item = hitTest(pt);
   selectedId = item?.id ?? null;
   if (item) {
+    activeLane = laneOf(item);
     drag = { item, dx: pt.x - item.x, dy: pt.y - item.y };
     $('canvas').setPointerCapture(e.pointerId);
+  } else if (mode() === 'separate') {
+    activeLane = slotAt(pt)?.lane ?? activeLane;
   }
   refresh({ props: true });
 }
@@ -1145,14 +1380,27 @@ function onPointerMove(e) {
     return;
   }
   const pt = canvasPointToMm(e);
+  const it = drag.item;
   if (drag.resize) {
-    const it = drag.item;
-    RESIZERS[it.type](it, Math.max(1, round1(pt.x - it.x)), Math.max(1, round1(pt.y - it.y)));
+    RESIZERS[it.type](it, Math.max(1, round1(pt.x - it.x)), Math.max(1, round1(pt.y - labelTopMm(it) - it.y)));
     refresh();
     return;
   }
-  drag.item.x = Math.round((pt.x - drag.dx) * 10) / 10;
-  drag.item.y = Math.round((pt.y - drag.dy) * 10) / 10;
+  it.x = Math.round((pt.x - drag.dx) * 10) / 10;
+  it.y = Math.round((pt.y - drag.dy) * 10) / 10;
+  // With a design per label, dragging an item onto another label moves it there.
+  const b = last.bounds[design.items.indexOf(it)];
+  if (mode() === 'separate' && b) {
+    const centre = { x: pt.x, y: labelTopMm(it) + it.y + b.h / last.dpmm / 2 };
+    const to = slotAt(centre);
+    if (to && to.lane !== laneOf(it)) {
+      const shift = (last.slots[laneOf(it)].y - to.y) / last.dpmm;
+      it.y = round1(it.y + shift);
+      drag.dy -= shift;
+      it.lane = to.lane;
+      activeLane = to.lane;
+    }
+  }
   refresh();
 }
 
@@ -1242,10 +1490,15 @@ function onDoubleClick(e) {
     input?.select();
   } else if (!item) {
     // Double-clicking empty label space adds a text item there.
+    const slot = slotAt(pt);
+    if (!slot || slot.copy) return;
+    if (mode() === 'separate') activeLane = slot.lane;
     const size = Math.max(1.5, round1(usableMm() * 0.6));
+    const y = pt.y - slot.y / last.dpmm;
     design.items.push({
       id: uid(), type: 'text', text: 'Text', font: 'sans-serif', size, bold: false, italic: false, align: 'left',
-      x: +Math.max(0, pt.x).toFixed(1), y: +Math.max(0, pt.y - size * 0.6).toFixed(1),
+      x: +Math.max(0, pt.x).toFixed(1), y: +Math.max(0, y - size * 0.6).toFixed(1),
+      ...(mode() === 'separate' ? { lane: slot.lane } : {}),
     });
     const created = design.items.at(-1);
     selectedId = created.id;
@@ -1274,7 +1527,8 @@ function itemPlainText(item) {
 
 function pasteItems(items, offset = 2) {
   if (!items.length) return;
-  const copies = items.map((it) => ({ ...structuredClone(it), id: uid(), x: round1(it.x + offset), y: round1(it.y + offset) }));
+  const lane = mode() === 'separate' ? { lane: currentLane() } : {};
+  const copies = items.map((it) => ({ ...structuredClone(it), id: uid(), x: round1(it.x + offset), y: round1(it.y + offset), ...lane }));
   design.items.push(...copies);
   selectedId = copies.at(-1).id;
   refresh({ props: true });
@@ -1389,7 +1643,12 @@ function wire() {
     download(new Blob([JSON.stringify(plain, null, 2)], { type: 'application/json' }), 'label.json');
   };
   $('btn-labels').onclick = () => showLibrary();
-  $('fill-row').onchange = (e) => { design.options.fillRow = e.target.checked; refresh({ setup: true }); };
+  $('row-mode').onchange = (e) => {
+    design.options.rowMode = e.target.value;
+    delete design.options.fillRow;
+    refresh({ setup: true, props: true });
+  };
+  $('bleed').onchange = (e) => { design.bleedMm = Number(e.target.value) || 0; refresh({ setup: true }); };
   $('btn-lib-open').onclick = () => showLibrary();
   $('btn-lib-save').onclick = () => saveToLibrary(false);
   $('btn-lib-saveas').onclick = () => saveToLibrary(true);
@@ -1443,7 +1702,7 @@ function thumbnail(d) {
   try {
     const m = MODELS[d.printer] ?? model();
     const med = m.media.find((x) => x.id === d.medium) ?? m.media[0];
-    const { bitmap } = renderDesign(d, m, med);
+    const { bitmap } = renderView(d, m, med);
     const full = bitmapToCanvas(bitmap);
     const scale = Math.min(1, 240 / full.width, 80 / full.height);
     const c = document.createElement('canvas');

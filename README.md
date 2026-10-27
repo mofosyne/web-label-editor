@@ -290,10 +290,22 @@ take a few seconds to send.
   purpose, to **overprint** towards the edge (a black background, a border
   that runs off the label): the preview notes it, and *Fill to edge* sizes a
   fitted text box to the whole reachable label instead of the safe area.
-- **Two labels per row** (e.g. DYMO 30333, 13 × 25 mm halves): you design one
-  label; by default each print puts it on every label in the row (Copies
-  counts rows). Untick *Same label on all* to fill the row one label at a
-  time (Copies counts labels).
+- **Overprint past the label edge** (DYMO die-cut labels, *Label* panel, up
+  to 2 mm): the preview grows a border around the label, tinted as the
+  liner, and anything there prints onto the liner, so a black background or
+  a border really reaches the die-cut edge even if the label sits a little
+  off. It works where the head reaches: past the label's far edge and its
+  end (at most 1.5 mm, into the gap before the next label), not before the
+  ~6 mm leading margin or past the edge against the printer's guide.
+- **Two labels per row** (e.g. DYMO 30333, 13 × 25 mm halves): the preview
+  shows the whole row. *Labels in a row* chooses *Same design on all* (the
+  other labels show a dimmed copy; Copies counts rows), *A different design
+  on each* (click a label to add items to it, drag items between labels;
+  Copies counts rows) or *Same design, one label at a time* (Copies counts
+  labels, filling each row from the top).
+- **Rulers** along the top and side of the preview measure in mm from the
+  label's starting edge and from each label's top edge, and mark the
+  selected item.
 - **DYMO LabelWriter:** the printer starts printing about 5.8 mm into each
   label (DYMO's driver calls this the leading margin; measured 6 mm on a
   LabelWriter 450). The app leaves that part out of the job, so the rest lands
@@ -310,7 +322,9 @@ take a few seconds to send.
   type, Feed and Across in mm) sets the roll up on another computer via *Add
   roll from code…*.
 - P-touch printers leave a little blank tape around each print (measured on a
-  PT-P710BT with auto-cut: about 4.5 mm before and 2 mm after).
+  PT-P710BT with auto-cut: about 4.5 mm before and 2 mm after). The
+  PT-P710BT also left off the last ~2.8 mm of a print, so P-touch jobs end
+  with that much blank raster data for it to drop instead.
 
 ## Adding a label or tape size
 
@@ -416,6 +430,39 @@ recutils is installed), and that this README's table matches the code.
 
 `.github/workflows/ci.yml` runs the tests on every push and pull request and
 deploys `main` to GitHub Pages.
+
+## Other tools
+
+If this editor isn't right for you, these may be. Most are where we learned
+how the printers work.
+
+- [gLabels](https://github.com/j-evins/glabels-qt): a desktop label and
+  business card designer for Linux, built around label sheets and templates;
+  prints through CUPS.
+- [ptouch-print](https://git.familie-radermacher.ch/linux/ptouch-print.git):
+  command-line printing to Brother P-touch printers over USB on Linux.
+- [ptlabel](https://github.com/shaag7967/ptlabel): a Python label editor
+  (GUI and command line) for the Brother PT-P750W over Wi-Fi, and USB on
+  Linux.
+- [TuxLabel](https://github.com/Neklor/TuxLabel): a PyQt6 label editor
+  for Brother P-touch (TZe) printers on Linux with a WYSIWYG preview,
+  printing through CUPS.
+- [pLabels](https://github.com/Privatehive/pLabels): a Qt GUI for Brother
+  P-touch printers, built on ptouch-print.
+- [ptouch-rs](https://github.com/mlloyd5/ptouch-rs): a Rust driver with a
+  command line and GUI for Brother P-touch printers over USB.
+- [labelsmith](https://github.com/alexbrazier/labelsmith): another
+  browser-based designer for Brother P-touch printers, printing over WebUSB
+  or Bluetooth.
+- [brother_ql](https://github.com/pklaus/brother_ql): Python command-line
+  printing to Brother QL printers.
+- [thermal-label](https://thermal-label.github.io/): open-source drivers
+  (no editor) for DYMO, Brother and other label printers.
+- [Labelle](https://github.com/labelle-org/labelle): Python GUI and command
+  line for DYMO LabelManager tape printers, which this editor doesn't
+  support.
+- The makers' own: DYMO Connect and Brother P-touch Editor (Windows and
+  macOS), and their CUPS drivers for printing from any Linux app.
 
 ## Roadmap
 

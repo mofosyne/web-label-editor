@@ -35,7 +35,7 @@
       </label>
       <a id="request-label" class="small-link" target="_blank" rel="noopener">Missing a label size? Request it</a>
       <div id="lanes-box" hidden>
-        <label class="inline"><input id="fill-row" type="checkbox"> <span id="fill-row-text"></span></label>
+        <label>Labels in a row <select id="row-mode"></select></label>
         <p id="lanes-note" class="note"></p>
       </div>
       <div class="row" id="connect-buttons"></div>
@@ -62,6 +62,15 @@
       <h2>Label</h2>
       <label class="inline"><input id="border" type="checkbox"> Border</label>
       <label class="inline"><input id="invert" type="checkbox"> Invert (white on black)</label>
+      <label id="bleed-box" hidden>Overprint past the label edge
+        <select id="bleed">
+          <option value="0">Off</option>
+          <option value="0.5">0.5 mm</option>
+          <option value="1">1 mm</option>
+          <option value="1.5">1.5 mm</option>
+          <option value="2">2 mm</option>
+        </select>
+      </label>
 
       <h2>Design</h2>
       <p id="lib-current" class="note" hidden></p>
@@ -92,7 +101,12 @@
         <button id="zoom-in" aria-label="Zoom in">+</button>
       </div>
       <div class="canvas-wrap" id="canvas-wrap">
-        <canvas id="canvas" tabindex="0" aria-label="Label preview"></canvas>
+        <div class="ruled">
+          <span class="ruler-corner">mm</span>
+          <canvas id="ruler-top" class="ruler" aria-hidden="true"></canvas>
+          <canvas id="ruler-left" class="ruler" aria-hidden="true"></canvas>
+          <canvas id="canvas" tabindex="0" aria-label="Label preview"></canvas>
+        </div>
       </div>
       <p id="dims" class="dims"></p>
       <p class="hint">Drag items to move them. Double-click text to edit it, or empty space to add text. Ctrl+C / Ctrl+V copy and paste items, or paste text and images from other apps; Ctrl+D duplicates. Arrow keys nudge (Shift for 1 mm). Delete removes. The preview shows the exact dots that will print.</p>

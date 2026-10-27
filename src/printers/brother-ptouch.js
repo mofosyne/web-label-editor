@@ -165,6 +165,13 @@ export function encodePTouch(bitmap, opts = {}) {
     w.push(0x47, out.length & 0xff, out.length >> 8); // G n1 n2
     w.add(out);
   }
+  // Blank lines after the content: the printer leaves off the end of the
+  // raster data, so these are what it drops instead.
+  const blank = q.packbits ? packBits(new Uint8Array(bytesPerLine)) : new Uint8Array(bytesPerLine);
+  for (let i = 0; i < (opts.tailDots ?? 0); i++) {
+    w.push(0x47, blank.length & 0xff, blank.length >> 8);
+    w.add(blank);
+  }
 
   w.push(0x1a); // print with feed (and cut)
   return w.toUint8Array();

@@ -46,6 +46,10 @@ function labelWriter({ name, status, devices, headDots = 672, productIds, rollSe
     // the rest lands where the preview shows it and the job ends at the
     // label's end. Measured on a real LW450: 6 mm.
     skipLeadingMargin: true,
+    // Die-cut labels sit on a liner wider than the label, and the head is
+    // wider than most labels: an overprint border past the label edge
+    // prints on the liner (see layout.js).
+    overprint: true,
     media: [],
     note: DYMO_NOTE,
     options,
@@ -66,6 +70,11 @@ function labelWriter({ name, status, devices, headDots = 672, productIds, rollSe
 const PT_NOTE = 'P-touch printers leave a little blank tape before and after the print (on a PT-P710BT: about 4.5 mm before, 2 mm after).';
 const PLITE = 'Turn off its P-Lite (Editor Lite) mode: in that mode it appears as a USB drive, not a printer.';
 
+// A PT-P710BT leaves off the last ~2.8 mm of the raster data (a 60 mm grid
+// printed only to 57.2 mm), so jobs end with that much blank tape. Assumed
+// for the other P-touch models, which share the mechanism.
+const PT_TAIL_MM = 2.8;
+
 function pTouch({ name, status, devices, productId, maxTapeMm = 24, quirks = {}, bluetooth = false, note = PT_NOTE }) {
   return {
     brand: 'Brother P-touch',
@@ -84,7 +93,7 @@ function pTouch({ name, status, devices, productId, maxTapeMm = 24, quirks = {},
     ],
     note,
     encode(bitmap, medium, opts) {
-      return encodePTouch(bitmap, { autoCut: opts.autoCut, quirks, tapeMm: medium.statusMm });
+      return encodePTouch(bitmap, { autoCut: opts.autoCut, quirks, tapeMm: medium.statusMm, tailDots: Math.round((PT_TAIL_MM * 180) / 25.4) });
     },
     async queryStatus(transport) {
       await transport.write(initCommand());

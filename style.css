@@ -192,6 +192,17 @@ dialog.help .row { justify-content: flex-end; margin: 0; }
   padding: 24px;
   overflow: auto;
 }
+/* Rulers above and left of the label. */
+.ruled {
+  display: grid;
+  grid-template-columns: 18px auto;
+  grid-template-rows: 18px auto;
+  gap: 2px;
+  justify-content: start;
+}
+.ruler { display: block; }
+.ruler-corner { font-size: 9px; color: var(--muted); align-self: end; }
+#item-list li.hidden-item { opacity: .5; }
 /* Left-anchored so a growing label extends to the right and items stay put. */
 #canvas {
   display: block;

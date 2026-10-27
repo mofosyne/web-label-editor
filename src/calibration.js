@@ -58,43 +58,5 @@ export function testPatternDesign(pattern, lengthMm, widthMm, dpmm, { printer, m
   };
 }
 
-// Moves a bitmap's content by (dx, dy) dots for the position adjustment.
-//
-// Along the feed, a negative dx means the printer starts late, so the print
-// is trimmed by |dx| lines: the content moves earlier and the job also ends
-// |dx| lines sooner, instead of running past the end of a die-cut label into
-// the next one. A positive dx keeps the length (content pushed past the end
-// is lost), or with `grow` (continuous media) adds blank lines at the start.
-// Across the head the size never changes.
-export function shiftBitmap(bitmap, dx, dy, { grow = false } = {}) {
-  if (!dx && !dy) return bitmap;
-  let width = bitmap.width;
-  if (dx < 0) width = Math.max(1, bitmap.width + dx);
-  else if (grow) width = bitmap.width + dx;
-  const { height } = bitmap;
-  const data = new Uint8Array(width * height);
-  for (let y = 0; y < height; y++) {
-    const ty = y + dy;
-    if (ty < 0 || ty >= height) continue;
-    for (let x = 0; x < bitmap.width; x++) {
-      const tx = x + dx;
-      if (tx < 0 || tx >= width) continue;
-      data[ty * width + tx] = bitmap.data[y * bitmap.width + x];
-    }
-  }
-  return { width, height, data };
-}
-
-// One row of a multi-up label ("2 up"): `filled` copies of the label bitmap
-// placed side by side across the head, the rest of the row left blank.
-export function composeRow(bitmap, lanes, filled = lanes.count) {
-  const { width } = bitmap;
-  const data = new Uint8Array(width * lanes.pageDots);
-  for (let lane = 0; lane < Math.min(filled, lanes.count); lane++) {
-    const top = lane * lanes.pitchDots;
-    for (let y = 0; y < bitmap.height && top + y < lanes.pageDots; y++) {
-      data.set(bitmap.data.subarray(y * width, (y + 1) * width), (top + y) * width);
-    }
-  }
-  return { width, height: lanes.pageDots, data };
-}
+// Position shifts live with the rest of the print layout.
+export { placeBitmap as shiftBitmap } from './layout.js';

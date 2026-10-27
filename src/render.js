@@ -230,37 +230,48 @@ function drawBox(ctx, item, dpmm) {
 
 // Length of the strip in dots: fixed for die-cut media, otherwise either the
 // user's fixed length or the furthest item edge plus padding.
-export function stripLength(design, medium, dpi, ctx) {
+export function stripLength(design, medium, dpi, ctx, items = design.items) {
   const dpmm = dpi / 25.4;
   if (medium.lengthDots) return medium.lengthDots;
   if (design.length.mode === 'fixed') return Math.max(1, Math.round(design.length.mm * dpmm));
   let right = 0;
-  for (const item of design.items) {
+  for (const item of items) {
     const b = itemBounds(ctx, item, dpmm);
     right = Math.max(right, b.x + b.w);
   }
   return Math.max(Math.round(5 * dpmm), Math.round(right + design.length.padMm * dpmm));
 }
 
-export function renderDesign(design, model, medium, onAssetLoad) {
+// Renders one label. opts.items: the items to draw (default all);
+// opts.length: the strip length in dots (default from stripLength);
+// opts.ext: { top, bottom, right } dots of overprint border past the label
+// edge, rendered too (the bitmap grows by them; the label starts at
+// (0, ext.top)). Bounds and text layouts are relative to the label.
+export function renderDesign(design, model, medium, onAssetLoad, opts = {}) {
   const dpi = model.dpi;
   const dpmm = dpi / 25.4;
+  const items = opts.items ?? design.items;
+  const ext = { top: 0, bottom: 0, right: 0, ...opts.ext };
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  const width = stripLength(design, medium, dpi, ctx);
-  const height = medium.acrossDots;
+  const length = opts.length ?? stripLength(design, medium, dpi, ctx, items);
+  const across = medium.acrossDots;
+  const width = length + ext.right;
+  const height = ext.top + across + ext.bottom;
   canvas.width = width;
   canvas.height = height;
 
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, width, height);
-  for (const item of design.items) {
+  ctx.translate(0, ext.top);
+  for (const item of items) {
     if (item.type === 'text') drawText(ctx, item, dpmm);
     else if (item.type === 'image') drawImage(ctx, item, dpmm, onAssetLoad);
     else if (item.type === 'box') drawBox(ctx, item, dpmm);
     else if (item.type === 'qr' || item.type === 'barcode') drawCode(ctx, item, dpmm);
   }
-  if (design.border) drawBox(ctx, { x: 0, y: 0, w: width / dpmm, h: height / dpmm, stroke: 0.4 }, dpmm);
+  if (design.border) drawBox(ctx, { x: 0, y: 0, w: length / dpmm, h: across / dpmm, stroke: 0.4 }, dpmm);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
 
   const id = ctx.getImageData(0, 0, width, height);
   const data = new Uint8Array(width * height);
@@ -269,11 +280,12 @@ export function renderDesign(design, model, medium, onAssetLoad) {
     const l = 0.299 * id.data[p] + 0.587 * id.data[p + 1] + 0.114 * id.data[p + 2];
     data[i] = l < 128 ? 1 : 0;
   }
+  // Inverting covers the overprint border too: black right to the edge.
   if (design.invert) for (let i = 0; i < data.length; i++) data[i] ^= 1;
 
-  const bounds = design.items.map((item) => itemBounds(ctx, item, dpmm));
-  const textLayouts = design.items.map((item) => (item.type === 'text' ? textLayout(ctx, item, dpmm) : null));
-  return { bitmap: { width, height, data }, bounds, textLayouts, dpmm };
+  const bounds = items.map((item) => itemBounds(ctx, item, dpmm));
+  const textLayouts = items.map((item) => (item.type === 'text' ? textLayout(ctx, item, dpmm) : null));
+  return { bitmap: { width, height, data }, length, bounds, textLayouts, dpmm };
 }
 
 // Turn a 1-bit bitmap into a canvas, e.g. for preview or PNG export.
