@@ -322,9 +322,10 @@ function buildSetup() {
   $('length-fixed-note').hidden = !fixedLength;
   document.querySelectorAll('input[name="lenmode"]').forEach((r) => { r.checked = r.value === design.length.mode; });
   $('len-mm').value = design.length.mm;
-  $('len-mm').disabled = design.length.mode !== 'fixed';
+  // Only the setting that applies: a length when fixed, padding when it fits the content.
+  $('len-mm').closest('label').hidden = design.length.mode !== 'fixed';
   $('pad-mm').value = design.length.padMm;
-  $('pad-mm').disabled = design.length.mode !== 'auto';
+  $('pad-mm').closest('label').hidden = design.length.mode !== 'auto';
   $('border').checked = !!design.border;
   $('invert').checked = !!design.invert;
 
@@ -374,7 +375,7 @@ function buildAdjust() {
     i.type = 'number';
     i.step = '0.1';
     i.value = a[key];
-    i.oninput = () => { setAdjust(key, parseFloat(i.value) || 0); refresh(); };
+    i.oninput = () => { setAdjust(key, parseFloat(i.value) || 0); updateAdjustState(); refresh(); };
     l.append(i);
     return l;
   };
@@ -388,9 +389,9 @@ function buildAdjust() {
     ? `For your roll "${roll.name}" (${roll.id}), a ${medium().name}. Saved in this browser.`
     : `Default for ${medium().name} on this printer, saved in this browser. Third-party rolls can be saved as their own roll below. Use the test prints to measure it.`;
 
-  const tests = document.createElement('details');
+  const tests = document.createElement('div');
   tests.className = 'tests';
-  const summary = document.createElement('summary');
+  const summary = document.createElement('h3');
   summary.textContent = 'Test prints (hardware check)';
   const row = document.createElement('div');
   row.className = 'row';
@@ -409,6 +410,19 @@ function buildAdjust() {
     + 'Lines in the hatched border may be missing; that is expected. Full black shows everything the printer can reach.';
   tests.append(summary, row, how);
   box.replaceChildren(grid, note, rollPanel(roll), tests);
+  updateAdjustState();
+}
+
+// The collapsed "Position adjust" heading still says when something is active.
+function updateAdjustState() {
+  const a = adjust();
+  const roll = currentRoll();
+  const fmt = (v) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v)}`;
+  const parts = [];
+  if (a.feedMm) parts.push(`Feed ${fmt(a.feedMm)}`);
+  if (a.acrossMm) parts.push(`Across ${fmt(a.acrossMm)}`);
+  if (roll) parts.push(`roll ${roll.id}`);
+  $('adjust-state').textContent = parts.length ? `· ${parts.join(' · ')}` : '';
 }
 
 // Chooses a catalogue label type, or one of "My rolls" ("roll:ID").

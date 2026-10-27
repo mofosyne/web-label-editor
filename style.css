@@ -250,8 +250,8 @@ textarea.inplace {
   .topbar { padding: 10px 16px; }
 }
 
-details.tests { margin: 4px 0 10px; }
-details.tests summary { cursor: pointer; color: var(--accent); margin-bottom: 8px; }
+.tests { margin: 4px 0 10px; }
+.tests h3 { font-size: 13px; margin: 12px 0 6px; }
 .roll-code { font-size: 13px; margin: 4px 0 8px; }
 .roll-code strong { font-size: 16px; letter-spacing: .08em; }
 .roll-code code { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; user-select: all; }
@@ -270,3 +270,14 @@ table.compat th { color: var(--muted); font-weight: 600; }
 table.compat tr.tested td:first-child { font-weight: 600; }
 table.compat tr.unimplemented td { color: var(--muted); }
 table.compat td:nth-child(2), table.compat td:nth-child(3) { white-space: nowrap; }
+
+details.section { margin: 18px 0 8px; }
+details.section > summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+details.section > summary::-webkit-details-marker { display: none; }
+details.section > summary::before { content: '▸'; color: var(--muted); font-size: 11px; }
+details.section[open] > summary::before { content: '▾'; }
+details.section > summary h2 { display: inline; margin: 0; white-space: nowrap; }
+details.section > summary .state { color: var(--accent); font-size: 12px; }
+details.section > div { margin-top: 10px; }
+details.section > summary .state { flex-basis: 100%; padding-left: 14px; }
+label[hidden] { display: none; }
