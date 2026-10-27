@@ -49,7 +49,7 @@ export function compatRows(models) {
   for (const brand of brands) {
     for (const model of Object.values(models).filter((m) => m.brand === brand)) {
       for (const d of model.devices) {
-        rows.push({ brand, name: d.name, status: d.status, connection: connection(model), media: mediaSummary(model) });
+        rows.push({ brand, name: d.name, status: d.status, connection: d.connection ?? connection(model), media: mediaSummary(model) });
       }
     }
     for (const u of UNIMPLEMENTED.filter((x) => x.brand === brand)) {

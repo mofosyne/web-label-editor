@@ -63,15 +63,15 @@ function labelWriter({ name, status, devices, headDots = 672, productIds, rollSe
 // ---- Brother P-touch (TZe tape, 180 dpi, 128-dot head) ----
 // Per-model quirks and USB product IDs from ptouch-print's device table.
 
-const PT_NOTE = 'P-touch printers feed roughly 25 mm of blank leader tape before each print; this is a hardware limit.';
+const PT_NOTE = 'P-touch printers leave a little blank tape before and after the print (on a PT-P710BT: about 4.5 mm before, 2 mm after).';
 const PLITE = 'Turn off its P-Lite (Editor Lite) mode: in that mode it appears as a USB drive, not a printer.';
 
-function pTouch({ name, status, productId, maxTapeMm = 24, quirks = {}, bluetooth = false, note = PT_NOTE }) {
+function pTouch({ name, status, devices, productId, maxTapeMm = 24, quirks = {}, bluetooth = false, note = PT_NOTE }) {
   return {
     brand: 'Brother P-touch',
     name,
     status,
-    devices: [{ name, status }],
+    devices: devices ?? [{ name, status }],
     family: 'brother-pt',
     dpi: 180,
     headDots: HEAD_DOTS,
@@ -151,7 +151,16 @@ export const MODELS = {
   'dymo-lw450tt': labelWriter({ name: 'DYMO LabelWriter 450 Twin Turbo', status: 'experimental', productIds: [0x0022], rollSelect: true }),
   'dymo-lw4xl': labelWriter({ name: 'DYMO LabelWriter 4XL', status: 'experimental', headDots: 1248, productIds: [0x0025] }),
 
-  'brother-pt-p710bt': pTouch({ name: 'Brother PT-P710BT', status: 'experimental', productId: 0x20af, bluetooth: true }),
+  'brother-pt-p710bt': pTouch({
+    name: 'Brother PT-P710BT',
+    status: 'tested',
+    devices: [
+      { name: 'Brother PT-P710BT (USB)', status: 'tested', connection: 'USB' },
+      { name: 'Brother PT-P710BT (Bluetooth)', status: 'experimental', connection: 'Bluetooth' },
+    ],
+    productId: 0x20af,
+    bluetooth: true,
+  }),
   'brother-pt-p700': pTouch({ name: 'Brother PT-P700', status: 'experimental', productId: 0x2061, quirks: { p700Init: true }, note: `${PT_NOTE} ${PLITE}` }),
   'brother-pt-p750w': pTouch({ name: 'Brother PT-P750W', status: 'experimental', productId: 0x2062, quirks: { p700Init: true, precut: false }, note: `${PT_NOTE} ${PLITE}` }),
   'brother-pt-h500': pTouch({ name: 'Brother PT-H500', status: 'experimental', productId: 0x205e }),

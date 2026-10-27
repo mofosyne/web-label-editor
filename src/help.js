@@ -68,9 +68,18 @@ const GUIDES = {
         p('Linux only lets the browser open USB devices your user has permission for. This udev rule grants it to whoever is logged in at the desktop:'),
         commandBlock(`${install}\nsudo udevadm control --reload-rules && sudo udevadm trigger`),
         p('Fixes: "Failed to execute \'open\' on \'USBDevice\': Access denied". To undo, delete the file: sudo rm /etc/udev/rules.d/60-label-printer.rules')),
-      step('2. Unplug the printer and plug it back in', false,
+      step('2. Browser from a snap or Flatpak? Let it use USB too', ctx.stage === 'open',
+        p('Ubuntu installs Chromium as a snap, and snaps and Flatpaks are sandboxed away from USB devices even after the '
+          + 'rule above. Grant access once (you need both this and the rule):'),
+        p(el('strong', { textContent: 'Snap' }), ' (Ubuntu\'s Chromium; check with: snap list chromium):'),
+        commandBlock('sudo snap connect chromium:raw-usb'),
+        p(el('strong', { textContent: 'Flatpak' }), ' (check with: flatpak list --app; use your browser\'s app ID):'),
+        commandBlock('flatpak override --user --device=all com.google.Chrome\nflatpak override --user --device=all org.chromium.Chromium'),
+        p('Then quit the browser completely and start it again. If a Flatpak browser still cannot see the printer, a '
+          + 'browser installed from your distribution\'s regular packages or Google\'s own package avoids the sandbox.')),
+      step('3. Unplug the printer and plug it back in', false,
         p('The new permission applies when the device is reconnected.')),
-      step('3. Only if it says the interface can\'t be claimed', ctx.stage === 'claim',
+      step('4. Only if it says the interface can\'t be claimed', ctx.stage === 'claim',
         p('Something else has the printer. Find the printer in this tree and read its Driver= value: "usblp" is the kernel printer driver (fix below); "usbfs" means a program has it, usually CUPS mid-job or another label tool, so close it or run sudo systemctl stop cups while you print here.'),
         commandBlock('lsusb -t\nlsmod | grep usblp'),
         p('If "sudo modprobe -r usblp" says the module is in use, CUPS has it open: stop CUPS first (sudo systemctl stop cups), unload usblp, then start CUPS again.'),
@@ -80,9 +89,6 @@ const GUIDES = {
         commandBlock("echo 'blacklist usblp' | sudo tee /etc/modprobe.d/no-usblp.conf\nsudo modprobe -r usblp"),
         p('Undo at any time: delete the file and load the module again (or reboot).'),
         commandBlock('sudo rm /etc/modprobe.d/no-usblp.conf\nsudo modprobe usblp')),
-      step('Using Chromium from a snap?', false,
-        p('Snaps are sandboxed and need USB access granted once:'),
-        commandBlock('sudo snap connect chromium:raw-usb')),
       step('Still "access denied" after the rule and a replug?', false,
         p('Find the printer\'s bus and device numbers, then check whether your user got access to it (replace 001/007 with them):'),
         commandBlock('lsusb | grep -i -E "dymo|brother"\ngetfacl /dev/bus/usb/001/007'),
@@ -91,9 +97,8 @@ const GUIDES = {
         commandBlock('loginctl show-session $XDG_SESSION_ID -p Active -p Seat'),
         p('To rule that out, let any user use the printer instead (replug afterwards):'),
         commandBlock(`echo '${rules[0].replace('TAG+="uaccess"', 'MODE="0666"')}' | sudo tee /etc/udev/rules.d/60-label-printer.rules`),
-        p('The line is there but Chrome is still refused: restart the browser completely. A Flatpak browser cannot see USB '
-          + 'devices without permission, e.g. flatpak override --user --device=all com.google.Chrome, or use the '
-          + 'browser\'s regular package.')),
+        p('The line is there but the browser is still refused: it is probably a snap or Flatpak (step 2), or needs a full '
+          + 'restart.')),
     ];
   },
   windows(ctx) {

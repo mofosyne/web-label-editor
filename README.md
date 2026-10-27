@@ -41,7 +41,8 @@ another Chromium browser on desktop to print; any browser to design)
 | DYMO LabelWriter 4XL | 🧪 Experimental | USB | LabelWriter labels, up to 104 mm |
 | DYMO LabelWriter SE450 | ⬜ Unimplemented |  | Same protocol with a narrower 448-dot head; not wired up yet. |
 | DYMO LabelManager (D1 tape) | ⬜ Unimplemented |  | Different protocol, and it first appears as a USB drive. |
-| Brother PT-P710BT | 🧪 Experimental | USB, Bluetooth | TZe tape, up to 24 mm |
+| Brother PT-P710BT (USB) | ✅ Tested | USB | TZe tape, up to 24 mm |
+| Brother PT-P710BT (Bluetooth) | 🧪 Experimental | Bluetooth | TZe tape, up to 24 mm |
 | Brother PT-P700 | 🧪 Experimental | USB | TZe tape, up to 24 mm |
 | Brother PT-P750W | 🧪 Experimental | USB | TZe tape, up to 24 mm |
 | Brother PT-H500 | 🧪 Experimental | USB | TZe tape, up to 24 mm |
@@ -84,7 +85,9 @@ described [below](#adding-a-printer).
    size follows the box.
 3. **Connect USB** (or Bluetooth), then **Print**. If your OS refuses the
    browser access, the app shows the one-time fix (see
-   [per-OS setup](#connecting-per-os-setup)).
+   [per-OS setup](#connecting-per-os-setup)). On Linux with a snap or
+   Flatpak browser, such as Ubuntu's Chromium, the sandbox needs a one-line
+   permission as well.
 4. If prints land off position, use **Test prints** in the Printer panel to
    calibrate (see [Labels, margins and calibration](#labels-margins-and-calibration)).
 
@@ -171,7 +174,24 @@ Then unplug and replug the printer. (`uaccess` grants the logged-in desktop
 user access. On a system without it, use `MODE="0666"` instead of
 `TAG+="uaccess"`.)
 
-- **Chromium from a snap:** also run `sudo snap connect chromium:raw-usb`.
+**Browser installed as a snap or Flatpak? You also need this.** Ubuntu ships
+Chromium as a snap, and snaps and Flatpaks are sandboxed away from USB
+devices even after the udev rule. Grant access once, then quit and restart
+the browser:
+
+```sh
+# Snap (Ubuntu's Chromium; check with: snap list chromium)
+sudo snap connect chromium:raw-usb
+
+# Flatpak (check with: flatpak list --app; use your browser's app ID)
+flatpak override --user --device=all com.google.Chrome
+flatpak override --user --device=all org.chromium.Chromium
+```
+
+If a Flatpak browser still can't see the printer, a browser from your
+distribution's regular packages (or Google's own Chrome package) avoids the
+sandbox.
+
 - **"Unable to claim interface"** (only then): something else has the
   printer. `lsusb -t` shows the printer's `Driver=`: `usblp` is the kernel
   printer driver (below); `usbfs` means a program has it, usually CUPS mid-job,
@@ -249,8 +269,8 @@ take a few seconds to send.
   roll's core. Its calibration code (e.g. `K7QX/30252/F5.0/A0.0`: ID, label
   type, Feed and Across in mm) sets the roll up on another computer via *Add
   roll from code…*.
-- P-touch printers feed about 25 mm of leader tape before each print; that is
-  the hardware, not the app.
+- P-touch printers leave a little blank tape around each print (measured on a
+  PT-P710BT with auto-cut: about 4.5 mm before and 2 mm after).
 
 ## Adding a label or tape size
 
