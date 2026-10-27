@@ -58,8 +58,12 @@ The trade-offs:
   through CUPS, whose USB backend runs as a system user, so they never needed
   it. Here the browser runs as you, so on Linux you add one udev rule (below).
   That is the "Access denied" error.
-- **One user of the printer at a time.** CUPS printing keeps working, but not
-  while the editor is connected, and vice versa.
+- **One user of the printer at a time.** A USB printer interface has one
+  owner at a time, so programs take turns. The editor claims the printer only
+  while it prints or reads status and then lets go, as CUPS does, so glabels
+  and the editor can both use it, just not at the same moment. The exception
+  is the `usblp` kernel driver, which holds the printer for as long as it's
+  plugged in (see Linux setup below).
 - **Chromium-based browsers only** (Chrome, Edge, Brave, Opera), since WebUSB
   and Web Serial exist only there.
 - **No print queue or network sharing.** For those, use **Download PNG** and

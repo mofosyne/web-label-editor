@@ -209,6 +209,10 @@ function showBanner(text, action) {
   b.hidden = !text;
 }
 
+function showUsbProblem(err) {
+  showBanner(err.message, { label: 'How to fix…', onClick: () => showUsbHelp(err.usbProblem) });
+}
+
 function showUsbHelp(problem = {}) {
   openHelp($('help-dialog'), { ...problem, onRetry: problem.stage ? () => connect('usb') : null });
 }
@@ -228,7 +232,7 @@ async function connect(kind) {
     transport = null;
     loaded = null;
     if (err.usbProblem) {
-      showBanner(err.message, { label: 'How to fix…', onClick: () => showUsbHelp(err.usbProblem) });
+      showUsbProblem(err);
     } else if (err.name !== 'NotFoundError') {
       showBanner(err.message);
     }
@@ -246,9 +250,10 @@ async function disconnect() {
 
 // Reads the loaded tape and switches the layout to it. Returns the status,
 // or null if the printer could not be read.
-async function detect() {
+async function detect({ keep = false } = {}) {
   try {
     const status = await model().queryStatus(transport);
+    if (!keep) await transport.release();
     loaded = status;
     if (status.mediumId) design.medium = status.mediumId;
     setStatus(`Connected: ${transport.label} · ${describeTape(status)}`, true);
@@ -257,7 +262,9 @@ async function detect() {
     refresh({ setup: true });
     return status;
   } catch (err) {
-    showBanner(`Could not read printer status: ${err.message}`);
+    if (!keep) await transport?.release();
+    if (err.usbProblem) showUsbProblem(err);
+    else showBanner(`Could not read printer status: ${err.message}`);
     return null;
   }
 }
@@ -267,7 +274,7 @@ async function detect() {
 async function checkTapeBeforePrint() {
   if (!model().queryStatus) return true;
   const before = design.medium;
-  const status = await detect();
+  const status = await detect({ keep: true });
   if (!status) return true;
   if (status.errors.length) return false;
   if (design.medium !== before) {
@@ -296,8 +303,10 @@ async function print() {
     for (let i = 0; i < copies; i++) await transport.write(job);
     showBanner(loaded?.warnings.join('; ') ?? '');
   } catch (err) {
-    showBanner(`Print failed: ${err.message}`);
+    if (err.usbProblem) showUsbProblem(err);
+    else showBanner(`Print failed: ${err.message}`);
   } finally {
+    await transport?.release();
     btn.textContent = 'Print';
     btn.disabled = !transport;
   }

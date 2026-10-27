@@ -41,23 +41,29 @@ export const support = {
   serial: typeof navigator !== 'undefined' && 'serial' in navigator,
 };
 
+// The printer's interface is claimed only while a job or status query runs
+// (acquire/release), like CUPS does, so other programs can print in between.
 export class UsbTransport {
   static async request(filters) {
     const device = await navigator.usb.requestDevice({ filters });
     const t = new UsbTransport(device);
-    await t.open();
+    // Check access up front so permission problems show on Connect.
+    await t.acquire();
+    await t.release();
     return t;
   }
 
   constructor(device) {
     this.device = device;
     this.label = device.productName || 'USB printer';
+    this.held = false;
   }
 
-  async open() {
+  async acquire() {
+    if (this.held) return;
     const d = this.device;
     try {
-      await d.open();
+      if (!d.opened) await d.open();
     } catch (err) {
       throw usbAccessError(err, 'open', d);
     }
@@ -80,12 +86,26 @@ export class UsbTransport {
       this.interfaceNumber = iface.interfaceNumber;
       this.epOut = out.endpointNumber;
       this.epIn = alt.endpoints.find((e) => e.type === 'bulk' && e.direction === 'in')?.endpointNumber;
+      this.held = true;
       return;
     }
+    await d.close().catch(() => {});
     throw new Error('No bulk OUT endpoint found on this device.');
   }
 
+  async release() {
+    if (!this.held) return;
+    this.held = false;
+    try {
+      await this.device.releaseInterface(this.interfaceNumber);
+    } catch { /* already gone */ }
+    try {
+      await this.device.close();
+    } catch { /* already closed */ }
+  }
+
   async write(bytes) {
+    await this.acquire();
     for (let off = 0; off < bytes.length; off += USB_CHUNK) {
       const r = await this.device.transferOut(this.epOut, bytes.subarray(off, off + USB_CHUNK));
       if (r.status !== 'ok') throw new Error(`USB write failed: ${r.status}`);
@@ -93,6 +113,7 @@ export class UsbTransport {
   }
 
   async read(length, timeoutMs = 2000) {
+    await this.acquire();
     if (this.epIn == null) throw new Error('Printer has no IN endpoint.');
     const out = new Uint8Array(length);
     let got = 0;
@@ -111,10 +132,7 @@ export class UsbTransport {
   }
 
   async close() {
-    try {
-      await this.device.releaseInterface(this.interfaceNumber);
-    } catch { /* already gone */ }
-    await this.device.close();
+    await this.release();
   }
 }
 
@@ -160,6 +178,9 @@ export class SerialTransport {
     }
     return out.subarray(0, Math.min(got, length));
   }
+
+  // A paired Bluetooth/serial port isn't shared with other programs anyway.
+  async release() {}
 
   async close() {
     await this.port.close();
