@@ -21,6 +21,8 @@ const link = (href, text) => el('a', { href, textContent: text, target: '_blank'
 function welcome(go) {
   const start = el('button', { type: 'button', className: 'linklike', textContent: 'Printers' });
   start.onclick = () => go('printers');
+  const othersLink = el('button', { type: 'button', className: 'linklike', textContent: 'Other tools' });
+  othersLink.onclick = () => go('others');
   return [
     p('Design labels and print them ', b('straight from your browser'), ' to DYMO LabelWriter and Brother P-touch / QL '
       + 'label printers, with no drivers or software to install. Continuous rolls are first class: a label is as long as '
@@ -33,14 +35,18 @@ function welcome(go) {
       li(b('Modelled on the original DYMO Label software'), ' (not DYMO Connect): a preview that shows exactly what will '
         + 'print, copy and paste between labels, and above all ', b('text that sizes itself to fit'), '. Too many label '
         + 'editors leave you guessing, and text gets cut off.'),
-      li(b('What you see is what prints.'), ' The preview is the exact dots the printer will burn, including the edges '
-        + 'it cannot reach (hatched).'),
+      li(b('Continuous rolls are the normal case.'), ' A label is as long as its content unless you say otherwise.'),
+      li(b('What you see is what prints.'), ' The preview is the exact dots the printer will burn. Hatched: the printer '
+        + 'cannot reach. Dashed: the safe area; going past it, even onto the liner, is allowed. You decide.'),
       li(b('Print directly.'), ' The page talks to the printer over USB or Bluetooth itself, the same on Linux, Windows, '
         + 'macOS and ChromeOS.'),
       li(b('Measure, don\'t guess.'), ' Test prints and per-roll calibration correct for your printer and your label '
         + 'stock, including third-party rolls.'),
+      li(b('Never lose work.'), ' Undo and redo cover every change, and switching how a row is filled hides a label\'s '
+        + 'design rather than deleting it.'),
       li(b('Nothing leaves your computer.'), ' It is a static page: designs stay in your browser unless you save them '
-        + 'to a file.')),
+        + 'to a file.'),
+      li(b('Say when another tool fits better.'), ' See ', othersLink, '.')),
     el('h3', { textContent: 'Getting started' }),
     el('ol', {},
       li('Pick your printer and label in the ', b('Printer'), ' panel. See ', start, ' for what is supported.'),

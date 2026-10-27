@@ -59,15 +59,29 @@ continuous rolls treated as the normal case rather than an afterthought.
   things it got right: a preview that shows what will print, copy and paste
   between labels, and above all **text that sizes itself to fit** a box.
   Too many label editors leave you guessing, and text gets cut off.
+- **Continuous rolls are the normal case.** A label is as long as its
+  content unless you say otherwise; fixed sizes and die-cut labels are the
+  special case, not the other way round.
 - **What you see is what prints.** The preview is the exact dots the printer
-  will burn, including the edges it cannot reach (hatched).
+  will burn, from the same code that prints. It shows where the printer
+  cannot reach (hatched) and the maker's safe area (dashed); going past the
+  safe area, even onto the liner, is allowed on purpose. The editor tells
+  you what will happen and leaves the call to you.
 - **Print directly.** The page talks to the printer itself, so it works the
-  same on Linux, Windows, macOS and ChromeOS, with nothing to install.
+  same on Linux, Windows, macOS and ChromeOS, with nothing to install
+  (Windows needs a one-time driver switch for USB).
 - **Measure, don't guess.** Printers and label stock vary, especially
   third-party rolls. Test prints show where ink actually lands, and the
   calibration is saved per label type or per roll.
+- **Never lose work.** Undo and redo cover every change; switching how a
+  row of labels is filled hides a label's own design rather than deleting
+  it; the current design is kept as you go and every print is in the
+  history.
 - **Nothing leaves your computer.** It is a static page; designs stay in your
   browser unless you save them to a file.
+- **Build on others' work, and say when another tool fits better.** The
+  printer protocols come from projects that worked them out first, and
+  [Other tools](#other-tools) lists the alternatives honestly.
 
 ## Printers
 
@@ -413,13 +427,49 @@ Tested a printer marked experimental, or one that isn't listed?
 ## How it works
 
 ```
-design (mm) ──render──▶ 1-bit strip bitmap (printer dpi)
-                         │  x = along the feed, y = across the head
-                         ▼
-               encoder (per printer family) ──▶ bytes ──▶ WebUSB / Web Serial
+design (mm, per label)
+   │  render.js: each label of the row, plus any overprint border
+   ▼
+view bitmap (printer dots) ◀── layout.js: label slots, overprint border,
+   │                            and what the head can reach
+   │  x = along the feed, y = across the head
+   │  layout.js jobBitmap: position adjustment, leading-margin skip,
+   │  crop to the reach
+   ▼
+job bitmap ──encoder (per printer family)──▶ bytes ──▶ WebUSB / Web Serial
 ```
 
-- `src/render.js`: design → bitmap, via an off-screen canvas.
+The preview and the printer get the same view bitmap, which is what makes
+the preview exact. Design decisions worth knowing:
+
+- **Units:** designs are in millimetres, relative to the label's top-left
+  corner, so they survive a change of printer resolution. Items on the
+  second label of a 2-up row carry `lane: 1`.
+- **Strip orientation:** every printer gets a bitmap whose x runs along the
+  feed and y across the head; the encoders map that onto each printer's
+  raster lines.
+- **Two kinds of margin:** *hard* (the printer can't put ink there: the
+  LabelWriter's leading margin, or an edge a position adjustment moved out
+  of reach) and *safe* (the maker's printable area). Only hard margins cut
+  anything off; layout.js works out the reach, including the head's width
+  past the label edge that an overprint border can use.
+- **The job is not the view:** the job drops what the printer can't reach
+  and applies the position adjustment, so a calibrated print lands where
+  the preview shows it, and a die-cut job ends at the label's end instead
+  of running into the next label.
+- **Undo:** JSON snapshots of the design; quick successive changes and a
+  whole drag merge into one step, while clicks and menu changes start new
+  ones.
+- **Docs from code:** the compatibility table, *Who it's for* and *Other
+  tools* are generated into this README from `src/` by `npm run docs`, and
+  the help pages read the same data, so neither drifts from the app.
+
+Files:
+
+- `src/app.js`: the editor UI, preview, printing and storage.
+- `src/render.js`: design → bitmap for one label, via an off-screen canvas.
+- `src/layout.js`: the view (row of labels, overprint border, reach of the
+  head), row modes, and the view → job transform.
 - `src/printers/dymo-labelwriter.js`: LabelWriter 400/450/4XL commands
   (`ESC L`, `ESC D`, `SYN` raster lines, `ESC G`/`ESC E`), from DYMO's
   [dymo-cups-drivers](https://github.com/matthiasbock/dymo-cups-drivers).
@@ -432,10 +482,17 @@ design (mm) ──render──▶ 1-bit strip bitmap (printer dpi)
   the compatibility table.
 - `catalog/media.rec`, `src/recfile.js`, `src/catalog.js`: the label catalogue,
   a small recutils reader, and the code that turns records into media.
+- `src/calibration.js`, `src/rolls.js`: test print patterns, and saved rolls
+  with their calibration codes.
 - `src/codes/qr.js`, `src/codes/barcode.js`: QR (byte mode, versions 1–40,
   levels L/M/Q/H), Code 128, EAN-13 and UPC-A encoders, verified by decoding
   every QR version and level at full capacity, and the linear codes, with
   the zxing-cpp reader.
+- `src/undo.js`, `src/library.js`: undo history; saved labels and print
+  history.
+- `src/about.js`, `src/help.js`, `src/others.js`, `src/report.js`: the
+  welcome and help pages, connection help, the other-tools list, and the
+  pre-filled issue links.
 - `src/transport.js`: WebUSB and Web Serial. The printer is claimed only while
   printing, so other programs can use it in between.
 
@@ -446,12 +503,13 @@ Plain HTML and JavaScript modules, no build step.
 ```sh
 npm run serve   # http://localhost:8000
 npm test        # unit tests
-npm run docs    # regenerate the compatibility table in this README
+npm run docs    # regenerate this README's generated sections
 ```
 
 Tests check every encoder's command stream byte by byte against its reference
 implementation's logic, the catalogue against `recsel`/`recfix` (when
-recutils is installed), and that this README's table matches the code.
+recutils is installed), the layout and undo logic, and that this README's
+generated sections match the code.
 
 `.github/workflows/ci.yml` runs the tests on every push and pull request and
 deploys `main` to GitHub Pages.
