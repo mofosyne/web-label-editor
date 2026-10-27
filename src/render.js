@@ -216,7 +216,7 @@ function drawBox(ctx, item, dpmm) {
   const y = item.y * dpmm;
   const w = item.w * dpmm;
   const h = item.h * dpmm;
-  ctx.fillStyle = '#000';
+  ctx.fillStyle = item.white ? '#fff' : '#000';
   if (item.fill) {
     ctx.fillRect(x, y, w, h);
     return;

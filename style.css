@@ -249,3 +249,6 @@ textarea.inplace {
   .stage { order: -1; }
   .topbar { padding: 10px 16px; }
 }
+
+details.tests { margin: 4px 0 10px; }
+details.tests summary { cursor: pointer; color: var(--accent); margin-bottom: 8px; }

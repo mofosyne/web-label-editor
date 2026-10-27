@@ -4,6 +4,7 @@ import { SYMBOLOGIES } from './codes/barcode.js';
 import { UsbTransport, SerialTransport, support } from './transport.js';
 import { openHelp } from './help.js';
 import { loadCatalog } from './catalog.js';
+import { testPatternDesign, shiftBitmap } from './calibration.js';
 
 const STORAGE_KEY = 'web-label-editor:design';
 const $ = (id) => document.getElementById(id);
@@ -79,7 +80,37 @@ const model = () => MODELS[design.printer] ?? MODELS['brother-pt-p710bt'];
 const medium = () => model().media.find((m) => m.id === design.medium) ?? model().media[0];
 const selected = () => design.items.find((i) => i.id === selectedId) ?? null;
 const acrossMm = () => (medium().acrossDots * 25.4) / model().dpi;
-const margins = () => mediumMargins(medium());
+// Per-printer position adjustment (mm), measured with the calibration label.
+// Positive feed moves the print towards the end that comes out last;
+// positive across moves it down (towards the bottom of the preview).
+const SETTINGS_KEY = 'web-label-editor:printers';
+let printerSettings = (() => {
+  try {
+    return JSON.parse(localStorage.getItem(SETTINGS_KEY)) ?? {};
+  } catch {
+    return {};
+  }
+})();
+const adjust = () => ({ feedMm: 0, acrossMm: 0, ...printerSettings[design.printer] });
+function setAdjust(key, value) {
+  printerSettings = { ...printerSettings, [design.printer]: { ...adjust(), [key]: value } };
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(printerSettings));
+  } catch { /* storage unavailable */ }
+}
+
+// Where the printer can actually put ink on the label: the catalogue margins,
+// moved along with any position adjustment.
+const margins = () => {
+  const mg = mediumMargins(medium());
+  const a = adjust();
+  return {
+    left: Math.max(0, mg.left - a.feedMm),
+    right: Math.max(0, mg.right + a.feedMm),
+    top: Math.max(0, mg.top - a.acrossMm),
+    bottom: Math.max(0, mg.bottom + a.acrossMm),
+  };
+};
 // The printable band across the strip, in mm.
 const bandTop = () => margins().top;
 const usableMm = () => acrossMm() - margins().top - margins().bottom;
@@ -252,6 +283,7 @@ function buildSetup() {
     return label;
   }));
   $('model-note').textContent = m.note ?? '';
+  buildAdjust();
 
   const btns = $('connect-buttons');
   const labels = { usb: 'Connect USB', serial: 'Connect Bluetooth / serial' };
@@ -265,6 +297,50 @@ function buildSetup() {
   }).slice(0, transport ? 1 : undefined));
   $('btn-detect').hidden = !(m.queryStatus && transport);
   $('btn-print').disabled = !transport;
+}
+
+function buildAdjust() {
+  const box = $('adjust');
+  const a = adjust();
+  const input = (label, key) => {
+    const l = document.createElement('label');
+    l.textContent = label;
+    const i = document.createElement('input');
+    i.type = 'number';
+    i.step = '0.1';
+    i.value = a[key];
+    i.oninput = () => { setAdjust(key, parseFloat(i.value) || 0); refresh(); };
+    l.append(i);
+    return l;
+  };
+  const grid = document.createElement('div');
+  grid.className = 'grid2';
+  grid.append(input('Feed (mm)', 'feedMm'), input('Across (mm)', 'acrossMm'));
+  const note = document.createElement('p');
+  note.className = 'note';
+  note.textContent = 'Saved for this printer in this browser. Use the test prints below to measure it.';
+
+  const tests = document.createElement('details');
+  tests.className = 'tests';
+  const summary = document.createElement('summary');
+  summary.textContent = 'Test prints (hardware check)';
+  const row = document.createElement('div');
+  row.className = 'row';
+  for (const [pattern, label] of [['grid', 'Grid'], ['black', 'Full black']]) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.disabled = !transport;
+    b.title = transport ? '' : 'Connect the printer first';
+    b.onclick = () => printTestPattern(pattern);
+    row.append(b);
+  }
+  const how = document.createElement('p');
+  how.className = 'note';
+  how.textContent = 'Grid: numbers are mm from where the label should start. If the left edge of the label falls on n, add n to Feed; '
+    + 'if the 0 line is n mm inside the label, subtract n. The top edge does the same for Across. '
+    + 'Full black: shows exactly where the printer can put ink. Both ignore the hatched margins and use the adjustment above.';
+  tests.append(summary, row, how);
+  box.replaceChildren(grid, note, tests);
 }
 
 function setStatus(text, ok = false) {
@@ -374,10 +450,8 @@ async function print() {
     }
     if (!(await checkTapeBeforePrint())) return;
     const { bitmap } = renderDesign(design, model(), medium());
-    const opts = Object.fromEntries(model().options.map((o) => [o.id, option(o.id)]));
-    const job = model().encode(bitmap, medium(), opts);
     const copies = Math.max(1, Math.min(99, parseInt($('copies').value, 10) || 1));
-    for (let i = 0; i < copies; i++) await transport.write(job);
+    await sendBitmap(bitmap, copies);
     showBanner(loaded?.warnings.join('; ') ?? '');
   } catch (err) {
     if (err.usbProblem) showUsbProblem(err);
@@ -386,6 +460,39 @@ async function print() {
     await transport?.release();
     btn.textContent = 'Print';
     btn.disabled = !transport;
+  }
+}
+
+// Applies the position adjustment, encodes and sends.
+async function sendBitmap(bitmap, copies = 1) {
+  const dpmm = model().dpi / 25.4;
+  const a = adjust();
+  const shifted = shiftBitmap(bitmap, Math.round(a.feedMm * dpmm), Math.round(a.acrossMm * dpmm), {
+    grow: !medium().lengthDots,
+  });
+  const opts = Object.fromEntries(model().options.map((o) => [o.id, option(o.id)]));
+  const job = model().encode(shifted, medium(), opts);
+  for (let i = 0; i < copies; i++) await transport.write(job);
+}
+
+// Prints a hardware test pattern over the whole label (margins ignored).
+async function printTestPattern(pattern) {
+  if (!transport) return;
+  const med = medium();
+  const dpmm = model().dpi / 25.4;
+  const lengthMm = med.lengthDots ? med.lengthDots / dpmm : 60;
+  const test = testPatternDesign(pattern, lengthMm, acrossMm(), dpmm, { printer: design.printer, medium: med.id });
+  try {
+    const { bitmap } = renderDesign(test, model(), med);
+    await sendBitmap(bitmap);
+    showBanner(pattern === 'grid'
+      ? 'Grid sent. Find the number at the left edge of the label: if the edge cuts in at n, add n to Feed; if the 0 line is n mm inside, subtract n. Same for the top edge and Across.'
+      : 'Full black sent. The black area is everything the printer can reach on this label.');
+  } catch (err) {
+    if (err.usbProblem) showUsbProblem(err);
+    else showBanner(`Print failed: ${err.message}`);
+  } finally {
+    await transport?.release();
   }
 }
 

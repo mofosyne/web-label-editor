@@ -141,6 +141,12 @@ it was added there.
 - **Printable area:** the hatched border in the preview is where the printer
   can't print, taken from DYMO's own driver (about 5.8 mm at the end that
   feeds out first, 1–1.5 mm elsewhere). Anything placed there is flagged.
+- **Position adjust and test prints:** if prints land off position, open
+  *Test prints* in the Printer panel. **Grid** prints a millimetre grid
+  numbered from where the label should start: the number at the label's left
+  edge is how far to adjust **Feed** (the top edge gives **Across**).
+  **Full black** shows everything the printer can reach. The adjustment is
+  saved per printer in the browser and moves the hatched border with it.
 - **Fit text in a box:** tick it on a text item to give it a fixed box; the
   font size is chosen automatically so the text fills it. *Fill printable
   area* makes the box cover the whole usable label. Drag the corner handle to

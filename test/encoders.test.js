@@ -141,3 +141,33 @@ test('P-touch: status reports tape type and colours', () => {
   buf[11] = 0xff;
   assert.ok(parseStatus(buf).errors.includes('Incompatible tape'));
 });
+
+test('shiftBitmap moves content and can grow continuous strips', async () => {
+  const { shiftBitmap } = await import('../src/calibration.js');
+  const src = bitmap(4, 3, (x, y) => x === 0 && y === 0);
+  const right = shiftBitmap(src, 2, 1);
+  assert.equal(right.width, 4);
+  assert.equal(right.data[1 * 4 + 2], 1);
+  assert.equal(right.data.reduce((a, b) => a + b), 1);
+  const lost = shiftBitmap(src, -1, 0);
+  assert.equal(lost.data.reduce((a, b) => a + b), 0, 'pushed past the edge');
+  const grown = shiftBitmap(src, 3, 0, { grow: true });
+  assert.equal(grown.width, 7);
+  assert.equal(grown.data[3], 1);
+  assert.equal(shiftBitmap(src, 0, 0), src);
+});
+
+test('test patterns: numbered grid and full black', async () => {
+  const { testPatternDesign } = await import('../src/calibration.js');
+  const dpmm = 300 / 25.4;
+  const grid = testPatternDesign('grid', 88.9, 27.86, dpmm);
+  assert.equal(grid.length.mm, 88.9);
+  const lines = grid.items.filter((it) => it.type === 'box');
+  assert.equal(lines.filter((it) => it.h === 27.86).length, 89, 'a line every mm along the feed');
+  assert.equal(lines.filter((it) => it.w === 88.9).length, 28, 'a line every mm across');
+  const numbers = grid.items.filter((it) => it.type === 'text').map((it) => it.text);
+  assert.ok(numbers.includes('0') && numbers.includes('85') && numbers.includes('25'));
+  assert.equal(new Set(grid.items.map((it) => it.id)).size, grid.items.length);
+  const black = testPatternDesign('black', 60, 54, dpmm);
+  assert.deepEqual(black.items.map((it) => [it.x, it.y, it.w, it.h, it.fill]), [[0, 0, 60, 54, true]]);
+});
