@@ -611,6 +611,7 @@ function buildProps() {
     }));
   }
   row.append(
+    btn('Duplicate', duplicateSelected),
     btn('Forward', () => moveItem(item, 1)),
     btn('Back', () => moveItem(item, -1)),
     btn('Delete', () => deleteItem(item)),
@@ -867,9 +868,86 @@ function onDoubleClick(e) {
   }
 }
 
+// ---------- copy and paste ----------
+
+const CLIP_TYPE = 'application/x-web-label-items';
+let clipboard = null; // { text, items } as last copied here
+
+// Copy/paste act on label items unless the user is typing in a field.
+const typingInField = () => {
+  const el = document.activeElement;
+  return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+};
+
+function itemPlainText(item) {
+  if (item.type === 'text') return item.text;
+  if (item.type === 'qr' || item.type === 'barcode') return item.data;
+  return '';
+}
+
+function pasteItems(items, offset = 2) {
+  if (!items.length) return;
+  const copies = items.map((it) => ({ ...structuredClone(it), id: uid(), x: round1(it.x + offset), y: round1(it.y + offset) }));
+  design.items.push(...copies);
+  selectedId = copies.at(-1).id;
+  refresh({ props: true });
+}
+
+function duplicateSelected() {
+  const item = selected();
+  if (item) pasteItems([item]);
+}
+
+function onCopy(e, cut = false) {
+  const item = selected();
+  if (typingInField() || editing || !item) return;
+  e.preventDefault();
+  const text = itemPlainText(item);
+  clipboard = { text, items: [structuredClone(item)] };
+  e.clipboardData.setData('text/plain', text);
+  e.clipboardData.setData(CLIP_TYPE, JSON.stringify(clipboard.items));
+  if (cut) deleteItem(item);
+}
+
+function onPaste(e) {
+  if (typingInField() || editing) return;
+  const data = e.clipboardData;
+  e.preventDefault();
+  // Our own items (copied in this or another tab of the editor).
+  const raw = data.getData(CLIP_TYPE);
+  if (raw) {
+    try {
+      pasteItems(JSON.parse(raw).filter((it) => it && typeof it.type === 'string'));
+      return;
+    } catch { /* fall through to plain text */ }
+  }
+  const text = data.getData('text/plain');
+  if (clipboard && text === clipboard.text && !data.files.length) {
+    pasteItems(clipboard.items);
+    return;
+  }
+  const image = [...data.files].find((f) => f.type.startsWith('image/'));
+  if (image) {
+    addImage(image);
+    return;
+  }
+  if (text.trim()) {
+    const size = Math.max(1.5, round1(usableMm() * 0.6));
+    addItem({
+      type: 'text', text: text.replace(/\s+$/, ''), font: 'sans-serif', size, bold: false, italic: false, align: 'left',
+      x: nextX(), y: round1(bandTop() + (usableMm() - size * 1.15) / 2),
+    });
+  }
+}
+
 function onKey(e) {
   const item = selected();
   if (!item) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+    e.preventDefault();
+    duplicateSelected();
+    return;
+  }
   const step = e.shiftKey ? 1 : 0.1;
   const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
   if (moves[e.key]) {
@@ -947,6 +1025,9 @@ function wire() {
   canvas.addEventListener('pointercancel', onPointerUp);
   canvas.addEventListener('keydown', onKey);
   canvas.addEventListener('dblclick', onDoubleClick);
+  document.addEventListener('copy', (e) => onCopy(e));
+  document.addEventListener('cut', (e) => onCopy(e, true));
+  document.addEventListener('paste', onPaste);
 
   if (support.usb) {
     navigator.usb.addEventListener('disconnect', (e) => {
