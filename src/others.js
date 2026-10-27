@@ -17,8 +17,7 @@ export const OTHER_TOOLS = [
     group: 'Label editors in the browser, printing directly',
     tools: [
       ['label-maker (burnmark)', gh('burnmark-io/label-maker'), 'Vue label designer printing over WebUSB to Brother QL, DYMO LabelWriter and DYMO LabelManager printers.'],
-      ['labelsmith', gh('alexbrazier/labelsmith'), 'designer for Brother P-touch printers, printing over WebUSB or Bluetooth.'],
-      ['labelpeel', gh('LookLeft/labelpeel'), 'designer for Brother P-touch printers over Bluetooth or USB, also as Mac, Android and iOS apps.'],
+      ['labelpeel', gh('LookLeft/labelpeel'), 'designer for Brother P-touch printers (experimental QL) over Bluetooth or USB, with auto-fit text, templates, CSV data and P-touch Editor file import; also Mac and Android apps. Formerly labelsmith.'],
       ['ql700-printer', gh('fipppi/ql700-printer'), 'designer for the Brother QL-700 over WebUSB.'],
       ['ptouch (fjanicki)', gh('fjanicki/ptouch'), 'Rust library and web studio for Brother P-touch Bluetooth printers (PT-P710BT); early development.'],
     ],
