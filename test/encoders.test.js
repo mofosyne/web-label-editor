@@ -195,3 +195,14 @@ test('P-touch quirks: E310BT-style models (ptouch-print FLAG_P700_INIT|USE_INFO_
   assert.deepEqual(take(1), [0x1a]);
   assert.equal(i, out.length);
 });
+
+test('composeRow places a label into each slot of a multi-up row', async () => {
+  const { composeRow } = await import('../src/calibration.js');
+  const label = bitmap(3, 2, (x, y) => x === y);
+  const lanes = { count: 2, pitchDots: 2, pageDots: 4 };
+  const full = composeRow(label, lanes);
+  assert.equal(full.height, 4);
+  assert.deepEqual([...full.data], [1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0]);
+  const half = composeRow(label, lanes, 1);
+  assert.deepEqual([...half.data], [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0], 'second slot left blank');
+});

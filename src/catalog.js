@@ -38,6 +38,16 @@ function toMedium(rec, model) {
     },
   };
   if (kind === 'diecut') medium.lengthDots = num('PrintableLengthDots') ?? toDots(num('LengthMm', true));
+  // "2 up" labels: the editor designs one label; printing places it into
+  // each slot of the row (see composeRow).
+  const across = num('LabelsAcross');
+  if (across > 1) {
+    // The real row width (not clipped to the head) so slots sit where the
+    // labels are; anything past the head falls in the edge margin.
+    const pageDots = toDots(widthMm);
+    medium.acrossDots = Math.floor(pageDots / across);
+    medium.lanes = { count: across, pitchDots: medium.acrossDots, pageDots };
+  }
   medium.widthMm = widthMm;
   if (kind === 'diecut') medium.lengthMm = num('LengthMm', true);
   const offsetR = num('OffsetRightDots');
@@ -54,11 +64,12 @@ function toMedium(rec, model) {
 
 const FAMILIES = new Set(['dymo-lw', 'brother-pt', 'brother-ql']);
 
-// A medium fits a model if it is no wider than the head (2% slack: DYMO's
-// 57 mm labels are a hair wider than the 450's head and get clipped) and not
-// wider than the model's widest supported tape.
+// A medium fits a model if its printable width (paper width minus the edge
+// margins, or Brother's printable dots) fits the head, with 2% slack, and it
+// is not wider than the model's widest supported tape.
 function fits(rec, medium, model) {
-  const widthDots = Math.round((Number(field(rec, 'WidthMm')) * model.dpi) / 25.4);
+  const printableMm = Number(field(rec, 'WidthMm')) - medium.margins.top - medium.margins.bottom;
+  const widthDots = Math.round((printableMm * model.dpi) / 25.4);
   const across = field(rec, 'PrintableDots') != null ? medium.acrossDots : widthDots;
   if (across > model.headDots * 1.02) return false;
   return model.maxWidthMm == null || Number(field(rec, 'WidthMm')) <= model.maxWidthMm;

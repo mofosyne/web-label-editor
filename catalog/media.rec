@@ -22,6 +22,8 @@
 #   OffsetRightDots, FeedMarginDots  Brother QL placement and feed values
 #   Margin*Mm      edges the printer cannot print on (default 0)
 #   CornerMm       corner radius drawn in the preview (die-cut only)
+#   LabelsAcross   labels side by side in each row ("2 up"); WidthMm is the
+#                  whole row and the editor designs one label of it
 #   StatusMm       tape width the printer reports in its status (Brother)
 #   Source         where the numbers come from
 #
@@ -33,7 +35,7 @@
 %type: Family enum dymo-lw brother-pt brother-ql
 %type: Kind enum continuous diecut
 %type: WidthMm,LengthMm,MarginLeftMm,MarginRightMm,MarginTopMm,MarginBottomMm,CornerMm real
-%type: PrintableDots,PrintableLengthDots,OffsetRightDots,FeedMarginDots,StatusMm int
+%type: PrintableDots,PrintableLengthDots,OffsetRightDots,FeedMarginDots,StatusMm,LabelsAcross int
 
 # ---------------------------------------------------------------------------
 # DYMO LabelWriter 400 / 450 / 4XL (300 dpi; 672-dot head, 1248 on the 4XL)
@@ -170,8 +172,56 @@ PrintableDots: 128
 StatusMm: 24
 Source: ptouch-print tape_info (Brother raster reference)
 
+# Multi-up DYMO labels: several labels side by side in each row. DYMO's PPD
+# describes the whole row as one page and gives no gap between the labels,
+# so the row is split evenly and each label keeps the page's edge margins;
+# check the real gap with a Grid test print.
+
+Id: 30333
+Family: dymo-lw
+Name: 30333 1/2 × 1 in, 2 per row
+Kind: diecut
+WidthMm: 25.4
+LengthMm: 25.4
+LabelsAcross: 2
+MarginLeftMm: 2.37
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 1
+Source: lw450.ppd 30333 (2 up): 72 x 72 pt, imageable 4.08 4.32 69.12 65.28
+
+Id: 30253
+Family: dymo-lw
+Name: 30253 Address 28 × 89 mm, 2 per row
+Kind: diecut
+WidthMm: 58.67
+LengthMm: 88.9
+LabelsAcross: 2
+MarginLeftMm: 5.76
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 3
+Source: lw450.ppd 30253 (2 up): 166.32 x 252 pt, imageable 4.08 4.32 163.44 235.68
+
+Id: 30277
+Family: dymo-lw
+Name: 30277 File Folder 14 × 87 mm, 2 per row
+Kind: diecut
+WidthMm: 28.62
+LengthMm: 87.29
+LabelsAcross: 2
+MarginLeftMm: 5.08
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.52
+CornerMm: 2
+Source: lw450.ppd 30277 (2 up): 81.12 x 247.44 pt, imageable 4.32 4.32 78.24 233.04
+
 # ---------------------------------------------------------------------------
-# DYMO LabelWriter 4XL only (wider than the 450's head)
+# DYMO labels from the LabelWriter 4XL driver. 1744907 is too wide for the
+# 450's head; 30256 and 99019 fit it (their printable width is under 57 mm).
 # From DYMO's lw4xl.ppd, converted the same way as above.
 
 Id: 1744907

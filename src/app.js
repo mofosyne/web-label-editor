@@ -7,7 +7,7 @@ import { openAbout } from './about.js';
 import { labels, history, openLibrary } from './library.js';
 import { printerReportUrl, labelRequestUrl } from './report.js';
 import { loadCatalog } from './catalog.js';
-import { testPatternDesign, shiftBitmap } from './calibration.js';
+import { testPatternDesign, shiftBitmap, composeRow } from './calibration.js';
 import { newRollId, rollCode, parseRollCode } from './rolls.js';
 
 const STORAGE_KEY = 'web-label-editor:design';
@@ -143,18 +143,32 @@ function setAdjust(key, value) {
   } catch { /* storage unavailable */ }
 }
 
-// Where the printer can actually put ink on the label. A position
-// adjustment shifts what is sent, which makes the edge it shifts away from
-// unreachable: e.g. Feed -6 (printer starts 6 mm late) means nothing can
-// print in the first 6 mm. The catalogue margins apply as well.
-const margins = () => {
+// Two kinds of margin. Hard: where the printer cannot put ink at all. A
+// position adjustment shifts what is sent, which makes the edge it shifts
+// away from unreachable: e.g. Feed -6 (printer starts 6 mm late) means
+// nothing can print in the first 6 mm; the LabelWriter also never prints its
+// leading margin (see skipLeadingMargin). Safe: the catalogue margins (DYMO's
+// driver), where the head can print but the die-cut edge or a slightly
+// misplaced label may trim it off. Printing into the safe margin, up to the
+// label edge, is allowed: that is how to overprint (bleed) to the edge.
+const hardMargins = () => {
   const mg = mediumMargins(medium());
   const a = adjust();
   return {
-    left: Math.max(mg.left, -a.feedMm),
-    right: Math.max(mg.right, a.feedMm),
-    top: Math.max(mg.top, -a.acrossMm),
-    bottom: Math.max(mg.bottom, a.acrossMm),
+    left: Math.max(model().skipLeadingMargin ? mg.left : 0, -a.feedMm),
+    right: Math.max(0, a.feedMm),
+    top: Math.max(0, -a.acrossMm),
+    bottom: Math.max(0, a.acrossMm),
+  };
+};
+const margins = () => {
+  const mg = mediumMargins(medium());
+  const hard = hardMargins();
+  return {
+    left: Math.max(mg.left, hard.left),
+    right: Math.max(mg.right, hard.right),
+    top: Math.max(mg.top, hard.top),
+    bottom: Math.max(mg.bottom, hard.bottom),
   };
 };
 // The printable band across the strip, in mm.
@@ -214,19 +228,21 @@ function draw() {
   ctx.drawImage(bitmapToCanvas(bitmap, colors.ink, colors.paper), 0, 0, cssW, cssH);
   canvas.style.borderRadius = med.cornerMm ? `${med.cornerMm * zoom}px` : '0';
 
-  // Shade the border the printer cannot print on.
-  const mg = margins();
+  // Hatch the border the printer cannot print on; a dashed line marks the
+  // safe area (printing past it overprints towards the label edge).
   const lenMm = bitmap.width / dpmm;
-  const area = {
+  const toArea = (mg) => ({
     x0: mg.left * zoom, y0: mg.top * zoom,
     x1: (lenMm - mg.right) * zoom, y1: (acrossMm() - mg.bottom) * zoom,
-  };
-  if (mg.left || mg.right || mg.top || mg.bottom) {
-    ctx.fillStyle = marginPattern(ctx);
-    ctx.fillRect(0, 0, cssW, area.y0);
-    ctx.fillRect(0, area.y1, cssW, cssH - area.y1);
-    ctx.fillRect(0, area.y0, area.x0, area.y1 - area.y0);
-    ctx.fillRect(area.x1, area.y0, cssW - area.x1, area.y1 - area.y0);
+  });
+  const hard = toArea(hardMargins());
+  const area = toArea(margins());
+  ctx.fillStyle = marginPattern(ctx);
+  ctx.fillRect(0, 0, cssW, hard.y0);
+  ctx.fillRect(0, hard.y1, cssW, cssH - hard.y1);
+  ctx.fillRect(0, hard.y0, hard.x0, hard.y1 - hard.y0);
+  ctx.fillRect(hard.x1, hard.y0, cssW - hard.x1, hard.y1 - hard.y0);
+  if (area.x0 || area.y0 || area.x1 < cssW || area.y1 < cssH) {
     ctx.strokeStyle = 'rgba(120, 120, 120, .6)';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
@@ -249,15 +265,20 @@ function draw() {
     }
   }
 
-  const tape = med.tapeMm ? `${med.tapeMm} mm tape, ${acrossMm().toFixed(1)} mm printable` : `${acrossMm().toFixed(1)} mm wide`;
-  if (med.margins) $('dims').title = 'Hatched border: the printer cannot print there (from DYMO\'s driver).';
+  let tape = med.tapeMm ? `${med.tapeMm} mm tape, ${acrossMm().toFixed(1)} mm printable` : `${acrossMm().toFixed(1)} mm wide`;
+  if (med.lanes) tape = `One of ${med.lanes.count} labels per row, ${tape}`;
+  $('dims').title = 'Hatched: the printer cannot print there. Dashed line: the safe area (from the label maker\'s driver); '
+    + 'items past it still print, overprinting towards the label edge, but the die cut may trim them.';
   // Font boxes include some blank space, so allow a little slack.
   const slack = 0.3 * zoom;
-  const offLabel = last.bounds.some((b) => b.x * scale < area.x0 - slack || b.y * scale < area.y0 - slack
-    || (b.y + b.h) * scale > area.y1 + slack || (b.x + b.w) * scale > area.x1 + slack);
+  const outside = (a) => last.bounds.some((b) => b.x * scale < a.x0 - slack || b.y * scale < a.y0 - slack
+    || (b.y + b.h) * scale > a.y1 + slack || (b.x + b.w) * scale > a.x1 + slack);
+  const offLabel = outside(hard);
+  const overprint = !offLabel && outside(area);
   const dims = $('dims');
   dims.textContent = `${tape} × ${lenMm.toFixed(1)} mm long  ·  ${bitmap.width} × ${bitmap.height} dots @ ${m.dpi} dpi`
-    + (offLabel ? '  ·  ⚠ Something is outside the printable area and will be cut off' : '');
+    + (offLabel ? '  ·  ⚠ Something is where the printer cannot print and will be cut off' : '')
+    + (overprint ? '  ·  Overprinting past the safe area (the die cut may trim it)' : '');
   dims.classList.toggle('warn', offLabel);
   $('zoom-label').textContent = `${Math.round((zoom / 6) * 100)}%`;
   updateCodeInfo();
@@ -351,6 +372,15 @@ function buildSetup() {
     return label;
   }));
   $('model-note').textContent = m.note ?? '';
+  const lanes = medium().lanes;
+  $('lanes-box').hidden = !lanes;
+  if (lanes) {
+    $('fill-row').checked = fillRow();
+    $('fill-row-text').textContent = `Same label on all ${lanes.count} in each row`;
+    $('lanes-note').textContent = fillRow()
+      ? `${lanes.count} labels per row: you design one, and each row prints it ${lanes.count} times. Copies counts rows.`
+      : `${lanes.count} labels per row: you design one, and Copies counts labels, filling each row from the top.`;
+  }
   updateReportLinks();
   const linked = design.labelId ? labels.get(design.labelId) : null;
   if (design.labelId && !linked) delete design.labelId;
@@ -679,17 +709,37 @@ async function print() {
 }
 
 // Applies the position adjustment, encodes and sends.
-async function sendBitmap(bitmap, copies = 1) {
+// Multi-up labels: is the design repeated in every slot of a row?
+const fillRow = () => design.options.fillRow ?? true;
+
+// The rows to print for `copies` of a label. On a multi-up label ("2 up")
+// the design goes into each slot of a row: with fillRow every slot and
+// copies counts rows, otherwise copies counts labels and the last row may be
+// partly blank. `wholeRow` sends a bitmap that already spans the row.
+function rowsFor(bitmap, copies, wholeRow) {
+  const lanes = medium().lanes;
+  if (!lanes || wholeRow) return Array(copies).fill(bitmap);
+  if (fillRow()) return Array(copies).fill(composeRow(bitmap, lanes));
+  const rows = [];
+  for (let left = copies; left > 0; left -= lanes.count) rows.push(composeRow(bitmap, lanes, Math.min(left, lanes.count)));
+  return rows;
+}
+
+// Applies the position adjustment, encodes and sends.
+async function sendBitmap(bitmap, copies = 1, { wholeRow = false } = {}) {
   const dpmm = model().dpi / 25.4;
   const a = adjust();
   let dx = Math.round(a.feedMm * dpmm);
   if (model().skipLeadingMargin) dx -= Math.round(mediumMargins(medium()).left * dpmm);
-  const shifted = shiftBitmap(bitmap, dx, Math.round(a.acrossMm * dpmm), {
-    grow: !medium().lengthDots,
-  });
   const opts = Object.fromEntries(model().options.map((o) => [o.id, option(o.id)]));
-  const job = model().encode(shifted, medium(), opts);
-  for (let i = 0; i < copies; i++) await transport.write(job);
+  const jobs = new Map(); // identical rows share one encoded job
+  for (const row of rowsFor(bitmap, copies, wholeRow)) {
+    if (!jobs.has(row)) {
+      const shifted = shiftBitmap(row, dx, Math.round(a.acrossMm * dpmm), { grow: !medium().lengthDots });
+      jobs.set(row, model().encode(shifted, medium(), opts));
+    }
+    await transport.write(jobs.get(row));
+  }
 }
 
 // Prints a hardware test pattern over the whole label (margins ignored).
@@ -698,10 +748,12 @@ async function printTestPattern(pattern) {
   const med = medium();
   const dpmm = model().dpi / 25.4;
   const lengthMm = med.lengthDots ? med.lengthDots / dpmm : 60;
-  const test = testPatternDesign(pattern, lengthMm, acrossMm(), dpmm, { printer: design.printer, medium: med.id });
+  // Test prints cover the whole row of a multi-up label.
+  const rowMedium = med.lanes ? { ...med, acrossDots: med.lanes.pageDots } : med;
+  const test = testPatternDesign(pattern, lengthMm, rowMedium.acrossDots / dpmm, dpmm, { printer: design.printer, medium: med.id });
   try {
-    const { bitmap } = renderDesign(test, model(), med);
-    await sendBitmap(bitmap);
+    const { bitmap } = renderDesign(test, model(), rowMedium);
+    await sendBitmap(bitmap, 1, { wholeRow: true });
     showBanner(pattern === 'grid'
       ? 'Grid sent. Measure a numbered line from the label\'s starting edge: if line n is at n + d mm, set Feed to −d (at n − d mm, +d). Same from the top edge for Across.'
       : 'Full black sent. The black area is everything the printer can reach on this label.');
@@ -915,10 +967,21 @@ function buildProps() {
     }),
   );
   if (item.type === 'text' && item.fit) {
-    row.append(btn('Fill printable area', () => {
+    row.append(btn('Fill safe area', () => {
       const mg = margins();
       item.y = bandTop();
       item.h = round1(usableMm());
+      if (medium().lengthDots) {
+        item.x = mg.left;
+        item.w = round1(medium().lengthDots / last.dpmm - mg.left - mg.right);
+      }
+      refresh({ props: true });
+    }));
+    row.append(btn('Fill to edge', () => {
+      // Overprint: the whole label the printer can reach, ignoring the safe area.
+      const mg = hardMargins();
+      item.y = mg.top;
+      item.h = round1(acrossMm() - mg.top - mg.bottom);
       if (medium().lengthDots) {
         item.x = mg.left;
         item.w = round1(medium().lengthDots / last.dpmm - mg.left - mg.right);
@@ -1326,6 +1389,7 @@ function wire() {
     download(new Blob([JSON.stringify(plain, null, 2)], { type: 'application/json' }), 'label.json');
   };
   $('btn-labels').onclick = () => showLibrary();
+  $('fill-row').onchange = (e) => { design.options.fillRow = e.target.checked; refresh({ setup: true }); };
   $('btn-lib-open').onclick = () => showLibrary();
   $('btn-lib-save').onclick = () => saveToLibrary(false);
   $('btn-lib-saveas').onclick = () => saveToLibrary(true);

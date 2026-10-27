@@ -78,9 +78,13 @@ function tips() {
   return [
     el('h3', { textContent: 'Layout' }),
     el('ul', {},
-      li(b('Hatched border'), ': where the printer cannot put ink. Anything there is flagged under the preview.'),
-      li(b('Fit text in a fixed box'), ' picks the largest size that fits; ', b('Fill printable area'), ' makes the box '
-        + 'cover the usable label. Drag the corner handle to resize.'),
+      li(b('Hatched border'), ': where the printer cannot put ink at all. Anything there is cut off and flagged.'),
+      li(b('Dashed line'), ': the safe area. Items past it still print (overprinting towards the label edge), but the '
+        + 'die cut may trim them.'),
+      li(b('Fit text in a fixed box'), ' picks the largest size that fits; ', b('Fill safe area'), ' makes the box '
+        + 'cover the safe area, ', b('Fill to edge'), ' the whole label. Drag the corner handle to resize.'),
+      li(b('Two labels per row'), ' (e.g. DYMO 30333): design one; each print fills the row with it, or untick ',
+        b('Same label on all'), ' to print them one at a time.'),
       li(b('Continuous rolls'), ': choose ', b('Fit to content'), ' to make the label as long as what is on it, or ',
         b('Fixed'), ' for a set length.'),
       li(b('QR codes and barcodes'), ' snap to whole printer dots so they scan reliably; leave a little blank space '

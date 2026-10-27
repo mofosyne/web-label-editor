@@ -52,11 +52,15 @@ test('recfile parser handles comments, descriptors, continuations and blanks', (
 test('catalogue builds the expected media', () => {
   const models = applyCatalog(catalogText, freshModels());
   const dymo = Object.fromEntries(models['dymo-lw450'].media.map((m) => [m.id, m]));
-  assert.deepEqual(models['dymo-lw450'].media.map((m) => m.id), ['cont-54', '30252', '99012', '11354', '11355']);
+  assert.deepEqual(models['dymo-lw450'].media.map((m) => m.id), ['cont-54', '30252', '99012', '11354', '11355', '30333', '30253', '30277', '30256', '99019']);
   assert.equal(dymo['30252'].acrossDots, 329);
   assert.equal(dymo['30252'].lengthDots, 1050);
   assert.deepEqual(dymo['30252'].margins, { left: 5.84, right: 1.52, top: 1.02, bottom: 1.52 });
   assert.equal(dymo['cont-54'].acrossDots, 638);
+  const twoUp = models['dymo-lw450'].media.find((m) => m.id === '30333');
+  assert.deepEqual([twoUp.acrossDots, twoUp.lanes], [150, { count: 2, pitchDots: 150, pageDots: 300 }], '30333: two 150-dot labels per row');
+  const address2 = models['dymo-lw450'].media.find((m) => m.id === '30253');
+  assert.deepEqual(address2.lanes, { count: 2, pitchDots: 346, pageDots: 693 }, '30253 keeps its real row width');
   assert.equal(dymo['cont-54'].lengthDots, undefined);
   assert.equal(dymo['11354'].acrossDots, 672, 'clipped to the 672-dot head');
 

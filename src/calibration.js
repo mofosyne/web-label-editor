@@ -84,3 +84,17 @@ export function shiftBitmap(bitmap, dx, dy, { grow = false } = {}) {
   }
   return { width, height, data };
 }
+
+// One row of a multi-up label ("2 up"): `filled` copies of the label bitmap
+// placed side by side across the head, the rest of the row left blank.
+export function composeRow(bitmap, lanes, filled = lanes.count) {
+  const { width } = bitmap;
+  const data = new Uint8Array(width * lanes.pageDots);
+  for (let lane = 0; lane < Math.min(filled, lanes.count); lane++) {
+    const top = lane * lanes.pitchDots;
+    for (let y = 0; y < bitmap.height && top + y < lanes.pageDots; y++) {
+      data.set(bitmap.data.subarray(y * width, (y + 1) * width), (top + y) * width);
+    }
+  }
+  return { width, height: lanes.pageDots, data };
+}
