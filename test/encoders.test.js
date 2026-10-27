@@ -174,3 +174,24 @@ test('test patterns: numbered grid and full black', async () => {
   const black = testPatternDesign('black', 60, 54, dpmm);
   assert.deepEqual(black.items.map((it) => [it.x, it.y, it.w, it.h, it.fill]), [[0, 0, 60, 54, true]]);
 });
+
+test('P-touch quirks: E310BT-style models (ptouch-print FLAG_P700_INIT|USE_INFO_CMD|D460BT_MAGIC)', () => {
+  const bmp = bitmap(3, 76, (x, y) => x === 1 && y === 0);
+  const out = encodePTouch(bmp, {
+    tapeMm: 12, quirks: { packbits: false, p700Init: true, infoCmd: true, precut: false, magic: true },
+  });
+  let i = 102;
+  const take = (n) => [...out.subarray(i, (i += n))];
+  assert.deepEqual(take(4), [0x1b, 0x69, 0x61, 0x01], 'ESC i a 01 (no M 02)');
+  assert.deepEqual(take(13), [0x1b, 0x69, 0x7a, 0, 0, 12, 0, 3, 0, 0, 0, 0x02, 0], 'ESC i z with width, lines, feed');
+  assert.deepEqual(take(7), [0x1b, 0x69, 0x64, 0x01, 0x00, 0x4d, 0x00], 'ESC i d magic');
+  // Raw raster lines: G 16 00 + 16 bytes, no ESC i M before them.
+  assert.deepEqual(take(3), [0x47, 16, 0]);
+  i += 16;
+  assert.deepEqual(take(3), [0x47, 16, 0]);
+  const line = take(16);
+  assert.equal(line[(64 - 38) >> 3], 0x80 >> ((64 - 38) & 7), 'top row on dot 26');
+  i += 19;
+  assert.deepEqual(take(1), [0x1a]);
+  assert.equal(i, out.length);
+});

@@ -65,12 +65,19 @@ test('catalogue builds the expected media', () => {
     ['tze-3.5', 24, 4], ['tze-6', 32, 6], ['tze-9', 52, 9], ['tze-12', 76, 12], ['tze-18', 120, 18], ['tze-24', 128, 24],
   ]);
   assert.equal(tapes[3].tapeMm, 12);
+
+  const ids = (model) => models[model].media.map((m) => m.id);
+  assert.ok(!ids('dymo-lw450').includes('1744907'), '4 × 6 in is too wide for the 450');
+  assert.ok(ids('dymo-lw4xl').includes('1744907') && ids('dymo-lw4xl').includes('30252'), '4XL takes wide and normal labels');
+  assert.equal(models['dymo-lw4xl'].media.find((m) => m.id === '1744907').acrossDots, 1233);
+  assert.ok(!ids('brother-pt-e310bt').includes('tze-24'), 'PT-E310BT takes up to 18 mm');
+  assert.ok(ids('brother-pt-e310bt').includes('tze-18'));
 });
 
 test('catalogue loader rejects broken records', () => {
-  const base = '%rec: Medium\n\nId: x\nPrinter: dymo-lw450\nName: X\nKind: continuous\nWidthMm: 10\nSource: test\n';
-  assert.doesNotThrow(() => applyCatalog(`${base}\nId: t\nPrinter: brother-pt-p710bt\nName: T\nKind: continuous\nWidthMm: 12\nPrintableDots: 76\nSource: test\n`, freshModels()));
-  assert.throws(() => applyCatalog(base.replace('dymo-lw450', 'nope'), freshModels()), /unknown printer/);
+  const base = '%rec: Medium\n\nId: x\nFamily: dymo-lw\nName: X\nKind: continuous\nWidthMm: 10\nSource: test\n';
+  assert.doesNotThrow(() => applyCatalog(`${base}\nId: t\nFamily: brother-pt\nName: T\nKind: continuous\nWidthMm: 12\nPrintableDots: 76\nSource: test\n`, freshModels()));
+  assert.throws(() => applyCatalog(base.replace('dymo-lw', 'nope'), freshModels()), /unknown family/);
   assert.throws(() => applyCatalog(base.replace('WidthMm: 10', 'WidthMm: wide'), freshModels()), /not a number/);
   assert.throws(() => applyCatalog(base.replace('Kind: continuous', 'Kind: roll'), freshModels()), /Kind must be/);
   assert.throws(() => applyCatalog(base.replace('Kind: continuous', 'Kind: diecut'), freshModels()), /missing LengthMm/);
@@ -89,6 +96,6 @@ test('recfix accepts the catalogue and rejects a bad one', { skip: !hasRecutils 
   const bad = join(dir, 'bad.rec');
   writeFileSync(bad, catalogText.replace('WidthMm: 27.86', 'WidthMm: wide'));
   assert.throws(() => execFileSync('recfix', [bad], { stdio: 'pipe' }));
-  writeFileSync(bad, `${catalogText}\nId: 30252\nPrinter: dymo-lw450\nName: dup\nKind: continuous\nWidthMm: 1\nSource: x\n`);
+  writeFileSync(bad, `${catalogText}\nId: 30252\nFamily: dymo-lw\nName: dup\nKind: continuous\nWidthMm: 1\nSource: x\n`);
   assert.throws(() => execFileSync('recfix', [bad], { stdio: 'pipe' }), undefined, 'duplicate Id');
 });

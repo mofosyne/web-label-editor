@@ -2,18 +2,24 @@
 #
 # Label and tape catalogue for Web Label Editor (GNU recutils format).
 #
-# Each record is one kind of label or tape. Saved designs refer to records
-# by Id, so never rename or reuse an Id; add a new record instead.
+# Each record is one kind of label or tape for a printer family; every
+# printer model in that family whose head is wide enough can use it. Saved
+# designs refer to records by Id, so never rename or reuse an Id; add a new
+# record instead.
 #
 # Units are millimetres. Directions are as seen in the editor: the label is
 # a horizontal strip, "length" runs left to right along the feed, "width"
 # runs across the print head. The left edge comes out of the printer first.
 #
+#   Family         dymo-lw (LabelWriter 400/450/4XL), brother-pt (P-touch,
+#                  TZe tape), brother-ql (QL, DK rolls)
 #   Kind           continuous (length comes from the design) or diecut
 #   WidthMm        label/tape width across the head
 #   LengthMm       label length along the feed (die-cut only)
 #   PrintableDots  dots across the head when not simply WidthMm at the
-#                  printer's resolution (Brother tapes)
+#                  printer's resolution (Brother)
+#   PrintableLengthDots  printable dots along a die-cut label (Brother QL)
+#   OffsetRightDots, FeedMarginDots  Brother QL placement and feed values
 #   Margin*Mm      edges the printer cannot print on (default 0)
 #   CornerMm       corner radius drawn in the preview (die-cut only)
 #   StatusMm       tape width the printer reports in its status (Brother)
@@ -23,14 +29,14 @@
 
 %rec: Medium
 %key: Id
-%mandatory: Printer Name Kind WidthMm Source
-%type: Printer enum dymo-lw450 brother-pt-p710bt
+%mandatory: Family Name Kind WidthMm Source
+%type: Family enum dymo-lw brother-pt brother-ql
 %type: Kind enum continuous diecut
 %type: WidthMm,LengthMm,MarginLeftMm,MarginRightMm,MarginTopMm,MarginBottomMm,CornerMm real
-%type: PrintableDots,StatusMm int
+%type: PrintableDots,PrintableLengthDots,OffsetRightDots,FeedMarginDots,StatusMm int
 
 # ---------------------------------------------------------------------------
-# DYMO LabelWriter 450 (300 dpi, 672-dot head)
+# DYMO LabelWriter 400 / 450 / 4XL (300 dpi; 672-dot head, 1248 on the 4XL)
 #
 # Sizes and margins come from DYMO's lw450.ppd: PaperDimension (W x H points)
 # and ImageableArea (llx lly urx ury points), converted at 25.4/72 mm per pt.
@@ -39,7 +45,7 @@
 #   MarginRightMm = lly, MarginTopMm = W - urx, MarginBottomMm = llx
 
 Id: cont-54
-Printer: dymo-lw450
+Family: dymo-lw
 Name: Continuous 54 mm (paper roll)
 Kind: continuous
 WidthMm: 54.02
@@ -50,7 +56,7 @@ MarginBottomMm: 1.52
 Source: lw450.ppd "Continuous, Wide": 153.12 x 792 pt, imageable 4.32 4.32 150.24 775.68
 
 Id: 30252
-Printer: dymo-lw450
+Family: dymo-lw
 Name: 30252 Address 28 × 89 mm
 Kind: diecut
 WidthMm: 27.86
@@ -63,7 +69,7 @@ CornerMm: 3
 Source: lw450.ppd 30252: 78.96 x 252 pt, imageable 4.32 4.32 76.08 235.44
 
 Id: 99012
-Printer: dymo-lw450
+Family: dymo-lw
 Name: 99012 Large Address 36 × 89 mm
 Kind: diecut
 WidthMm: 35.73
@@ -77,7 +83,7 @@ Source: lw450.ppd 99012: 101.28 x 251.04 pt, imageable 4.32 4.32 98.40 234.96
 
 # 57 mm is wider than the 56.9 mm head; the editor clips to the head.
 Id: 11354
-Printer: dymo-lw450
+Family: dymo-lw
 Name: 11354 Multi-purpose 57 × 32 mm
 Kind: diecut
 WidthMm: 57.15
@@ -90,7 +96,7 @@ CornerMm: 3
 Source: lw450.ppd 11354: 162 x 90 pt, imageable 2.88 4.32 159.12 85.68
 
 Id: 11355
-Printer: dymo-lw450
+Family: dymo-lw
 Name: 11355 Multi-purpose 19 × 51 mm
 Kind: diecut
 WidthMm: 19.05
@@ -103,7 +109,7 @@ CornerMm: 2
 Source: lw450.ppd 11355: 54 x 144 pt, imageable 4.08 4.32 51.12 127.68
 
 # ---------------------------------------------------------------------------
-# Brother PT-P710BT (180 dpi, 128-dot head), TZe tapes
+# Brother P-touch (180 dpi, 128-dot head), TZe tapes
 #
 # PrintableDots is how many head dots the tape can take, centred on the head;
 # it is less than the tape width. Values from Brother's raster command
@@ -111,7 +117,7 @@ Source: lw450.ppd 11355: 54 x 144 pt, imageable 4.08 4.32 51.12 127.68
 # reports for the loaded tape (3.5 mm tape reports 4).
 
 Id: tze-3.5
-Printer: brother-pt-p710bt
+Family: brother-pt
 Name: TZe 3.5 mm tape
 Kind: continuous
 WidthMm: 3.5
@@ -120,7 +126,7 @@ StatusMm: 4
 Source: ptouch-print tape_info (Brother raster reference)
 
 Id: tze-6
-Printer: brother-pt-p710bt
+Family: brother-pt
 Name: TZe 6 mm tape
 Kind: continuous
 WidthMm: 6
@@ -129,7 +135,7 @@ StatusMm: 6
 Source: ptouch-print tape_info (Brother raster reference)
 
 Id: tze-9
-Printer: brother-pt-p710bt
+Family: brother-pt
 Name: TZe 9 mm tape
 Kind: continuous
 WidthMm: 9
@@ -138,7 +144,7 @@ StatusMm: 9
 Source: ptouch-print tape_info (Brother raster reference)
 
 Id: tze-12
-Printer: brother-pt-p710bt
+Family: brother-pt
 Name: TZe 12 mm tape
 Kind: continuous
 WidthMm: 12
@@ -147,7 +153,7 @@ StatusMm: 12
 Source: ptouch-print tape_info (Brother raster reference)
 
 Id: tze-18
-Printer: brother-pt-p710bt
+Family: brother-pt
 Name: TZe 18 mm tape
 Kind: continuous
 WidthMm: 18
@@ -156,10 +162,53 @@ StatusMm: 18
 Source: ptouch-print tape_info (Brother raster reference)
 
 Id: tze-24
-Printer: brother-pt-p710bt
+Family: brother-pt
 Name: TZe 24 mm tape
 Kind: continuous
 WidthMm: 24
 PrintableDots: 128
 StatusMm: 24
 Source: ptouch-print tape_info (Brother raster reference)
+
+# ---------------------------------------------------------------------------
+# DYMO LabelWriter 4XL only (wider than the 450's head)
+# From DYMO's lw4xl.ppd, converted the same way as above.
+
+Id: 1744907
+Family: dymo-lw
+Name: 1744907 Shipping 4 × 6 in (104 × 159 mm)
+Kind: diecut
+WidthMm: 104.39
+LengthMm: 159.43
+MarginLeftMm: 5.59
+MarginRightMm: 1.44
+MarginTopMm: 1.35
+MarginBottomMm: 1.44
+CornerMm: 3
+Source: lw4xl.ppd 1744907: 295.92 x 451.92 pt, imageable 4.08 4.08 292.08 436.08
+
+Id: 30256
+Family: dymo-lw
+Name: 30256 Shipping 59 × 102 mm
+Kind: diecut
+WidthMm: 58.76
+LengthMm: 101.6
+MarginLeftMm: 5.93
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 3
+Source: lw4xl.ppd 30256: 166.56 x 288 pt, imageable 4.08 4.32 163.68 271.20
+
+Id: 99019
+Family: dymo-lw
+Name: 99019 Large Lever Arch 59 × 190 mm
+Kind: diecut
+WidthMm: 58.76
+LengthMm: 189.99
+MarginLeftMm: 5.59
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 3
+Source: lw4xl.ppd 99019: 166.56 x 538.56 pt, imageable 4.08 4.32 163.68 522.72

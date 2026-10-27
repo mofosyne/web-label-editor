@@ -286,7 +286,17 @@ function handleRect(b, scale) {
 function buildSetup() {
   const m = model();
   const printerSel = $('printer');
-  printerSel.replaceChildren(...Object.entries(MODELS).map(([id, mm]) => new Option(mm.name, id, false, id === design.printer)));
+  const brands = new Map();
+  for (const [id, mm] of Object.entries(MODELS)) {
+    if (!brands.has(mm.brand)) {
+      const g = document.createElement('optgroup');
+      g.label = mm.brand;
+      brands.set(mm.brand, g);
+    }
+    const label = mm.status === 'tested' ? mm.name : `${mm.name} (experimental)`;
+    brands.get(mm.brand).append(new Option(label, id, false, id === design.printer));
+  }
+  printerSel.replaceChildren(...brands.values());
 
   const mediumSel = $('medium');
   const roll = currentRoll();

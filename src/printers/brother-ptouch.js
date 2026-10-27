@@ -122,18 +122,36 @@ export function parseStatus(buf) {
   };
 }
 
+// Per-model differences, as in ptouch-print's device table:
+//   packbits  compress raster lines (otherwise send them raw)
+//   p700Init  enter raster mode with ESC i a 01 instead of ESC i R 01
+//   infoCmd   send the print information command (ESC i z)
+//   precut    supports ESC i M auto-cut
+//   magic     PT-D410/D460BT/E310BT family: extra ESC i d command, and
+//             the info command asks for a final feed
+export const PT_DEFAULT_QUIRKS = { packbits: true, p700Init: false, infoCmd: false, precut: true, magic: false };
+
 export function encodePTouch(bitmap, opts = {}) {
   const autoCut = opts.autoCut ?? true;
+  const q = { ...PT_DEFAULT_QUIRKS, ...opts.quirks };
   const bytesPerLine = HEAD_DOTS / 8;
   const top = Math.floor((HEAD_DOTS - bitmap.height) / 2);
+  const { width, height, data } = bitmap;
 
   const w = new ByteWriter();
   w.add(initCommand());
-  w.push(0x4d, 0x02); // M 02: PackBits compression
-  w.push(ESC, 0x69, 0x52, 0x01); // ESC i R 01: raster mode
-  w.push(ESC, 0x69, 0x4d, autoCut ? 0x40 : 0x00); // ESC i M: auto cut
+  if (q.packbits) w.push(0x4d, 0x02); // M 02: PackBits compression
+  if (q.p700Init) w.push(ESC, 0x69, 0x61, 0x01); // ESC i a 01: raster mode
+  else w.push(ESC, 0x69, 0x52, 0x01); // ESC i R 01: raster mode
+  if (q.infoCmd) {
+    // ESC i z: media width (mm) and number of raster lines
+    w.push(ESC, 0x69, 0x7a, 0, 0, opts.tapeMm ?? 0, 0,
+      width & 0xff, (width >> 8) & 0xff, (width >> 16) & 0xff, (width >>> 24) & 0xff,
+      q.magic ? 0x02 : 0x00, 0);
+  }
+  if (q.magic) w.push(ESC, 0x69, 0x64, 0x01, 0x00, 0x4d, 0x00); // ESC i d: margin
+  if (q.precut) w.push(ESC, 0x69, 0x4d, autoCut ? 0x40 : 0x00); // ESC i M: auto cut
 
-  const { width, height, data } = bitmap;
   const line = new Uint8Array(bytesPerLine);
   for (let x = 0; x < width; x++) {
     line.fill(0);
@@ -143,9 +161,9 @@ export function encodePTouch(bitmap, opts = {}) {
       if (dot < 0 || dot >= HEAD_DOTS) continue;
       line[dot >> 3] |= 0x80 >> (dot & 7);
     }
-    const packed = packBits(line);
-    w.push(0x47, packed.length & 0xff, packed.length >> 8); // G n1 n2
-    w.add(packed);
+    const out = q.packbits ? packBits(line) : line.slice(); // `line` is reused
+    w.push(0x47, out.length & 0xff, out.length >> 8); // G n1 n2
+    w.add(out);
   }
 
   w.push(0x1a); // print with feed (and cut)

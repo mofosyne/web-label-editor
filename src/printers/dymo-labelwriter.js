@@ -29,6 +29,8 @@ export function encodeLabelWriter(bitmap, opts = {}) {
   w.push(ESC, 0x42, 0); // ESC B: dot tab 0
   w.push(ESC, 0x68); // ESC h: text quality, 300x300
   w.push(ESC, density); // ESC c/d/e/g: print density
+  // ESC q: roll select on the Twin Turbo ('0' auto, '1' left, '2' right).
+  if (opts.roll) w.push(ESC, 0x71, { auto: 0x30, left: 0x31, right: 0x32 }[opts.roll] ?? 0x30);
 
   const labelLength = continuous ? 0xffff : bitmap.width;
   w.push(ESC, 0x4c, (labelLength >> 8) & 0xff, labelLength & 0xff); // ESC L

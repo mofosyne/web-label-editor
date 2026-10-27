@@ -37,7 +37,13 @@ function toMedium(rec, model) {
       bottom: num('MarginBottomMm') ?? 0,
     },
   };
-  if (kind === 'diecut') medium.lengthDots = toDots(num('LengthMm', true));
+  if (kind === 'diecut') medium.lengthDots = num('PrintableLengthDots') ?? toDots(num('LengthMm', true));
+  medium.widthMm = widthMm;
+  if (kind === 'diecut') medium.lengthMm = num('LengthMm', true);
+  const offsetR = num('OffsetRightDots');
+  if (offsetR != null) medium.offsetRightDots = offsetR;
+  const feedMargin = num('FeedMarginDots');
+  if (feedMargin != null) medium.feedMarginDots = feedMargin;
   if (printableDots != null) medium.tapeMm = widthMm;
   const corner = num('CornerMm');
   if (corner) medium.cornerMm = corner;
@@ -46,19 +52,35 @@ function toMedium(rec, model) {
   return medium;
 }
 
-// Fills models[*].media from catalogue text, in file order.
+const FAMILIES = new Set(['dymo-lw', 'brother-pt', 'brother-ql']);
+
+// A medium fits a model if it is no wider than the head (2% slack: DYMO's
+// 57 mm labels are a hair wider than the 450's head and get clipped) and not
+// wider than the model's widest supported tape.
+function fits(rec, medium, model) {
+  const widthDots = Math.round((Number(field(rec, 'WidthMm')) * model.dpi) / 25.4);
+  const across = field(rec, 'PrintableDots') != null ? medium.acrossDots : widthDots;
+  if (across > model.headDots * 1.02) return false;
+  return model.maxWidthMm == null || Number(field(rec, 'WidthMm')) <= model.maxWidthMm;
+}
+
+// Fills models[*].media from catalogue text, in file order: each model gets
+// the records of its family that fit it.
 export function applyCatalog(text, models) {
   for (const m of Object.values(models)) m.media = [];
   const seen = new Set();
   for (const rec of parseRec(text).records) {
     if (rec.type !== 'Medium') continue;
-    const printer = field(rec, 'Printer');
-    const model = models[printer];
-    if (!model) throw new Error(`catalogue record ${field(rec, 'Id')}: unknown printer "${printer}"`);
-    const medium = toMedium(rec, model);
-    if (seen.has(medium.id)) throw new Error(`catalogue: duplicate Id ${medium.id}`);
-    seen.add(medium.id);
-    model.media.push(medium);
+    const id = field(rec, 'Id');
+    const family = field(rec, 'Family');
+    if (!FAMILIES.has(family)) throw new Error(`catalogue record ${id}: unknown family "${family}"`);
+    if (seen.has(id)) throw new Error(`catalogue: duplicate Id ${id}`);
+    seen.add(id);
+    for (const model of Object.values(models)) {
+      if (model.family !== family) continue;
+      const medium = toMedium(rec, model);
+      if (fits(rec, medium, model)) model.media.push(medium);
+    }
   }
   for (const [id, m] of Object.entries(models)) {
     if (!m.media.length) throw new Error(`catalogue has no media for ${id}`);
