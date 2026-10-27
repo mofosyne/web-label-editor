@@ -2,10 +2,11 @@
 // label and to measure the position adjustment.
 //
 // Grid: lines every 1 mm (heavier every 5 mm), numbered in mm from where
-// the label should start. If the label's left edge (the end that comes out
-// first) falls on number n, the print is n mm early: add n to Feed. If the
-// 0 line sits n mm inside the label, subtract n. The top edge gives Across
-// the same way.
+// the label should start. Each numbered line should sit that many mm from
+// the label's starting edge (the end that comes out first): if line n is at
+// n + d mm the print is late and Feed should be -d; at n - d, +d. The top
+// edge gives Across the same way. Lines in the unprintable margin are
+// missing by design.
 //
 // Full black: every dot on. Shows exactly what part of the label the
 // printer can reach.
@@ -57,12 +58,19 @@ export function testPatternDesign(pattern, lengthMm, widthMm, dpmm, { printer, m
   };
 }
 
-// Moves a bitmap's content by (dx, dy) dots. Die-cut labels keep their size
-// (content pushed past an edge is lost); for continuous media a positive dx
-// adds blank lines at the start instead.
+// Moves a bitmap's content by (dx, dy) dots for the position adjustment.
+//
+// Along the feed, a negative dx means the printer starts late, so the print
+// is trimmed by |dx| lines: the content moves earlier and the job also ends
+// |dx| lines sooner, instead of running past the end of a die-cut label into
+// the next one. A positive dx keeps the length (content pushed past the end
+// is lost), or with `grow` (continuous media) adds blank lines at the start.
+// Across the head the size never changes.
 export function shiftBitmap(bitmap, dx, dy, { grow = false } = {}) {
   if (!dx && !dy) return bitmap;
-  const width = grow && dx > 0 ? bitmap.width + dx : bitmap.width;
+  let width = bitmap.width;
+  if (dx < 0) width = Math.max(1, bitmap.width + dx);
+  else if (grow) width = bitmap.width + dx;
   const { height } = bitmap;
   const data = new Uint8Array(width * height);
   for (let y = 0; y < height; y++) {

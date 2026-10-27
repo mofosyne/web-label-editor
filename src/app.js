@@ -136,16 +136,18 @@ function setAdjust(key, value) {
   } catch { /* storage unavailable */ }
 }
 
-// Where the printer can actually put ink on the label: the catalogue margins,
-// moved along with any position adjustment.
+// Where the printer can actually put ink on the label. A position
+// adjustment shifts what is sent, which makes the edge it shifts away from
+// unreachable: e.g. Feed -6 (printer starts 6 mm late) means nothing can
+// print in the first 6 mm. The catalogue margins apply as well.
 const margins = () => {
   const mg = mediumMargins(medium());
   const a = adjust();
   return {
-    left: Math.max(0, mg.left - a.feedMm),
-    right: Math.max(0, mg.right + a.feedMm),
-    top: Math.max(0, mg.top - a.acrossMm),
-    bottom: Math.max(0, mg.bottom + a.acrossMm),
+    left: Math.max(mg.left, -a.feedMm),
+    right: Math.max(mg.right, a.feedMm),
+    top: Math.max(mg.top, -a.acrossMm),
+    bottom: Math.max(mg.bottom, a.acrossMm),
   };
 };
 // The printable band across the strip, in mm.
@@ -387,9 +389,9 @@ function buildAdjust() {
   }
   const how = document.createElement('p');
   how.className = 'note';
-  how.textContent = 'Grid: numbers are mm from where the label should start. If the left edge of the label falls on n, add n to Feed; '
-    + 'if the 0 line is n mm inside the label, subtract n. The top edge does the same for Across. '
-    + 'Full black: shows exactly where the printer can put ink. Both ignore the hatched margins and use the adjustment above.';
+  how.textContent = 'Grid: each numbered line should be that many mm from the label\'s starting edge (the end that comes out first). '
+    + 'Measure one: if line n is at n + d mm, set Feed to −d; at n − d mm, set +d. Do the same from the top edge for Across. '
+    + 'Lines in the hatched border may be missing; that is expected. Full black shows everything the printer can reach.';
   tests.append(summary, row, how);
   box.replaceChildren(grid, note, rollPanel(roll), tests);
 }
@@ -624,7 +626,9 @@ async function print() {
 async function sendBitmap(bitmap, copies = 1) {
   const dpmm = model().dpi / 25.4;
   const a = adjust();
-  const shifted = shiftBitmap(bitmap, Math.round(a.feedMm * dpmm), Math.round(a.acrossMm * dpmm), {
+  let dx = Math.round(a.feedMm * dpmm);
+  if (model().skipLeadingMargin) dx -= Math.round(mediumMargins(medium()).left * dpmm);
+  const shifted = shiftBitmap(bitmap, dx, Math.round(a.acrossMm * dpmm), {
     grow: !medium().lengthDots,
   });
   const opts = Object.fromEntries(model().options.map((o) => [o.id, option(o.id)]));
@@ -643,7 +647,7 @@ async function printTestPattern(pattern) {
     const { bitmap } = renderDesign(test, model(), med);
     await sendBitmap(bitmap);
     showBanner(pattern === 'grid'
-      ? 'Grid sent. Find the number at the left edge of the label: if the edge cuts in at n, add n to Feed; if the 0 line is n mm inside, subtract n. Same for the top edge and Across.'
+      ? 'Grid sent. Measure a numbered line from the label\'s starting edge: if line n is at n + d mm, set Feed to −d (at n − d mm, +d). Same from the top edge for Across.'
       : 'Full black sent. The black area is everything the printer can reach on this label.');
   } catch (err) {
     if (err.usbProblem) showUsbProblem(err);

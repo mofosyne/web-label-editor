@@ -139,12 +139,16 @@ it was added there.
   dithering), boxes, **QR codes** and **barcodes** (Code 128, EAN-13, UPC-A).
   Drag to move; arrow keys nudge.
 - **Printable area:** the hatched border in the preview is where the printer
-  can't print, taken from DYMO's own driver (about 5.8 mm at the end that
-  feeds out first, 1–1.5 mm elsewhere). Anything placed there is flagged.
+  can't print, taken from DYMO's own driver: about 5.8 mm at the end that
+  feeds out first, 1–1.5 mm elsewhere. Anything placed there is flagged. The
+  LabelWriter starts printing that 5.8 mm into the label (measured: 6 mm), so
+  the app leaves that part out of the job and the rest lands where the
+  preview shows it.
 - **Position adjust and test prints:** if prints land off position, open
   *Test prints* in the Printer panel. **Grid** prints a millimetre grid
-  numbered from where the label should start: the number at the label's left
-  edge is how far to adjust **Feed** (the top edge gives **Across**).
+  numbered from where the label should start: each numbered line should sit
+  that many mm from the label's starting edge. If line *n* is at *n + d* mm,
+  set **Feed** to −*d* (the top edge gives **Across**).
   **Full black** shows everything the printer can reach. The adjustment is
   saved in the browser per label type on each printer (third-party label
   stock can sit differently from genuine labels), and moves the hatched

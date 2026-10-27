@@ -150,7 +150,10 @@ test('shiftBitmap moves content and can grow continuous strips', async () => {
   assert.equal(right.data[1 * 4 + 2], 1);
   assert.equal(right.data.reduce((a, b) => a + b), 1);
   const lost = shiftBitmap(src, -1, 0);
-  assert.equal(lost.data.reduce((a, b) => a + b), 0, 'pushed past the edge');
+  assert.equal(lost.data.reduce((a, b) => a + b), 0, 'pushed past the start');
+  assert.equal(lost.width, 3, 'a late-starting printer gets a shorter job, so it ends at the label end');
+  const early = shiftBitmap(bitmap(4, 1, (x) => x === 2), -2, 0);
+  assert.deepEqual([...early.data], [1, 0]);
   const grown = shiftBitmap(src, 3, 0, { grow: true });
   assert.equal(grown.width, 7);
   assert.equal(grown.data[3], 1);

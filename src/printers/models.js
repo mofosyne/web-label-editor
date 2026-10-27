@@ -16,6 +16,12 @@ export const MODELS = {
     // 0x0922 is DYMO; class 7 is USB Printer. Covers 450 / Turbo / Twin / 4XL.
     usbFilters: [{ vendorId: 0x0922, classCode: 7 }],
     headDots: 672,
+    // The LabelWriter starts printing about 5.8 mm after the label's leading
+    // edge (the gap sensor sits ahead of the head), which is the leading
+    // margin in DYMO's PPD. Leave that part of the label out of the job so
+    // the rest lands where the preview shows it and the job ends at the
+    // label's end. Measured on a real LW450: 6 mm.
+    skipLeadingMargin: true,
     media: [],
     note: 'The LabelWriter 450 cannot report which labels are loaded, so pick the media yourself.',
     options: [
