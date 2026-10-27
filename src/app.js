@@ -4,6 +4,7 @@ import { SYMBOLOGIES } from './codes/barcode.js';
 import { UsbTransport, SerialTransport, support } from './transport.js';
 import { openHelp } from './help.js';
 import { openAbout } from './about.js';
+import { labels, history, openLibrary } from './library.js';
 import { loadCatalog } from './catalog.js';
 import { testPatternDesign, shiftBitmap } from './calibration.js';
 import { newRollId, rollCode, parseRollCode } from './rolls.js';
@@ -349,13 +350,18 @@ function buildSetup() {
     return label;
   }));
   $('model-note').textContent = m.note ?? '';
+  const linked = design.labelId ? labels.get(design.labelId) : null;
+  if (design.labelId && !linked) delete design.labelId;
+  $('lib-current').hidden = !linked;
+  $('lib-current').textContent = linked ? `Editing "${linked.name}" from My labels.` : '';
+  $('btn-lib-save').textContent = linked ? 'Save' : 'Save to My labels';
   buildAdjust();
 
   const btns = $('connect-buttons');
-  const labels = { usb: 'Connect USB', serial: 'Connect Bluetooth / serial' };
+  const connectLabels = { usb: 'Connect USB', serial: 'Connect Bluetooth / serial' };
   btns.replaceChildren(...m.transports.map((t) => {
     const b = document.createElement('button');
-    b.textContent = transport ? 'Disconnect' : labels[t];
+    b.textContent = transport ? 'Disconnect' : connectLabels[t];
     b.disabled = !transport && !support[t];
     b.title = support[t] ? '' : 'Not supported in this browser';
     b.onclick = () => (transport ? disconnect() : connect(t));
@@ -640,6 +646,7 @@ async function print() {
     const { bitmap } = renderDesign(design, model(), medium());
     const copies = Math.max(1, Math.min(99, parseInt($('copies').value, 10) || 1));
     await sendBitmap(bitmap, copies);
+    recordPrint(copies);
     showBanner(loaded?.warnings.join('; ') ?? '');
   } catch (err) {
     if (err.usbProblem) showUsbProblem(err);
@@ -1294,7 +1301,14 @@ function wire() {
   $('zoom-in').onclick = () => { stopEdit(); zoom = Math.min(30, zoom * 1.25); refresh(); };
   $('zoom-out').onclick = () => { stopEdit(); zoom = Math.max(1, zoom / 1.25); refresh(); };
 
-  $('btn-export').onclick = () => download(new Blob([JSON.stringify(design, null, 2)], { type: 'application/json' }), 'label.json');
+  $('btn-export').onclick = () => {
+    const { labelId, ...plain } = design;
+    download(new Blob([JSON.stringify(plain, null, 2)], { type: 'application/json' }), 'label.json');
+  };
+  $('btn-labels').onclick = () => showLibrary();
+  $('btn-lib-open').onclick = () => showLibrary();
+  $('btn-lib-save').onclick = () => saveToLibrary(false);
+  $('btn-lib-saveas').onclick = () => saveToLibrary(true);
   $('btn-import').onclick = () => $('import-file').click();
   $('import-file').onchange = async (e) => {
     const file = e.target.files[0];
@@ -1338,6 +1352,83 @@ function wire() {
 if (!support.usb && !support.serial) {
   showBanner('This browser cannot talk to printers directly (WebUSB / Web Serial need Chrome, Edge or another Chromium browser). You can still design labels and download them as PNG.');
 }
+// ---------- My labels and print history ----------
+
+// A small preview image of a design, for the library and history.
+function thumbnail(d) {
+  try {
+    const m = MODELS[d.printer] ?? model();
+    const med = m.media.find((x) => x.id === d.medium) ?? m.media[0];
+    const { bitmap } = renderDesign(d, m, med);
+    const full = bitmapToCanvas(bitmap);
+    const scale = Math.min(1, 240 / full.width, 80 / full.height);
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(full.width * scale));
+    c.height = Math.max(1, Math.round(full.height * scale));
+    const ctx = c.getContext('2d');
+    ctx.drawImage(full, 0, 0, c.width, c.height);
+    return c.toDataURL('image/png');
+  } catch {
+    return null;
+  }
+}
+
+function describeDesign(d) {
+  const m = MODELS[d.printer];
+  const med = m?.media.find((x) => x.id === d.medium);
+  return [m?.name ?? d.printer, med?.name ?? d.medium].join(' · ');
+}
+
+function plainDesign() {
+  const { labelId, ...plain } = design;
+  return plain;
+}
+
+function saveToLibrary(asNew) {
+  const existing = !asNew && design.labelId ? labels.get(design.labelId) : null;
+  let name = existing?.name;
+  if (!existing) {
+    const first = design.items.find((it) => it.type === 'text')?.text.split('\n')[0];
+    name = prompt('Name for this label', first || 'Label')?.trim();
+    if (!name) return;
+  }
+  try {
+    const entry = labels.save({ id: existing?.id, name, design: plainDesign(), thumb: thumbnail(design) });
+    design.labelId = entry.id;
+    showBanner(existing ? `Saved "${entry.name}".` : `Saved "${entry.name}" to My labels.`);
+    refresh({ setup: true });
+  } catch (err) {
+    showBanner(err.message);
+  }
+}
+
+function recordPrint(copies) {
+  try {
+    history.add({ design: plainDesign(), thumb: thumbnail(design), printer: model().name, medium: medium().name, copies });
+  } catch { /* history is best effort; the print already went out */ }
+}
+
+function showLibrary(tab) {
+  openLibrary($('library-dialog'), {
+    tab,
+    currentLabelId: design.labelId,
+    describe: describeDesign,
+    onOpen(d, labelId) {
+      design = { ...newDesign(), ...JSON.parse(JSON.stringify(d)) };
+      if (labelId) design.labelId = labelId;
+      else delete design.labelId;
+      selectedId = design.items[0]?.id ?? null;
+      const entry = labelId ? labels.get(labelId) : null;
+      showBanner(entry ? `Opened "${entry.name}".` : '');
+      refresh({ setup: true, props: true });
+    },
+    onChanged() {
+      if (design.labelId && !labels.get(design.labelId)) delete design.labelId;
+      refresh({ setup: true });
+    },
+  });
+}
+
 function showAbout(tab) {
   openAbout($('about-dialog'), { models: MODELS, tab, onConnectHelp: () => showUsbHelp() });
 }

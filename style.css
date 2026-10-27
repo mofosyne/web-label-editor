@@ -281,3 +281,15 @@ details.section > summary .state { color: var(--accent); font-size: 12px; }
 details.section > div { margin-top: 10px; }
 details.section > summary .state { flex-basis: 100%; padding-left: 14px; }
 label[hidden] { display: none; }
+
+dialog.library .cards { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+dialog.library .card { display: grid; grid-template-columns: 130px 1fr; gap: 6px 12px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; align-items: center; }
+dialog.library .card.current { border-color: var(--accent); }
+dialog.library .thumb { grid-row: span 2; background: #fff; border-radius: 4px; display: flex; align-items: center; justify-content: center; min-height: 40px; padding: 4px; box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
+dialog.library .thumb img { max-width: 100%; max-height: 72px; image-rendering: pixelated; }
+dialog.library .meta { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--muted); min-width: 0; }
+dialog.library .meta strong { color: var(--text); font-size: 14px; }
+dialog.library .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+dialog.library .actions button { padding: 4px 10px; font-size: 13px; }
+dialog.library .empty { color: var(--muted); }
+@media (max-width: 520px) { dialog.library .card { grid-template-columns: 1fr; } dialog.library .thumb { grid-row: auto; } }

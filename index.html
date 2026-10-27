@@ -17,6 +17,7 @@
       <label class="copies">Copies <input id="copies" type="number" min="1" max="99" value="1"></label>
       <button id="btn-print" class="primary" disabled>Print</button>
       <button id="btn-png">Download PNG</button>
+      <button id="btn-labels">Labels</button>
       <button id="btn-help">Help</button>
     </div>
   </header>
@@ -56,10 +57,16 @@
       <label class="inline"><input id="border" type="checkbox"> Border</label>
       <label class="inline"><input id="invert" type="checkbox"> Invert (white on black)</label>
 
-      <h2>Design file</h2>
+      <h2>Design</h2>
+      <p id="lib-current" class="note" hidden></p>
       <div class="row">
-        <button id="btn-export">Save…</button>
-        <button id="btn-import">Open…</button>
+        <button id="btn-lib-save">Save to My labels</button>
+        <button id="btn-lib-saveas">Save as new…</button>
+        <button id="btn-lib-open">My labels &amp; history</button>
+      </div>
+      <div class="row">
+        <button id="btn-export">Save file…</button>
+        <button id="btn-import">Open file…</button>
         <input id="import-file" type="file" accept="application/json,.json" hidden>
       </div>
       <button id="btn-new" class="danger-link">New design</button>
@@ -94,6 +101,7 @@
 
   <dialog id="help-dialog" class="help" aria-label="Printer connection help"></dialog>
   <dialog id="about-dialog" class="help about" aria-label="Welcome and help"></dialog>
+  <dialog id="library-dialog" class="help about library" aria-label="My labels and print history"></dialog>
 
   <script type="module" src="src/app.js"></script>
 </body>

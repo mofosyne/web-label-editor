@@ -110,8 +110,12 @@ The app has its own welcome page and **Help** with the same information.
 - **Tape detection** (P-touch, QL): the printer reports the loaded tape; the
   app switches to it, previews in the tape's colours (P-touch), and stops a
   print if the tape changed or the printer reports a problem.
-- **Files:** *Save* / *Open* designs as JSON. The current design is kept in the
-  browser. *Download PNG* exports the label at the printer's resolution.
+- **My labels and history** (*Labels* button): save designs under a name
+  with a thumbnail, reopen them, or use one as a template for a new label.
+  Every print is recorded in a history (the last 50), so you can reprint or
+  adjust past labels. Both are kept in the browser.
+- **Files:** *Save file* / *Open file* for designs as JSON, to back up or
+  share. *Download PNG* exports the label at the printer's resolution.
 
 ## Direct USB instead of a printer driver
 

@@ -91,8 +91,10 @@ function tips() {
       li(b('Ctrl+D'), ': duplicate. ', b('Delete'), ': remove. ', b('Arrows'), ': nudge 0.1 mm (Shift: 1 mm).'),
       li(b('Double-click'), ' text to edit it on the label; double-click empty space to add text.')),
     el('h3', { textContent: 'Your designs' }),
-    p('The current design is kept in this browser. Use ', b('Save…'), ' / ', b('Open…'), ' for files you can keep or '
-      + 'share. Source code, issues and the full guide: ', link(REPO_URL, 'GitHub'), '.'),
+    p('The ', b('Labels'), ' button keeps your saved labels (open one, or use it as a template for a new label) and the '
+      + 'history of what you printed, so you can reprint it. They and the current design are kept in this browser; use ',
+    b('Save file…'), ' / ', b('Open file…'), ' for copies you can back up or share. Source code, issues and the full '
+      + 'guide: ', link(REPO_URL, 'GitHub'), '.'),
   ];
 }
 
