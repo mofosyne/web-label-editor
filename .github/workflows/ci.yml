@@ -20,6 +20,10 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+      - name: Install GNU recutils
+        run: sudo apt-get update -q && sudo apt-get install -y -q recutils
+      - name: Validate label catalogue
+        run: recfix catalog/media.rec
       - run: npm test
 
   # Publishes the static site to GitHub Pages on every push to main.
@@ -40,7 +44,7 @@ jobs:
       - name: Assemble site
         run: |
           mkdir _site
-          cp -r index.html style.css src _site/
+          cp -r index.html style.css src catalog _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

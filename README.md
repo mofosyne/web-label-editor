@@ -178,6 +178,41 @@ so long labels take a few seconds to send.
 
 The **LabelWriter 450** has no Bluetooth; it is USB only.
 
+## Adding a label or tape size
+
+Label and tape sizes live in [`catalog/media.rec`](catalog/media.rec), a
+[GNU recutils](https://www.gnu.org/software/recutils/) file: one record per
+label, one field per line, with comments. To add one, copy a similar record,
+give it a new `Id`, and fill in the sizes in millimetres. The comments at the
+top of the file describe every field.
+
+```
+Id: 30252
+Printer: dymo-lw450
+Name: 30252 Address 28 × 89 mm
+Kind: diecut
+WidthMm: 27.86
+LengthMm: 88.9
+MarginLeftMm: 5.84
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.52
+CornerMm: 3
+Source: lw450.ppd 30252: 78.96 x 252 pt, imageable 4.32 4.32 76.08 235.44
+```
+
+- Never rename or reuse an `Id`: saved designs refer to labels by it.
+- Say where the numbers came from in `Source` (a driver file, a datasheet,
+  or "measured").
+- Check the file with `recfix catalog/media.rec` (from the `recutils`
+  package). CI runs that too, and checks that the app's parser reads the file
+  exactly as `recsel` does.
+
+Why recutils: the catalogue is flat, hand-edited data where every number
+needs a comment saying where it came from. One field per line keeps diffs and
+merges clean, and `recfix` validates types, required fields and unique ids.
+Designs stay JSON because they are nested and written by the app.
+
 ## How it works
 
 ```
@@ -193,6 +228,8 @@ design (mm) ──render──▶ 1-bit strip bitmap (printer dpi)
 - `src/printers/brother-ptouch.js`: P-touch raster mode (`ESC i R`,
   PackBits `G` lines, `ESC i M` auto-cut, status `ESC i S`).
 - `src/transport.js`: WebUSB and Web Serial.
+- `catalog/media.rec`, `src/recfile.js`, `src/catalog.js`: the label catalogue,
+  a small recutils reader, and the code that turns records into media.
 - `src/codes/qr.js`, `src/codes/barcode.js`: QR (byte mode, versions 1–40,
   levels L/M/Q/H), Code 128 (sets B/C), EAN-13 and UPC-A encoders. Verified by
   decoding all 160 QR version/level combinations at full capacity, plus the

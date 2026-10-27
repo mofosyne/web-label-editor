@@ -116,7 +116,6 @@ test('P-touch: status parsing', () => {
   buf[9] = 0x10;
   const s = parseStatus(buf);
   assert.equal(s.tapeMm, 12);
-  assert.equal(s.tape.dots, 76);
   assert.deepEqual(s.errors, ['Cover open']);
   assert.equal(parseStatus(new Uint8Array(10)), null);
 });

@@ -3,6 +3,7 @@ import { renderDesign, bitmapToCanvas, itemError } from './render.js';
 import { SYMBOLOGIES } from './codes/barcode.js';
 import { UsbTransport, SerialTransport, support } from './transport.js';
 import { openHelp } from './help.js';
+import { loadCatalog } from './catalog.js';
 
 const STORAGE_KEY = 'web-label-editor:design';
 const $ = (id) => document.getElementById(id);
@@ -40,6 +41,16 @@ function saveDesign() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(design));
   } catch { /* storage unavailable or full */ }
+}
+
+// Labels and tapes come from catalog/media.rec; nothing works without them.
+try {
+  await loadCatalog(MODELS);
+} catch (err) {
+  const b = $('banner');
+  b.textContent = `${err.message}. Reload the page; if it persists, the catalogue file is broken.`;
+  b.hidden = false;
+  throw err;
 }
 
 let design = loadDesign();

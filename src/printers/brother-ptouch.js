@@ -10,16 +10,6 @@ import { ByteWriter, packBits } from './bytes.js';
 const ESC = 0x1b;
 export const HEAD_DOTS = 128;
 
-// Printable dots across the head at 180 dpi, per tape width (mm).
-export const TAPES = [
-  { mm: 3.5, statusMm: 4, dots: 24 },
-  { mm: 6, statusMm: 6, dots: 32 },
-  { mm: 9, statusMm: 9, dots: 52 },
-  { mm: 12, statusMm: 12, dots: 76 },
-  { mm: 18, statusMm: 18, dots: 120 },
-  { mm: 24, statusMm: 24, dots: 128 },
-];
-
 export function initCommand() {
   const w = new ByteWriter();
   w.fill(0, 100); // invalidate
@@ -129,7 +119,6 @@ export function parseStatus(buf) {
     textColor,
     errors,
     warnings,
-    tape: TAPES.find((t) => t.statusMm === buf[10]) ?? null,
   };
 }
 
