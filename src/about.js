@@ -94,6 +94,8 @@ function tips() {
       li(b('Hatched border'), ': where the printer cannot put ink at all. Anything there is cut off and flagged.'),
       li(b('Dashed line'), ': the safe area. Items past it still print (overprinting towards the label edge), but the '
         + 'die cut may trim them.'),
+      li(b('Rotate'), ' turns text in quarter turns, for cable flags and vertical text; a fitted box turns with it '
+        + 'and its text refits.'),
       li(b('Fit text in a fixed box'), ' picks the largest size that fits; ', b('Fill safe area'), ' makes the box '
         + 'cover the safe area, ', b('Fill to edge'), ' the whole label. Drag the corner handle to resize.'),
       li(b('Overprint past the label edge'), ' (DYMO die-cut labels): the tinted border around the label is the liner; '
