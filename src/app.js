@@ -522,7 +522,7 @@ function draw() {
 
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.imageSmoothingEnabled = false;
+  setDotSmoothing(ctx, scale * dpr);
   const colors = previewColors();
   const radius = (med.cornerMm ?? 0) * zoom;
   const round = med.shape === 'round';
@@ -729,6 +729,15 @@ function backingInfo() {
   const rowMm = (med.lanes?.pageDots ?? med.acrossDots) / dpmmNow();
   if (med.backingMm) return { padMm: Math.max(0, (med.backingMm - rowMm) / 2), measured: true };
   return model().family === 'dymo-lw' ? { padMm: 2, measured: false } : null;
+}
+
+// Printer dots onto the screen. With fewer screen pixels than dots (zoomed
+// out, or a 300 dpi label at its real size on an ordinary screen) they are
+// smoothed, so thin strokes don't break up and edges don't jag, which
+// would look worse than the print; zoomed in, each dot stays a crisp block.
+function setDotSmoothing(ctx, devicePxPerDot) {
+  ctx.imageSmoothingEnabled = devicePxPerDot < 1;
+  ctx.imageSmoothingQuality = 'high';
 }
 
 // A label's outline on a canvas or Path2D: a rounded rectangle, or the
@@ -3349,7 +3358,7 @@ function drawActualPanel(real) {
   c.height = Math.round(h * dpr);
   const ctx = c.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.imageSmoothingEnabled = false;
+  setDotSmoothing(ctx, scale * dpr);
   ctx.clearRect(0, 0, w, h);
   const colors = previewColors();
   // What the label will look like, not the design: just the labels (no
