@@ -129,7 +129,7 @@ right, copy it; don't make users discover the same problems again.
 | Brother QL-500 | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
 | Brother QL-550 | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
 | Brother QL-560 | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
-| Brother QL-570 | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
+| Brother QL-570 | ✅ Tested | USB | DK rolls and labels, up to 62 mm |
 | Brother QL-580N | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
 | Brother QL-650TD | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
 | Brother QL-700 | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
@@ -374,6 +374,11 @@ take a few seconds to send.
 - **Rulers** along the top and side of the preview measure in mm from the
   label's starting edge and from each label's top edge, and mark the
   selected item.
+- **Which way it prints:** the ruler along the feed marks the end that comes
+  out of the printer first (◀ ▶ ▲ ▼), where the label is cut (✂, with
+  auto-cut on), and where a continuous label grows (»); the note under the
+  preview says it in words. Brother QL printers feed the right-hand end
+  first; DYMO and P-touch the left.
 - **DYMO LabelWriter:** the printer starts printing about 5.8 mm into each
   label (DYMO's driver calls this the leading margin; measured 6 mm on a
   LabelWriter 450). The app leaves that part out of the job, so the rest lands
@@ -383,7 +388,9 @@ take a few seconds to send.
   label's starting edge (the end that comes out first): if line *n* is at
   *n + d* mm, set **Feed** to −*d*; the top edge gives **Across**. *Full black*
   shows everything the printer can reach.
-- **Position adjust** is saved in the browser per label type on each printer.
+- **Test prints & position** (a collapsed section in the Printer panel) holds
+  the test prints and the position adjustment, which is saved in the browser
+  per label type on each printer.
 - **My rolls:** for third-party label stock, *Save as roll…* stores a
   calibration under a name with a short ID (e.g. `K7QX`) to write on the
   roll's core. Its calibration code (e.g. `K7QX/30252/F5.0/A0.0`: ID, label

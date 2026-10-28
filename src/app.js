@@ -463,7 +463,13 @@ function draw() {
       ctx.fillRect(h.x, h.y, h.size, h.size);
     }
   }
-  drawRulers(selBounds);
+  // Which way the label comes out, where it is cut, and where it grows.
+  const along = (x) => (last.portrait ? geo.width - x : x); // strip x → display, along the feed
+  const leadX = model().leadingEnd === 'end' ? geo.width : 0;
+  const cuts = model().options.some((o) => o.id === 'autoCut') && option('autoCut') !== false;
+  const grows = !med.lengthDots && design.length.mode !== 'fixed';
+  const feed = { lead: along(leadX), trail: along(geo.width - leadX), cuts, grows };
+  drawRulers(selBounds, feed);
   placeLaneButtons(scale);
 
   const lenMm = geo.length / dpmm;
@@ -481,10 +487,16 @@ function draw() {
   const offLabel = shownBounds.some(({ b }) => outside(b, hard));
   const overprint = !offLabel && shownBounds.some(({ b, lane }) => outside(b, safe[lane]));
   const dims = $('dims');
+  // In words: the ends as seen in the preview.
+  const end = (p) => (last.portrait ? (p ? 'bottom' : 'top') : (p ? 'right' : 'left'));
+  const feedNote = `Comes out ${end(feed.lead)} end first`
+    + (feed.cuts ? `, cut at the ${end(feed.trail)}` : '')
+    + (feed.grows ? `; grows ${last.portrait ? 'downwards' : 'to the right'} as you add content` : '');
   dims.textContent = `${tape} × ${lenMm.toFixed(1)} mm long${last.portrait ? ', portrait' : ''}  ·  ${geo.width} × ${geo.height} dots @ ${m.dpi} dpi`
     + (offLabel ? '  ·  ⚠ Something is where the printer cannot print and will be cut off' : '')
     + (overprint ? '  ·  Overprinting past the safe area (the die cut may trim it)' : '')
-    + (last.hidden ? `  ·  ${last.hidden} item${last.hidden > 1 ? 's' : ''} on the other label${lanes?.count > 2 ? 's' : ''} hidden (choose "A different design on each")` : '');
+    + (last.hidden ? `  ·  ${last.hidden} item${last.hidden > 1 ? 's' : ''} on the other label${lanes?.count > 2 ? 's' : ''} hidden (choose "A different design on each")` : '')
+    + `  ·  ${feedNote}`;
   dims.classList.toggle('warn', offLabel);
   $('zoom-label').textContent = `${Math.round((zoom / 6) * 100)}%`;
   updateCodeInfo();
@@ -599,7 +611,7 @@ function unlinkLanes() {
 
 // Rulers along the top (mm from the label's starting edge) and the side
 // (mm from each label's top edge), with the selected item's extent marked.
-function drawRulers(sel) {
+function drawRulers(sel, feed) {
   const { geo, slots, dpmm } = last;
   const scale = zoom / dpmm;
   const css = getComputedStyle(document.documentElement);
@@ -682,6 +694,53 @@ function drawRulers(sel) {
     side.fillStyle = ink;
   }
   scaleAt(side, uniq(slots.map((s) => s.oy)), display.height * scale, last.portrait ? display.height : labelH, false);
+
+  // Feed marks on the ruler along the feed (top in landscape, side in
+  // portrait): an arrow at the end that comes out first, ✂ where it is cut,
+  // » where a continuous label grows.
+  if (!feed) return;
+  const ctx = last.portrait ? side : top;
+  const extent = (last.portrait ? display.height : display.width) * scale;
+  const at = (p) => Math.min(extent, Math.max(0, p * scale));
+  // A glyph on a light chip, inside the ruler against the end it marks;
+  // `shift` px further in (to sit beside another mark on the same end).
+  const mark = (p, text, shift = 0) => {
+    const q = at(p);
+    const atStart = q < extent / 2;
+    ctx.save();
+    ctx.font = 'bold 11px system-ui, sans-serif';
+    const w = ctx.measureText(text).width + 4;
+    const start = atStart ? q + 1 + shift : q - 1 - shift - w;
+    if (last.portrait) {
+      ctx.fillStyle = 'rgba(255, 255, 255, .9)';
+      ctx.fillRect(1, start, T - 2, w);
+      ctx.translate(T / 2 + 4, start + w - 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillStyle = accent;
+      ctx.fillText(text, 0, 0);
+    } else {
+      ctx.fillStyle = 'rgba(255, 255, 255, .9)';
+      ctx.fillRect(start, 1, w, T - 2);
+      ctx.fillStyle = accent;
+      ctx.fillText(text, start + 2, T - 5);
+    }
+    ctx.restore();
+    return w;
+  };
+  // The arrow points the way the label moves: out past the end that leads.
+  // Portrait glyphs are drawn turned a quarter anticlockwise, so ▶ shows as
+  // pointing up and ◀ as pointing down.
+  const leadsAtStart = at(feed.lead) < extent / 2;
+  const arrow = leadsAtStart === !last.portrait ? '◀' : '▶';
+  const leadW = mark(feed.lead, arrow);
+  if (feed.cuts) mark(feed.trail, '✂');
+  if (feed.grows) {
+    const far = (last.portrait ? display.height : display.width);
+    const sameEnd = Math.abs(at(far) - at(feed.lead)) < 2;
+    const cutHere = feed.cuts && Math.abs(at(far) - at(feed.trail)) < 2;
+    // Grows right (landscape) or down (portrait: « turned shows as pointing down).
+    mark(far, last.portrait ? '«' : '»', sameEnd ? leadW + 2 : cutHere ? 18 : 0);
+  }
 }
 
 let hatch = null;
@@ -857,12 +916,16 @@ function buildAdjust() {
   how.textContent = 'Grid: each numbered line should be that many mm from the label\'s starting edge (the end that comes out first). '
     + 'Measure one: if line n is at n + d mm, set Feed to −d; at n − d mm, set +d. Do the same from the top edge for Across. '
     + 'Lines in the hatched border may be missing; that is expected. Full black shows everything the printer can reach.';
-  tests.append(summary, row, how);
+  const needs = document.createElement('p');
+  needs.className = 'note';
+  needs.textContent = 'Connect the printer to print a test.';
+  needs.hidden = !!transport;
+  tests.append(summary, row, needs, how);
   box.replaceChildren(grid, note, rollPanel(roll), tests);
   updateAdjustState();
 }
 
-// The collapsed "Position adjust" heading still says when something is active.
+// The collapsed "Test prints & position" heading still says when an adjustment is active.
 function updateAdjustState() {
   const a = adjust();
   const roll = currentRoll();
@@ -1037,6 +1100,25 @@ async function connect(kind) {
       showBanner(err.message);
     }
     refresh({ setup: true });
+  }
+}
+
+// Reconnects quietly to a printer this site may already use (after a
+// reload, a plug-in, or picking its model), so you don't have to click
+// Connect again.
+let reconnecting = false;
+async function autoConnect() {
+  if (transport || reconnecting || !support.usb || !model().usbFilters) return;
+  reconnecting = true;
+  try {
+    const t = await UsbTransport.reconnect(model().usbFilters);
+    if (!t || transport) return;
+    transport = t;
+    setStatus(`Connected: ${transport.label}`, true);
+    refresh({ setup: true });
+    if (model().queryStatus) await detect();
+  } catch { /* stay disconnected */ } finally {
+    reconnecting = false;
   }
 }
 
@@ -1937,7 +2019,7 @@ function wire() {
     delete design.roll;
     loaded = null;
     design.medium = model().media[0].id;
-    disconnect();
+    disconnect().then(autoConnect);
   };
   $('medium').onchange = (e) => { selectMedium(e.target.value); refresh({ setup: true }); };
   document.querySelectorAll('input[name="lenmode"]').forEach((r) => {
@@ -2025,6 +2107,7 @@ function wire() {
     navigator.usb.addEventListener('disconnect', (e) => {
       if (transport?.device === e.device) disconnect();
     });
+    navigator.usb.addEventListener('connect', () => autoConnect());
   }
 }
 
@@ -2127,3 +2210,4 @@ function welcomeOnce() {
 wire();
 refresh({ setup: true, props: true });
 welcomeOnce();
+autoConnect();

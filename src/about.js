@@ -61,7 +61,7 @@ function welcome(go) {
         b('Fit text in a fixed box'), ' to let the size follow the box.'),
       li('Click ', b('Connect USB'), ' (or Bluetooth), then ', b('Print'), '. If the browser is refused access, the app '
         + 'explains the one-time fix for your system.'),
-      li('If prints land off position, open ', b('Test prints'), ' in the Printer panel and calibrate.')),
+      li('If prints land off position, open ', b('Test prints & position'), ' in the Printer panel and calibrate.')),
     p('Printing needs Chrome, Edge or another Chromium browser on desktop. In other browsers you can still design and ',
       b('Download PNG'), '.'),
   ];
@@ -97,6 +97,8 @@ function tips() {
         + 'die cut may trim them.'),
       li(b('Portrait'), ' (▭ ▯ in the toolbar) lets you design the label standing upright; it is turned for printing. '
         + 'On tape it grows downwards with the content.'),
+      li(b('Ruler marks'), ': the arrow is the end that comes out of the printer first, ✂ where it is cut, » where a '
+        + 'continuous label grows.'),
       li(b('Rotate'), ' turns text in quarter turns, for cable flags and vertical text; a fitted box turns with it '
         + 'and its text refits.'),
       li(b('Fit text in a fixed box'), ' picks the largest size that fits; ', b('Fill safe area'), ' makes the box '

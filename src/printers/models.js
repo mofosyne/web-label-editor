@@ -114,14 +114,16 @@ function pTouch({ name, status, devices, productId, maxTapeMm = 24, quirks = {},
 const QL_NOTE = 'Brother QL: print 62 mm and narrower DK rolls; the QL-1050, QL-1060N and QL-1100 series also take 102 mm rolls.';
 const EDITOR_LITE = 'Turn off Editor Lite (hold its button until the light goes out): in that mode the printer appears as a USB drive, not a printer.';
 
-function brotherQL(name, { editorLite = false } = {}) {
+function brotherQL(name, { editorLite = false, status = 'experimental' } = {}) {
   const params = qlParams(name);
   return {
     brand: 'Brother QL',
     name: `Brother ${name}`,
-    status: 'experimental',
-    devices: [{ name: `Brother ${name}`, status: 'experimental' }],
+    status,
+    devices: [{ name: `Brother ${name}`, status }],
     family: 'brother-ql',
+    // The strip's right end prints first (see brother-ql.js).
+    leadingEnd: 'end',
     dpi: 300,
     headDots: params.bytesPerRow * 8,
     transports: ['usb'],
@@ -186,7 +188,8 @@ export const MODELS = {
   'brother-ql-500': brotherQL('QL-500'),
   'brother-ql-550': brotherQL('QL-550'),
   'brother-ql-560': brotherQL('QL-560'),
-  'brother-ql-570': brotherQL('QL-570'),
+  // Printed and cut on a real QL-570.
+  'brother-ql-570': brotherQL('QL-570', { status: 'tested' }),
   'brother-ql-580n': brotherQL('QL-580N'),
   'brother-ql-650td': brotherQL('QL-650TD'),
   'brother-ql-700': brotherQL('QL-700', { editorLite: true }),

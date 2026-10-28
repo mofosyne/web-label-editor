@@ -53,6 +53,26 @@ export class UsbTransport {
     return t;
   }
 
+  // A printer this site was already allowed to use, without asking again:
+  // used to reconnect after a reload or when it is plugged back in. Returns
+  // null (quietly) if none matches or it can't be opened right now.
+  static async reconnect(filters) {
+    const matches = (d) => filters.some((f) => d.vendorId === f.vendorId
+      && (f.productId == null || d.productId === f.productId)
+      && (f.classCode == null || (d.configurations ?? []).some((c) => c.interfaces
+        .some((i) => i.alternates.some((a) => a.interfaceClass === f.classCode)))));
+    const device = (await navigator.usb.getDevices()).find(matches);
+    if (!device) return null;
+    const t = new UsbTransport(device);
+    try {
+      await t.acquire();
+      await t.release();
+      return t;
+    } catch {
+      return null;
+    }
+  }
+
   constructor(device) {
     this.device = device;
     this.label = device.productName || 'USB printer';
