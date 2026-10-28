@@ -1,6 +1,8 @@
 // DYMO LabelWriter 400/450 raster protocol.
 // Command set follows DYMO's LabelWriter technical reference and the
-// official dymo-cups-drivers (src/lw/LabelWriterDriver.cpp).
+// official dymo-cups-drivers (src/lw/LabelWriterDriver.cpp), ported from
+// that driver: DYMO LabelWriter Drivers, Copyright (C) 2008 Sanford L.P.,
+// GPL-2.0-or-later (https://github.com/matthiasbock/dymo-cups-drivers).
 //
 // The bitmap passed in is a "strip": width = length along the feed,
 // height = dots across the print head. Each strip column becomes one raster

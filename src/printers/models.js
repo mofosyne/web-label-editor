@@ -65,7 +65,8 @@ function labelWriter({ name, status, devices, headDots = 672, productIds, rollSe
 }
 
 // ---- Brother P-touch (TZe tape, 180 dpi, 128-dot head) ----
-// Per-model quirks and USB product IDs from ptouch-print's device table.
+// Per-model quirks and USB product IDs from ptouch-print's device table
+// (Copyright (C) 2013-2026 Dominic Radermacher, GPL-3.0).
 
 const PT_NOTE = 'P-touch printers leave a little blank tape before and after the print (on a PT-P710BT: about 4.5 mm before, 2 mm after).';
 const PLITE = 'Turn off its P-Lite (Editor Lite) mode: in that mode it appears as a USB drive, not a printer.';

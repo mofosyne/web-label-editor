@@ -40,7 +40,8 @@
 # ---------------------------------------------------------------------------
 # DYMO LabelWriter 400 / 450 / 4XL (300 dpi; 672-dot head, 1248 on the 4XL)
 #
-# Sizes and margins come from DYMO's lw450.ppd: PaperDimension (W x H points)
+# Sizes and margins come from DYMO's lw450.ppd (DYMO LabelWriter Drivers,
+# Copyright (C) 2008 Sanford L.P., GPL-2.0-or-later): PaperDimension (W x H points)
 # and ImageableArea (llx lly urx ury points), converted at 25.4/72 mm per pt.
 # The PPD page is portrait with its top fed first, so:
 #   MarginLeftMm = H - ury   (the ~5.8 mm the LabelWriter can't print first)

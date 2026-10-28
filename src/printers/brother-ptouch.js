@@ -1,6 +1,9 @@
 // Brother P-touch raster protocol (PT-P700 family, incl. PT-P710BT).
 // Follows Brother's "Raster Command Reference" and the command sequence used
 // by ptouch-print (libptouch.c), which is known to work on the PT-P710BT.
+// The command sequence, per-model quirks, status tables and tape table are
+// ported from ptouch-print: https://git.familie-radermacher.ch/linux/ptouch-print.git,
+// Copyright (C) 2013-2026 Dominic Radermacher, GPL-3.0.
 //
 // The bitmap passed in is a "strip": width = tape length, height = printable
 // dots across the tape. Each column becomes one raster line; the strip is
