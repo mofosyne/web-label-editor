@@ -23,7 +23,7 @@ import { encodeQL, qlParams, parseQLStatus } from './brother-ql.js';
 
 const DYMO_NOTE = 'The LabelWriter cannot report which labels are loaded, so pick the media yourself.';
 
-function labelWriter({ name, status, devices, headDots = 672, productIds, rollSelect = false }) {
+function labelWriter({ name, status, devices, dpi = 300, headDots = 672, productIds, rollSelect = false, se450 = false, note = DYMO_NOTE }) {
   const options = [
     { id: 'density', label: 'Darkness', type: 'select', default: 'normal', choices: ['light', 'medium', 'normal', 'dark'] },
   ];
@@ -36,7 +36,7 @@ function labelWriter({ name, status, devices, headDots = 672, productIds, rollSe
     status,
     devices: devices ?? [{ name, status }],
     family: 'dymo-lw',
-    dpi: 300,
+    dpi,
     headDots,
     transports: ['usb'],
     // 0x0922 is DYMO; class 7 is USB Printer.
@@ -54,7 +54,7 @@ function labelWriter({ name, status, devices, headDots = 672, productIds, rollSe
     // prints on the liner (see layout.js).
     overprint: true,
     media: [],
-    note: DYMO_NOTE,
+    note,
     options,
     encode(bitmap, medium, opts) {
       return encodeLabelWriter(bitmap, {
@@ -62,6 +62,7 @@ function labelWriter({ name, status, devices, headDots = 672, productIds, rollSe
         density: opts.density,
         headDots,
         roll: rollSelect ? opts.roll : undefined,
+        se450,
       });
     },
   };
@@ -178,6 +179,12 @@ export const MODELS = {
   }),
   'dymo-lw450tt': labelWriter({ name: 'DYMO LabelWriter 450 Twin Turbo', status: 'experimental', productIds: [0x0022], rollSelect: true }),
   'dymo-lw4xl': labelWriter({ name: 'DYMO LabelWriter 4XL', status: 'experimental', headDots: 1248, productIds: [0x0025] }),
+  // 203 dpi, 448-dot head, the 450's raster commands without ESC G (DYMO's
+  // LabelWriter SE450 Technical Reference). USB only here, not its serial port.
+  'dymo-lwse450': labelWriter({
+    name: 'DYMO LabelWriter SE450', status: 'experimental', dpi: 203, headDots: 448, productIds: [0x0400], se450: true,
+    note: `${DYMO_NOTE} The SE450 prints at 203 dpi; it is driven over USB here (its serial port and ASCII commands are not used).`,
+  }),
 
   'brother-pt-p710bt': pTouch({
     name: 'Brother PT-P710BT',

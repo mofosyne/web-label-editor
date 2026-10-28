@@ -22,6 +22,10 @@ export function encodeLabelWriter(bitmap, opts = {}) {
   const continuous = opts.continuous ?? true;
   const density = DENSITY[opts.density ?? 'normal'];
   const offset = opts.offsetDots ?? 0;
+  // The LabelWriter SE450 takes the 450's raster commands except ESC G (and
+  // ESC q); its ESC h sets print speed rather than text quality, so it gets
+  // neither (DYMO's LabelWriter SE450 Technical Reference).
+  const se450 = !!opts.se450;
 
   const across = Math.min(bitmap.height + offset, headDots);
   const bytesPerLine = Math.ceil(across / 8);
@@ -31,7 +35,7 @@ export function encodeLabelWriter(bitmap, opts = {}) {
   w.fill(ESC, 156);
   w.push(ESC, 0x51, 0, 0); // ESC Q: line tab 0
   w.push(ESC, 0x42, 0); // ESC B: dot tab 0
-  w.push(ESC, 0x68); // ESC h: text quality, 300x300
+  if (!se450) w.push(ESC, 0x68); // ESC h: text quality, 300x300
   w.push(ESC, density); // ESC c/d/e/g: print density
   // ESC q: roll select on the Twin Turbo ('0' auto, '1' left, '2' right).
   if (opts.roll) w.push(ESC, 0x71, { auto: 0x30, left: 0x31, right: 0x32 }[opts.roll] ?? 0x30);
@@ -53,7 +57,7 @@ export function encodeLabelWriter(bitmap, opts = {}) {
     w.add(line);
   }
 
-  w.push(ESC, 0x47); // ESC G: short form feed (end of label)
+  if (!se450) w.push(ESC, 0x47); // ESC G: short form feed (end of label)
   w.push(ESC, 0x45); // ESC E: form feed to tear-off position
   return w.toUint8Array();
 }

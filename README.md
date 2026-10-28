@@ -110,7 +110,7 @@ right, copy it; don't make users discover the same problems again.
 | DYMO LabelWriter 450 Duo (label side) | 🧪 Experimental | USB | LabelWriter labels, up to 59 mm |
 | DYMO LabelWriter 450 Twin Turbo | 🧪 Experimental | USB | LabelWriter labels, up to 59 mm |
 | DYMO LabelWriter 4XL | 🧪 Experimental | USB | LabelWriter labels, up to 104 mm |
-| DYMO LabelWriter SE450 | ⬜ Unimplemented |  | LabelWriter for system integration (serial RS-232 and USB): 203 dpi with a 448-dot (57 mm) head, plus its own ASCII command set; its raster mode is close to the 450's, but not wired up yet. |
+| DYMO LabelWriter SE450 | 🧪 Experimental | USB | LabelWriter labels, up to 59 mm |
 | DYMO LabelManager PnP / 280 / 420P / 500TS (D1 tape label makers) | ⬜ Unimplemented |  | DYMO's tape label makers, like P-touch. Different protocol, and some first appear as a USB drive; Labelle supports them. |
 | Brother PT-P710BT (USB) | ✅ Tested | USB | TZe tape, up to 24 mm |
 | Brother PT-P710BT (Bluetooth) | 🧪 Experimental | Bluetooth | TZe tape, up to 24 mm |

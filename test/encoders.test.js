@@ -234,3 +234,16 @@ test('P-touch: copies as pages of one job; half cut on models with a half cutter
   assert.equal(find(chained, [0x1b, 0x69, 0x4b, 0x00]), 2);
   assert.equal(find(chained, [0x1b, 0x69, 0x41]), 0);
 });
+
+test('LabelWriter SE450: the 450 raster stream without ESC h or ESC G', async () => {
+  const { encodeLabelWriter } = await import('../src/printers/dymo-labelwriter.js');
+  const bmp = bitmap(3, 448, (x, y) => y === 0);
+  const lw = encodeLabelWriter(bmp, { headDots: 672, continuous: false });
+  const se = encodeLabelWriter(bmp, { headDots: 448, continuous: false, se450: true });
+  const has = (out, a, b) => [...out].some((v, i) => v === a && out[i + 1] === b);
+  assert.ok(has(lw, 0x1b, 0x68) && has(lw, 0x1b, 0x47));
+  assert.ok(!has(se, 0x1b, 0x68) && !has(se, 0x1b, 0x47));
+  assert.deepEqual([...se.subarray(-2)], [0x1b, 0x45], 'ends with ESC E form feed');
+  // 448 dots = 56 bytes per line (ESC D 56).
+  assert.ok([...se].some((v, i) => v === 0x1b && se[i + 1] === 0x44 && se[i + 2] === 56));
+});
