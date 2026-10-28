@@ -165,6 +165,45 @@ export function itemBounds(ctx, item, dpmm) {
   return { x, y, w: 0, h: 0 };
 }
 
+// Where an item puts ink, in dots: for text, the glyphs' own extent, since
+// fonts leave room above capitals and below the baseline that is never
+// inked; other items fill their bounds. null for text with nothing to ink.
+export function itemInk(ctx, item, dpmm) {
+  if (item.type !== 'text') return itemBounds(ctx, item, dpmm);
+  const m = textLayout(ctx, item, dpmm);
+  ctx.font = fontString(item, m.px);
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  m.lines.forEach((line, i) => {
+    if (!line.trim()) return;
+    const t = ctx.measureText(line);
+    let dx = 0;
+    if (item.align === 'center') dx = (m.w - m.widths[i]) / 2;
+    else if (item.align === 'right') dx = m.w - m.widths[i];
+    const x = m.blockX + dx;
+    const base = m.blockY + i * m.lineH + m.ascent;
+    x0 = Math.min(x0, x - (t.actualBoundingBoxLeft ?? 0));
+    x1 = Math.max(x1, x + (t.actualBoundingBoxRight ?? m.widths[i]));
+    y0 = Math.min(y0, base - (t.actualBoundingBoxAscent ?? m.ascent));
+    y1 = Math.max(y1, base + (t.actualBoundingBoxDescent ?? 0));
+  });
+  if (x0 === Infinity) return null;
+  if (!m.rotate) return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  // Turned text: the ink's corners turned about the box's centre.
+  const px = m.blockX + m.pivot.x;
+  const py = m.blockY + m.pivot.y;
+  const a = (m.rotate * Math.PI) / 180;
+  const pts = [[x0, y0], [x1, y0], [x0, y1], [x1, y1]].map(([x, y]) => [
+    px + (x - px) * Math.cos(a) - (y - py) * Math.sin(a),
+    py + (x - px) * Math.sin(a) + (y - py) * Math.cos(a),
+  ]);
+  const xs = pts.map((p) => p[0]);
+  const ys = pts.map((p) => p[1]);
+  return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+}
+
 function drawText(ctx, item, dpmm) {
   const m = textLayout(ctx, item, dpmm);
   ctx.save();
@@ -358,9 +397,10 @@ export function renderDesign(design, model, medium, onAssetLoad, opts = {}) {
   if (design.invert) for (let i = 0; i < data.length; i++) data[i] ^= 1;
 
   const bounds = items.map((item) => itemBounds(ctx, item, dpmm));
+  const inks = items.map((item) => itemInk(ctx, item, dpmm));
   const textLayouts = items.map((item) => (item.type === 'text' ? textLayout(ctx, item, dpmm) : null));
   const surface = { width: W, height: H, data };
-  return { bitmap: portrait ? pageToStrip(surface) : surface, length, bounds, textLayouts, dpmm };
+  return { bitmap: portrait ? pageToStrip(surface) : surface, length, bounds, inks, textLayouts, dpmm };
 }
 
 // Turn a 1-bit bitmap into a canvas, e.g. for preview or PNG export.

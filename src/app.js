@@ -385,6 +385,7 @@ function renderView(d = design, m = model(), med = medium(), { filled, adj, onAs
   }
 
   const bounds = d.items.map(() => null);
+  const inks = d.items.map(() => null);
   const textLayouts = d.items.map(() => null);
   const lanes = d.items.map(() => null);
   for (const s of slots) {
@@ -393,6 +394,8 @@ function renderView(d = design, m = model(), med = medium(), { filled, adj, onAs
       const i = d.items.indexOf(it);
       const b = s.r.bounds[j];
       bounds[i] = { ...b, x: b.x + s.ox, y: b.y + s.oy };
+      const ink = s.r.inks[j];
+      inks[i] = ink && { ...ink, x: ink.x + s.ox, y: ink.y + s.oy };
       lanes[i] = s.lane;
       const l = s.r.textLayouts[j];
       if (l) {
@@ -405,7 +408,7 @@ function renderView(d = design, m = model(), med = medium(), { filled, adj, onAs
   const hidden = d.items.length - shown.length;
   return {
     bitmap, display: upright ? stripToPage(bitmap) : bitmap, toDisplay, portrait: upright,
-    geo, slots, bounds, textLayouts, lanes, hidden, dpmm, mode: md,
+    geo, slots, bounds, inks, textLayouts, lanes, hidden, dpmm, mode: md,
   };
 }
 
@@ -468,6 +471,7 @@ function draw() {
   const med = medium();
   last = renderView(viewDesign(), m, med, { adj: adjust(), onAssetLoad: () => refresh(), laneItems: batchLaneItems() });
   updateDataBar();
+  syncFormatBar();
   const { display, dpmm, geo, slots, toDisplay } = last;
 
   if (zoomFit && !editing && !drag) editZoom = fitZoom(display, dpmm, last.portrait);
@@ -629,14 +633,15 @@ function draw() {
   $('dims').title = 'Hatched: the printer cannot print there. Dashed line: the safe area (from the label maker\'s driver); '
     + 'items past it still print, overprinting towards the label edge, but the die cut may trim them.'
     + (geo.top || geo.bottom || geo.right ? ' Tinted: the liner around the label, which an overprint border prints on.' : '');
-  // Font boxes include some blank space, so allow a little slack.
-  const slack = 0.3 * zoom;
+  // Checked against where items put ink (text: its glyphs, not the font's
+  // line box), with half a dot of slack for rounding.
+  const slack = 0.5 * scale;
   const outside = (b, a) => b.x * scale < a.x0 - slack || b.y * scale < a.y0 - slack
     || (b.y + b.h) * scale > a.y1 + slack || (b.x + b.w) * scale > a.x1 + slack;
-  const shownBounds = last.bounds.map((b, i) => (b ? { b, lane: last.lanes[i] } : null)).filter(Boolean);
+  const shownBounds = last.inks.map((b, i) => (b ? { b, lane: last.lanes[i] } : null)).filter(Boolean);
   const offLabel = shownBounds.some(({ b }) => outside(b, hard));
   // Name what is cut off, so it can be found and moved.
-  const cutOff = last.bounds.map((b, i) => (b && outside(b, hard) ? design.items[i] : null)).filter(Boolean);
+  const cutOff = last.inks.map((b, i) => (b && outside(b, hard) ? design.items[i] : null)).filter(Boolean);
   const kinds = { text: 'text', qr: 'QR code', barcode: 'barcode', image: 'image', box: 'box' };
   const short = (it) => {
     const s = it.type === 'text' ? it.text.split('\n')[0] : it.type === 'qr' || it.type === 'barcode' ? it.data : '';
@@ -2354,6 +2359,120 @@ function describe(item) {
   return `${item.w} × ${item.h} mm`;
 }
 
+// ---------- the text format bar ----------
+
+// Font, fit, size, bigger/smaller, bold, italic, alignment and turning for
+// the selected text, above the label as in DYMO Label. Always shown (greyed
+// out with no text selected) so the layout doesn't jump; built per
+// selection and kept in step by syncFormatBar() on every redraw.
+let formatFor = undefined;
+function buildFormatBar() {
+  const item = selected();
+  const text = item?.type === 'text' ? item : null;
+  if (formatFor === (text?.id ?? null) && $('format-bar').childElementCount) return syncFormatBar();
+  formatFor = text?.id ?? null;
+  const bar = $('format-bar');
+  const el = (tag, props = {}, ...kids) => {
+    const e = Object.assign(document.createElement(tag), props);
+    e.append(...kids);
+    return e;
+  };
+  const change = (fn) => () => {
+    const it = selected();
+    if (it?.type !== 'text') return;
+    fn(it);
+    undo.checkpoint();
+    refresh({ props: true });
+  };
+  const font = el('select', { ariaLabel: 'Font', title: 'Font' });
+  const fit = el('select', { ariaLabel: 'Text size', title: 'Fit to box: the text takes the largest size that fits its box' });
+  fit.append(new Option('Fit to box', 'fit'), new Option('Fixed size', 'fixed'));
+  const size = el('input', { type: 'number', step: 0.5, min: 0.5, ariaLabel: 'Size (mm)', title: 'Text size in mm' });
+  const button = (label, title, onClick, cls = '') => {
+    const b = el('button', { type: 'button', className: `icon ${cls}`, title, ariaLabel: title, textContent: label });
+    b.onclick = change(onClick);
+    return b;
+  };
+  font.onchange = change((it) => { it.font = font.value; });
+  fit.onchange = change((it) => toggleFit(it, fit.value === 'fit'));
+  size.onchange = change((it) => {
+    const v = parseFloat(size.value);
+    if (v > 0) { if (it.fit) toggleFit(it, false); it.size = round1(v); }
+  });
+  const step = (f) => (it) => {
+    if (it.fit) toggleFit(it, false);
+    it.size = Math.max(0.5, round1((it.size || 3) * f));
+  };
+  const turn = (it) => setRotation(it, ((quarterTurns(it) + 1) % 4) * 90);
+  bar.replaceChildren(
+    font, fit, size, el('span', { className: 'unit', textContent: 'mm' }),
+    button('A−', 'Smaller', step(1 / 1.15)),
+    button('A+', 'Bigger', step(1.15)),
+    el('span', { className: 'sep' }),
+    button('B', 'Bold', (it) => { it.bold = !it.bold; }, 'b'),
+    button('I', 'Italic', (it) => { it.italic = !it.italic; }, 'i'),
+    el('span', { className: 'sep' }),
+    ...[['left', '⇤', 'Align left'], ['center', '↔', 'Centre'], ['right', '⇥', 'Align right']].map(([v, label, title]) => {
+      const b = button(label, title, (it) => { it.align = v; });
+      b.dataset.align = v;
+      return b;
+    }),
+    el('span', { className: 'sep' }),
+    button('⟳', 'Turn a quarter (for vertical text and cable flags)', turn),
+  );
+  syncFormatBar();
+}
+
+// The format bar's values from the selected text (not the control in use).
+function syncFormatBar() {
+  const bar = $('format-bar');
+  const item = selected();
+  const text = item?.type === 'text' ? item : null;
+  if ((text?.id ?? null) !== formatFor) { buildFormatBar(); return; }
+  bar.classList.toggle('idle', !text);
+  for (const c of bar.querySelectorAll('select, input, button')) c.disabled = !text;
+  if (!text) return;
+  const [font, fit, size] = bar.querySelectorAll('select, input');
+  if (document.activeElement !== font) {
+    // The usual fonts, plus the text's own if it is another.
+    const fonts = [...new Set([...FONTS, text.font])];
+    if (font.options.length !== fonts.length) font.replaceChildren(...fonts.map((f) => new Option(f, f)));
+    font.value = text.font;
+  }
+  fit.value = text.fit ? 'fit' : 'fixed';
+  if (document.activeElement !== size) {
+    const l = last?.textLayouts[design.items.indexOf(text)];
+    size.value = String(round1(text.fit && l ? l.sizeMm : text.size));
+    size.title = text.fit ? 'Fitted to the box; typing a size switches to a fixed size' : 'Text size in mm';
+  }
+  for (const b of bar.querySelectorAll('button')) {
+    if (b.title === 'Bold') b.setAttribute('aria-pressed', String(!!text.bold));
+    if (b.title === 'Italic') b.setAttribute('aria-pressed', String(!!text.italic));
+    if (b.dataset.align) b.setAttribute('aria-pressed', String((text.align ?? 'left') === b.dataset.align));
+  }
+}
+
+// Switches a text between fitted to its box and a fixed size, keeping it
+// where it is and the size it shows.
+function toggleFit(item, on) {
+  const i = design.items.indexOf(item);
+  const l = last?.textLayouts[i];
+  const slot = last?.slots.find((sl) => sl.lane === last.lanes[i]);
+  if (on) {
+    const b = last?.bounds[i] ?? { w: 20 * last.dpmm, h: 5 * last.dpmm };
+    item.w = item.w ?? round1(b.w / last.dpmm);
+    item.h = item.h ?? round1(b.h / last.dpmm);
+    item.fit = true;
+    return;
+  }
+  if (l && slot && !quarterTurns(item)) {
+    item.size = round1(l.sizeMm);
+    item.x = round1((l.blockX - slot.ox) / last.dpmm);
+    item.y = round1((l.blockY - slot.oy) / last.dpmm);
+  }
+  item.fit = false;
+}
+
 function buildProps() {
   const list = $('item-list');
   list.replaceChildren(...design.items.map((item) => {
@@ -2377,6 +2496,7 @@ function buildProps() {
 
   const panel = $('item-props');
   const item = selected();
+  buildFormatBar();
   panel.replaceChildren();
   if (!item) return;
 

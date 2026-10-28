@@ -193,6 +193,17 @@ dialog.help .row { justify-content: flex-end; margin: 0; }
 .toolbar .tools { display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
 .toolbar .icon { padding: 6px 8px; min-width: 30px; }
 .toolbar .seg + .icon { margin-left: 4px; }
+/* The text format bar, as in DYMO Label: the everyday text settings above
+   the label; the panel on the right has the rest. */
+.format-bar { margin-top: -6px; }
+.format-bar select { width: auto; max-width: 150px; }
+.format-bar .unit { color: var(--muted); font-size: 12px; margin: 0 4px 0 -2px; }
+.format-bar input[type="number"] { width: 4.5em; }
+.format-bar button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.format-bar .b { font-weight: 700; }
+.format-bar .i { font-style: italic; font-family: serif; }
+.format-bar .sep { width: 1px; align-self: stretch; background: var(--border); margin: 2px 4px; }
+.format-bar.idle { opacity: .55; }
 #zoom-label { min-width: 42px; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .canvas-wrap {

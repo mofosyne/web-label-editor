@@ -194,7 +194,9 @@ The app has its own welcome page and **Help** with the same information.
   box, turned 90°, 180° or 270° for cable flags and vertical text), QR codes, barcodes (Code 128, EAN-13, UPC-A), images (threshold or
   dithering) and boxes. Drag to move, corner handle to resize.
 - **Editing:** click selected text (or double-click it, or press Enter / F2)
-  to edit it in place, right on the label; double-click empty space to add
+  to edit it in place, right on the label; the bar above the label sets its
+  font, fit or size (A− / A+), bold, italic, alignment and turning, as in
+  DYMO Label; double-click empty space to add
   text; Ctrl+C / Ctrl+X / Ctrl+V for items (and pasting text or images
   from other apps); Ctrl+D duplicates; arrow keys nudge; Ctrl+Z / Ctrl+Shift+Z
   (or Ctrl+Y) undo and redo, with a drag or a burst of typing as one step.

@@ -113,7 +113,8 @@ function tips() {
         + 'double-click empty space to add text.')),
     el('h3', { textContent: 'Layout' }),
     el('ul', {},
-      li(b('Hatched border'), ': where the printer cannot put ink at all. Anything there is cut off and flagged.'),
+      li(b('Hatched border'), ': where the printer cannot put ink at all. Anything there is cut off and flagged; '
+        + 'text counts where its letters are, not the blank space a font keeps above and below them.'),
       li(b('Dashed line'), ': the safe area. Items past it still print (overprinting towards the label edge), but the '
         + 'die cut may trim them.'),
       li(b('Portrait'), ' (▭ ▯ in the toolbar) lets you design the label standing upright; it is turned for printing. '
