@@ -4,6 +4,7 @@
 import { compatRows, NOT_PLANNED, STATUS_LABEL } from './compat.js';
 import { REPO_URL, printerReportUrl, labelRequestUrl } from './report.js';
 import { OTHER_TOOLS, OTHER_TOOLS_INTRO, AIMS, LOOK_ELSEWHERE } from './others.js';
+import { CREDITS } from './credits.js';
 
 export { REPO_URL };
 
@@ -153,10 +154,17 @@ function others() {
       el('h3', { textContent: group }),
       el('ul', {}, ...tools.map(([name, href, what]) => li(href ? link(href, name) : b(name), `: ${what}`))),
     ]),
+    el('h3', { textContent: 'Credits' }),
+    p('This editor stands on work others did first. No third-party code is bundled: the protocols are re-implemented '
+      + 'from these sources and checked against them in the tests.'),
+    ...CREDITS.flatMap(({ group, items }) => [
+      p(b(group)),
+      el('ul', {}, ...items.map(([name, href, what]) => li(href ? link(href, name) : b(name), `: ${what}`))),
+    ]),
   ];
 }
 
-const TABS = [['welcome', 'Welcome'], ['printers', 'Printers'], ['tips', 'Tips'], ['others', 'Other tools'], ['connect', 'Connecting']];
+const TABS = [['welcome', 'Welcome'], ['printers', 'Printers'], ['tips', 'Tips'], ['others', 'Other tools & credits'], ['connect', 'Connecting']];
 
 // ctx: { models, tab, onConnectHelp }
 export function openAbout(dialog, ctx) {
