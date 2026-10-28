@@ -64,9 +64,9 @@ continuous rolls treated as the normal case rather than an afterthought.
 
 **Ease of use over features.** It does less on purpose. The aim is not the
 longest feature list: it is that making a label is quick and obvious. Click
-the text and type; it fits its box; the preview is what prints; the printer just works. A feature
-earns its place only if it doesn't make that everyday case harder, and the
-rest below follows from this.
+the text and type; it fits its box; the preview is what prints; the printer
+just works. A feature earns its place only if it doesn't make that everyday
+case harder, and the rest below follows from this.
 
 **Reuse the lessons commercial label software already learned the hard
 way,** instead of relearning them. Over years of users, programs like the
