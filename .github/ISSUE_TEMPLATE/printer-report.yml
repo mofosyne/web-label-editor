@@ -52,9 +52,8 @@ body:
     attributes:
       label: Printer settings (Other printer only)
       description: >-
-        If you used "Other printer (ZPL, TSPL or ESC/POS)", the settings you entered: the app fills these in. Say
-        which ones worked, or what you changed to make it work.
-      render: json
+        If you used "Other printer (ZPL, TSPL or ESC/POS)", the settings you entered and a record for the printer
+        list: the app fills these in. Say which ones worked, or what you changed to make it work.
   - type: input
     id: system
     attributes:

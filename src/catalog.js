@@ -2,8 +2,10 @@
 // Loads the label/tape catalogue (catalog/media.rec) into each printer
 // model's `media` list. See the comments in that file for the fields.
 import { parseRec, field } from './recfile.js';
+import { genericPrinter } from './printers/generic.js';
 
 export const CATALOG_URL = 'catalog/media.rec';
+export const PRINTERS_URL = 'catalog/printers.rec';
 
 function toMedium(rec, model) {
   const id = field(rec, 'Id');
@@ -113,6 +115,47 @@ export function applyCatalog(text, models) {
     if (!m.media.length) throw new Error(`catalogue has no media for ${id}`);
   }
   return models;
+}
+
+// Adds a menu entry for each printer in catalog/printers.rec, ahead of
+// "Other printer" (see generic.js).
+export function applyPrinters(text, models) {
+  const other = models.generic;
+  delete models.generic;
+  for (const rec of parseRec(text).records) {
+    if (rec.type !== 'Printer') continue;
+    const id = field(rec, 'Id');
+    const num = (name, def) => {
+      const v = field(rec, name);
+      if (v == null || v === '') return def;
+      const n = Number(v);
+      if (!Number.isFinite(n)) throw new Error(`printer record ${id}: ${name} is not a number ("${v}")`);
+      return n;
+    };
+    if (!id || models[id]) throw new Error(`printer record ${id ?? '(no Id)'}: missing or duplicate Id`);
+    const language = field(rec, 'Language');
+    if (!['zpl', 'tspl', 'escpos'].includes(language)) throw new Error(`printer record ${id}: unknown Language "${language}"`);
+    models[id] = genericPrinter({
+      id,
+      name: field(rec, 'Name'),
+      brand: field(rec, 'Brand') ?? 'Other',
+      status: field(rec, 'Status') === 'tested' ? 'tested' : 'experimental',
+      source: field(rec, 'Source'),
+      printer: { language, dpi: num('Dpi', 203), headMm: num('HeadMm', 104), rotate: /^(yes|true|1)$/i.test(field(rec, 'Rotate') ?? '') },
+      defaults: {
+        widthMm: num('DefaultWidthMm', 101.6), lengthMm: num('DefaultLengthMm', 152.4), gapMm: num('GapMm', 3),
+      },
+      adjust: { feedMm: num('FeedMm', 0), acrossMm: num('AcrossMm', 0) },
+    });
+  }
+  if (other) models.generic = other;
+  return models;
+}
+
+export async function loadPrinters(models, url = PRINTERS_URL) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Could not load the printer list (${res.status})`);
+  return applyPrinters(await res.text(), models);
 }
 
 export async function loadCatalog(models, url = CATALOG_URL) {

@@ -23,6 +23,12 @@ export const LANGUAGES = {
   escpos: 'ESC/POS raster (receipt-style printers)',
 };
 
+export const LANGUAGE_NAMES = { zpl: 'ZPL', tspl: 'TSPL', escpos: 'ESC/POS raster' };
+
+// What a catalogued printer (catalog/printers.rec) fixes; the label stays
+// the user's to set.
+export const PRINTER_KEYS = ['language', 'dpi', 'headMm', 'rotate'];
+
 export const GENERIC_DEFAULTS = {
   name: '',
   language: 'zpl',
@@ -132,24 +138,36 @@ export function customMedium(cfg, dpi, headDots) {
 
 // The model entry. configure() applies the user's settings (resolution,
 // head, label) and is called again whenever they change.
-export function genericPrinter() {
+//
+// preset: a printer from catalog/printers.rec ({ id, name, brand, status,
+// source, printer: settings it fixes, defaults: label to start from,
+// adjust }), or none for "Other printer", where the user sets everything.
+export function genericPrinter(preset = null) {
+  const fixed = preset ? Object.fromEntries(PRINTER_KEYS.map((k) => [k, preset.printer[k]])) : {};
   const model = {
-    brand: 'Other',
-    name: 'Other printer (ZPL, TSPL or ESC/POS)',
-    status: 'experimental',
-    devices: [{ name: 'Other label printers speaking ZPL, TSPL or ESC/POS raster', status: 'experimental' }],
+    brand: preset?.brand ?? 'Other',
+    name: preset ? `${preset.name} (${LANGUAGE_NAMES[fixed.language]})` : 'Other printer (ZPL, TSPL or ESC/POS)',
+    status: preset?.status ?? 'experimental',
+    devices: [preset
+      ? { name: preset.name, status: preset.status }
+      : { name: 'Other label printers speaking ZPL, TSPL or ESC/POS raster', status: 'experimental' }],
     family: 'generic',
-    protocol: 'ZPL, TSPL or ESC/POS raster (you describe the printer)',
+    protocol: preset ? LANGUAGE_NAMES[fixed.language] : 'ZPL, TSPL or ESC/POS raster (you describe the printer)',
     custom: true,
+    preset,
+    defaultAdjust: preset?.adjust,
     transports: ['usb', 'serial'],
     // Any USB device: many of these printers use a vendor-specific class.
     usbFilters: [],
     options: [],
-    note: 'Experimental: describe your printer below, print the Grid test, then send a report with the settings '
-      + 'that worked, so your printer can get its own entry.',
+    note: preset
+      ? `Set up from a printer report${preset.source ? ` (${preset.source})` : ''}: language, resolution and head are fixed; set your label size below.`
+      : 'Experimental: describe your printer below, print the Grid test, then send a report with the settings '
+        + 'that worked, so your printer can get its own entry.',
     config: { ...GENERIC_DEFAULTS },
     configure(cfg) {
-      this.config = { ...GENERIC_DEFAULTS, ...cfg };
+      this.config = { ...GENERIC_DEFAULTS, ...preset?.defaults, ...cfg, ...fixed };
+      if (preset) this.config.name = preset.name;
       this.dpi = Number(this.config.dpi) || 203;
       this.headDots = Math.max(8, Math.round(((Number(this.config.headMm) || 104) * this.dpi) / 25.4));
       this.media = [customMedium(this.config, this.dpi, this.headDots)];
@@ -161,4 +179,27 @@ export function genericPrinter() {
     },
   };
   return model.configure({});
+}
+
+// A catalog/printers.rec record for these settings, for a maintainer to add
+// once a report says they work.
+export function printerRecord(cfg, adjust = {}, source = '(link to this issue)') {
+  const name = cfg.name || 'Make and model';
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'printer';
+  const lines = [
+    `Id: ${slug}`,
+    `Name: ${name}`,
+    `Brand: ${name.split(/\s+/)[0]}`,
+    `Language: ${cfg.language}`,
+    `Dpi: ${cfg.dpi}`,
+    `HeadMm: ${cfg.headMm}`,
+    `Rotate: ${cfg.rotate ? 'yes' : 'no'}`,
+    `DefaultWidthMm: ${cfg.widthMm}`,
+    `DefaultLengthMm: ${cfg.lengthMm || 0}`,
+  ];
+  if (cfg.language === 'tspl') lines.push(`GapMm: ${cfg.gapMm}`);
+  if (adjust.feedMm) lines.push(`FeedMm: ${adjust.feedMm}`);
+  if (adjust.acrossMm) lines.push(`AcrossMm: ${adjust.acrossMm}`);
+  lines.push('Status: experimental', `Source: ${source}`);
+  return lines.join('\n');
 }

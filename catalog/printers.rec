@@ -1,0 +1,35 @@
+# -*- mode: rec -*-
+#
+# Printers for Web Label Editor that speak a common printer language (ZPL,
+# TSPL or ESC/POS raster) and were set up through "Other printer" (GNU
+# recutils format). Each record becomes its own entry in the printer menu,
+# with the language, resolution, head width and orientation fixed; people
+# still enter their label size, starting from the defaults here.
+#
+# Records come from printer reports: the app's "Generate report" puts a
+# ready record in the issue. See docs/MAINTAINING.md.
+#
+#   Id               menu entry id, kept stable (saved designs refer to it)
+#   Name             as shown in the menu, e.g. "Zebra GK420d"
+#   Brand            menu group, e.g. "Zebra"
+#   Language         zpl, tspl or escpos
+#   Dpi              print resolution
+#   HeadMm           print head width
+#   Rotate           yes if the label had to be turned round
+#   DefaultWidthMm   label width to start from
+#   DefaultLengthMm  label length to start from (0: continuous roll)
+#   GapMm            gap between labels (TSPL)
+#   FeedMm, AcrossMm position adjustment that made the Grid test line up
+#   Status           experimental, or tested once printed with this entry
+#   Source           the report it came from
+#
+# Check the file with:  recfix catalog/printers.rec
+
+%rec: Printer
+%key: Id
+%mandatory: Name Brand Language Dpi HeadMm Status Source
+%type: Language enum zpl tspl escpos
+%type: Status enum tested experimental
+%type: Dpi int
+%type: HeadMm,DefaultWidthMm,DefaultLengthMm,GapMm,FeedMm,AcrossMm real
+%type: Rotate bool

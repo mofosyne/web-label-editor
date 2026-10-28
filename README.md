@@ -490,8 +490,14 @@ many compatibles, TSPL for most budget 4 × 6 shipping printers, ESC/POS
 raster for receipt-style printers), its resolution, head width and label
 size. Print the Grid test, adjust until it lines up, and send the report:
 the app fills in the settings you used, and a set that works becomes the
-printer's own entry. This is experimental by design: these printers differ
-in how they sense labels and which way round they print.
+printer's own entry (in [`catalog/printers.rec`](catalog/printers.rec)).
+This is experimental by design: these printers differ in how they sense
+labels and which way round they print. *Generate report* in that panel
+shows the settings to copy or save as a file, and opens the GitHub issue
+with them filled in.
+
+Maintainers: [docs/MAINTAINING.md](docs/MAINTAINING.md) says how each kind
+of report becomes support, and the checks to run.
 
 1. If it speaks a protocol already implemented (LabelWriter, P-touch raster,
    QL raster, or ZPL / TSPL / ESC/POS in

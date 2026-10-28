@@ -23,7 +23,7 @@ jobs:
       - name: Install GNU recutils
         run: sudo apt-get update -q && sudo apt-get install -y -q recutils
       - name: Validate label catalogue
-        run: recfix catalog/media.rec
+        run: recfix catalog/media.rec && recfix catalog/printers.rec
       - run: npm test
 
   # Browser smoke test: opens the app in Chromium, loads the example

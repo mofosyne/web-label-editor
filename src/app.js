@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { MODELS, mediumMargins } from './printers/models.js';
-import { LANGUAGES } from './printers/generic.js';
+import { LANGUAGES, LANGUAGE_NAMES, printerRecord } from './printers/generic.js';
 import { renderDesign, bitmapToCanvas, itemError, quarterTurns } from './render.js';
 import {
   parseData, usedFields, hasFields, usesData, chosenRows, fieldValues, fillItems, labelRuns, counterText, COUNTER,
@@ -10,8 +10,8 @@ import { UsbTransport, SerialTransport, support } from './transport.js';
 import { openHelp } from './help.js';
 import { openAbout } from './about.js';
 import { labels, history, openLibrary } from './library.js';
-import { printerReportUrl, labelRequestUrl } from './report.js';
-import { loadCatalog } from './catalog.js';
+import { printerReportUrl, labelRequestUrl, systemInfo } from './report.js';
+import { loadCatalog, loadPrinters } from './catalog.js';
 import { testPatternDesign } from './calibration.js';
 import {
   viewGeometry, jobBitmap, stretchGeometry, rowMode, itemLane, itemVisible, canOverprint, blit, blankBitmap, MAX_BLEED_MM,
@@ -85,15 +85,18 @@ function saveDesign() {
 }
 
 // "Other printer": the settings the user entered for it, kept in this browser.
+// Catalogued ones (catalog/printers.rec) keep the label size the user set.
 const GENERIC_KEY = 'web-label-editor:generic';
-function loadGeneric() {
-  try { return JSON.parse(localStorage.getItem(GENERIC_KEY)) ?? {}; } catch { return {}; }
+const genericKey = (id) => (id === 'generic' ? GENERIC_KEY : `${GENERIC_KEY}:${id}`);
+function loadGeneric(id) {
+  try { return JSON.parse(localStorage.getItem(genericKey(id))) ?? {}; } catch { return {}; }
 }
-MODELS.generic.configure(loadGeneric());
 
 // Labels and tapes come from catalog/media.rec; nothing works without them.
 try {
   await loadCatalog(MODELS);
+  await loadPrinters(MODELS);
+  for (const [id, m] of Object.entries(MODELS)) if (m.custom) m.configure(loadGeneric(id));
 } catch (err) {
   const b = $('banner');
   b.textContent = `${err.message}. Reload the page; if it persists, the catalogue file is broken.`;
@@ -195,7 +198,8 @@ const currentRoll = () => rolls.find((r) => r.id === design.roll
 const adjust = () => {
   const roll = currentRoll();
   if (roll) return { feedMm: roll.feedMm, acrossMm: roll.acrossMm };
-  const { feedMm = 0, acrossMm = 0, media = {} } = printerSettings[design.printer] ?? {};
+  const def = model().defaultAdjust ?? {};
+  const { feedMm = def.feedMm ?? 0, acrossMm = def.acrossMm ?? 0, media = {} } = printerSettings[design.printer] ?? {};
   return { feedMm, acrossMm, ...media[medium().id] };
 };
 function setAdjust(key, value) {
@@ -1316,10 +1320,11 @@ function reportUrl() {
   if (m.custom) {
     const c = m.config;
     return printerReportUrl({
-      printer: `${c.name || '(make and model)'} via Other printer, ${c.language.toUpperCase()}`,
+      printer: `${c.name || '(make and model)'} via ${m.preset ? 'its entry' : 'Other printer'}, ${LANGUAGE_NAMES[c.language]}`,
       label: medium().name,
       connection: transport?.label,
-      settings: JSON.stringify(c, null, 2),
+      settings: `Settings (Load settings… reads this back):\n${JSON.stringify(c, null, 2)}\n\n`
+        + `Record for catalog/printers.rec:\n${printerRecord(c, adjust())}`,
     });
   }
   return printerReportUrl({ printer: m.name, label: medium().name, connection: transport?.label });
@@ -1335,7 +1340,7 @@ function buildGeneric() {
   const c = m.config;
   const set = (key, value) => {
     const cfg = { ...m.config, [key]: value };
-    try { localStorage.setItem(GENERIC_KEY, JSON.stringify(cfg)); } catch { /* storage unavailable */ }
+    try { localStorage.setItem(genericKey(design.printer), JSON.stringify(cfg)); } catch { /* storage unavailable */ }
     m.configure(cfg);
     design.medium = m.media[0].id;
     undo.checkpoint();
@@ -1361,24 +1366,105 @@ function buildGeneric() {
   rotateLabel.className = 'inline';
   rotateLabel.append(rotate, ' Printed upside down? Turn it round');
   rotate.onchange = () => set('rotate', rotate.checked);
+  const preset = m.preset;
   const h = document.createElement('h3');
-  h.textContent = 'Your printer (experimental)';
+  h.textContent = preset ? `${preset.name}: your labels` : 'Your printer (experimental)';
   const intro = document.createElement('p');
   intro.className = 'note';
-  intro.textContent = 'Not listed? If it speaks one of these languages, describe it here, print the Grid test, and '
-    + 'report the settings that worked so it can get its own entry. Its manual or spec sheet gives the language and '
-    + 'resolution (203 dpi is the usual for 4 × 6 shipping printers).';
-  box.replaceChildren(h, intro,
+  intro.textContent = preset
+    ? `${LANGUAGE_NAMES[c.language]}, ${c.dpi} dpi, ${c.headMm} mm head${c.rotate ? ', turned round' : ''}, from its printer `
+      + 'report. Set the labels you use; if prints are off, adjust and report it.'
+    : 'Not listed? If it speaks one of these languages, describe it here, print the Grid test, and report the '
+      + 'settings that worked so it can get its own entry. Its manual or spec sheet gives the language and '
+      + 'resolution (203 dpi is the usual for 4 × 6 shipping printers).';
+  // The settings as a file to keep or share, and back.
+  const report = document.createElement('details');
+  report.className = 'generic-report';
+  const summary = document.createElement('summary');
+  summary.textContent = 'Generate report';
+  const text = document.createElement('textarea');
+  text.readOnly = true;
+  text.rows = 12;
+  text.spellcheck = false;
+  text.ariaLabel = 'Printer settings report';
+  const fill = () => { text.value = JSON.stringify(genericReport(), null, 2); };
+  report.ontoggle = () => { if (report.open) fill(); };
+  const btn = (label, onClick) => Object.assign(document.createElement('button'), { type: 'button', textContent: label, onclick: onClick });
+  const fileName = () => `printer-settings-${(c.name || 'other-printer').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.json`;
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.append(
+    btn('Copy', async () => {
+      fill();
+      try { await navigator.clipboard.writeText(text.value); showBanner('Printer settings copied.'); } catch { text.select(); }
+    }),
+    btn('Save as file…', () => { fill(); download(new Blob([`${text.value}\n`], { type: 'application/json' }), fileName()); }),
+    Object.assign(document.createElement('a'), {
+      href: reportUrl(), target: '_blank', rel: 'noopener', className: 'button primary', textContent: 'Open a GitHub issue with these',
+    }),
+  );
+  const help = document.createElement('p');
+  help.className = 'note';
+  help.textContent = 'Your settings, position adjustment and system, to keep or share; the GitHub issue gets them '
+    + 'filled in, with a record ready for the printer list. Load settings… reads a saved file back, here or on '
+    + 'another computer.';
+  report.append(summary, help, text, row);
+  const load = btn('Load settings…', () => $('generic-file').click());
+
+  const printerFields = preset ? [] : [
     field('Make and model', 'name', name),
     field('Printer language', 'language', select('language', Object.entries(LANGUAGES))),
     field('Resolution', 'dpi', select('dpi', [[152, '152 dpi'], [180, '180 dpi'], [200, '200 dpi'], [203, '203 dpi'], [300, '300 dpi'], [600, '600 dpi']])),
     field('Print head width (mm)', 'headMm', number('headMm', 0.5, 8), 'The widest the printer can print: 104 mm on 4-inch printers, 48 mm on 58 mm receipt-style printers.'),
+  ];
+  box.replaceChildren(h, intro,
+    ...printerFields,
     field('Label width (mm)', 'widthMm', number('widthMm', 0.5, 5)),
     field('Label length (mm, 0 for a continuous roll)', 'lengthMm', number('lengthMm', 0.5, 0)),
     ...(c.language === 'tspl' ? [field('Gap between labels (mm)', 'gapMm', number('gapMm', 0.5, 0))] : []),
     field('Margin (mm)', 'marginMm', number('marginMm', 0.5, 0), 'The safe area inset from each edge.'),
     field(c.language === 'zpl' ? 'Darkness (0–30, blank: the printer\'s own)' : c.language === 'tspl' ? 'Darkness (0–15, blank: the printer\'s own)' : 'Darkness (not used)', 'darkness', number('darkness', 1, 0)),
-    rotateLabel);
+    ...(preset ? [] : [rotateLabel]),
+    report,
+    ...(preset ? [] : [load]));
+}
+
+// What "Generate report" shows and saves: everything needed to set this
+// printer up again, or to give it its own entry.
+function genericReport() {
+  const m = MODELS.generic;
+  return {
+    app: 'web-label-editor',
+    kind: 'printer-settings',
+    version: 1,
+    printer: m.config,
+    adjust: adjust(),
+    record: printerRecord(m.config, adjust()),
+    label: medium().name,
+    connection: transport?.label ?? null,
+    system: systemInfo(),
+    date: new Date().toISOString().slice(0, 10),
+  };
+}
+
+// Reads a settings file: a report from Generate report, or bare settings.
+function loadGenericFile(file) {
+  file.text().then((t) => {
+    const data = JSON.parse(t);
+    const cfg = data.kind === 'printer-settings' ? data.printer : data;
+    if (!cfg || typeof cfg !== 'object' || !cfg.language) throw new Error('no printer settings in it');
+    try { localStorage.setItem(GENERIC_KEY, JSON.stringify(cfg)); } catch { /* storage unavailable */ }
+    design.printer = 'generic';
+    MODELS.generic.configure(cfg);
+    design.medium = MODELS.generic.media[0].id;
+    if (data.adjust) {
+      setAdjust('feedMm', Number(data.adjust.feedMm) || 0);
+      setAdjust('acrossMm', Number(data.adjust.acrossMm) || 0);
+    }
+    undo.checkpoint();
+    refresh({ setup: true, props: true });
+    showBanner(`Loaded the settings for ${cfg.name || 'your printer'} from ${file.name}.`);
+  }).catch((err) => showBanner(`Could not read ${file.name}: ${err.message}`));
 }
 function updateReportLinks() {
   const r = $('report-printer');
@@ -2840,6 +2926,10 @@ function wire() {
     dataBarKey = '';
     refresh();
     if (batchOpen) $('data-bar').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  };
+  $('generic-file').onchange = (e) => {
+    if (e.target.files[0]) loadGenericFile(e.target.files[0]);
+    e.target.value = '';
   };
   $('data-file').onchange = (e) => {
     if (e.target.files[0]) loadDataFile(e.target.files[0]);

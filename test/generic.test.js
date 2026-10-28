@@ -60,3 +60,27 @@ test('the model follows its settings: resolution, head and the label as its one 
   const die = customMedium({ widthMm: 50, lengthMm: 30, marginMm: 1 }, 203, 832);
   assert.deepEqual([die.acrossDots, die.lengthDots, die.margins.top], [400, 240, 1]);
 });
+
+test('a report\'s record goes into catalog/printers.rec and comes back as that printer', async () => {
+  const { applyPrinters } = await import('../src/catalog.js');
+  const { printerRecord } = await import('../src/printers/generic.js');
+  const { readFileSync } = await import('node:fs');
+  const cfg = { ...GENERIC_DEFAULTS, name: 'Zebra GK420d', language: 'zpl', dpi: 203, headMm: 104, rotate: true, widthMm: 57, lengthMm: 32 };
+  const record = printerRecord(cfg, { feedMm: -1.5, acrossMm: 0 }, 'https://github.com/mofosyne/web-label-editor/issues/99');
+  assert.match(record, /^Id: zebra-gk420d\nName: Zebra GK420d\nBrand: Zebra\nLanguage: zpl\n/);
+  assert.match(record, /\nFeedMm: -1.5\n/);
+  assert.doesNotMatch(record, /AcrossMm/);
+  const header = readFileSync(new URL('../catalog/printers.rec', import.meta.url), 'utf8');
+  const generic = genericPrinter();
+  const models = applyPrinters(`${header}\n${record}\n`, { generic });
+  assert.deepEqual(Object.keys(models), ['zebra-gk420d', 'generic'], 'catalogued printers come before Other printer');
+  const m = models['zebra-gk420d'];
+  assert.equal(m.name, 'Zebra GK420d (ZPL)');
+  assert.equal(m.brand, 'Zebra');
+  assert.deepEqual(m.defaultAdjust, { feedMm: -1.5, acrossMm: 0 });
+  // The label is the user's; the printer's own settings stay as recorded.
+  m.configure({ language: 'tspl', dpi: 300, widthMm: 50, lengthMm: 25 });
+  assert.deepEqual([m.config.language, m.dpi, m.config.rotate, m.media[0].name], ['zpl', 203, true, 'Your labels, 50 × 25 mm']);
+  assert.equal(genericPrinter().configure({}).config.widthMm, 101.6);
+  assert.equal(models['zebra-gk420d'].configure({}).config.widthMm, 57, 'starts from the recorded label');
+});

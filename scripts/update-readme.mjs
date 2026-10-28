@@ -10,7 +10,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { MODELS } from '../src/printers/models.js';
-import { applyCatalog } from '../src/catalog.js';
+import { applyCatalog, applyPrinters } from '../src/catalog.js';
 import { compatMarkdown } from '../src/compat.js';
 import { othersMarkdown, aimsMarkdown } from '../src/others.js';
 import { creditsMarkdown } from '../src/credits.js';
@@ -33,9 +33,11 @@ function replaceSection(text, start, end, body) {
 
 const README = new URL('../README.md', import.meta.url);
 const CATALOG = new URL('../catalog/media.rec', import.meta.url);
+const PRINTERS = new URL('../catalog/printers.rec', import.meta.url);
 
 export function renderReadme(readme) {
-  const models = applyCatalog(readFileSync(CATALOG, 'utf8'), Object.fromEntries(Object.entries(MODELS).map(([id, m]) => [id, { ...m }])));
+  const models = applyPrinters(readFileSync(PRINTERS, 'utf8'),
+    applyCatalog(readFileSync(CATALOG, 'utf8'), Object.fromEntries(Object.entries(MODELS).map(([id, m]) => [id, { ...m }]))));
   const withTable = replaceSection(readme, START, END, compatMarkdown(models));
   const withOthers = replaceSection(withTable, OTHERS_START, OTHERS_END, othersMarkdown());
   const withAims = replaceSection(withOthers, AIMS_START, AIMS_END, aimsMarkdown());
