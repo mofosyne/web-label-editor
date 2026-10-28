@@ -9,6 +9,13 @@
 
 const gh = (path) => `https://github.com/${path}`;
 
+// Marks a project written largely with AI coding assistants ("vibe coded"),
+// as this one is: judged from its own commit co-author lines, README or AI
+// config files (CLAUDE.md, AGENTS.md). Projects with only a few such
+// commits are not marked.
+const AI = { ai: true };
+export const AI_TAG = '🤖 AI-assisted';
+
 // Where this editor aims to be the right tool, and where another one is.
 export const AIMS = [
   'You have a **DYMO LabelWriter** (400 / 450 family) and/or a **Brother P-touch** (or QL) and want one editor for both, in the browser on Linux, Windows, macOS and ChromeOS (Windows needs a one-time driver switch for USB).',
@@ -40,20 +47,25 @@ export function aimsMarkdown() {
   ].join('\n');
 }
 
-export const OTHER_TOOLS_INTRO = 'Low-level libraries for these printers are plentiful; label editors are rarer, '
+export const OTHER_TOOLS_INTRO = 'This is a focused, low-frills editor: fewer features than some of the tools below, '
+  + 'but the everyday label is quick to make and prints where you expect. Low-level libraries for these printers are plentiful; label editors are rarer, '
   + 'mostly cover one brand, and often print through CUPS or a small server. This one aims at DYMO LabelWriter and '
   + 'Brother printers together, continuous rolls, text edited in place that fits its box, and a true preview of the printable area, '
   + 'also at real size; if one of '
   + 'these fits you better, use it. Developers: the libraries are where most of the protocol knowledge lives.';
 
+export const AI_NOTE = `${AI_TAG} marks projects written largely with AI coding assistants ("vibe coded"), judged from `
+  + 'their own commits, README or AI config files as of October 2026. This editor is one of them: written largely with '
+  + 'Claude Code, directed by its author and tested on real printers.';
+
 export const OTHER_TOOLS = [
   {
     group: 'Label editors in the browser, printing directly',
     tools: [
-      ['label-maker (burnmark)', gh('burnmark-io/label-maker'), 'Vue label designer printing over WebUSB to Brother QL, DYMO LabelWriter and DYMO LabelManager printers.'],
+      ['label-maker (burnmark)', gh('burnmark-io/label-maker'), 'Vue label designer printing over WebUSB to Brother QL, DYMO LabelWriter and DYMO LabelManager printers.', AI],
       ['labelpeel', gh('LookLeft/labelpeel'), 'designer for Brother P-touch printers (experimental QL) over Bluetooth or USB, with auto-fit text, templates, CSV data and P-touch Editor file import; also Mac and Android apps. Formerly labelsmith.'],
       ['ql700-printer', gh('fipppi/ql700-printer'), 'designer for the Brother QL-700 over WebUSB.'],
-      ['ptouch (fjanicki)', gh('fjanicki/ptouch'), 'Rust library and web studio for Brother P-touch Bluetooth printers (PT-P710BT); early development.'],
+      ['ptouch (fjanicki)', gh('fjanicki/ptouch'), 'Rust library and web studio for Brother P-touch Bluetooth printers (PT-P710BT); early development.', AI],
     ],
   },
   {
@@ -62,14 +74,14 @@ export const OTHER_TOOLS = [
       ['gLabels', gh('j-evins/glabels-qt'), 'label and business card designer for Linux, built around label sheets and templates; prints through CUPS.'],
       ['Labelle', gh('labelle-org/labelle'), 'Python GUI and command line for DYMO LabelManager tape printers (the successor of dymoprint).'],
       ['TuxLabel', gh('Neklor/TuxLabel'), 'PyQt6 editor for Brother P-touch (TZe) printers on Linux with a WYSIWYG preview; prints through CUPS.'],
-      ['ptlabel', gh('shaag7967/ptlabel'), 'Python editor (GUI and command line) for the Brother PT-P750W over Wi-Fi, and USB on Linux.'],
+      ['ptlabel', gh('shaag7967/ptlabel'), 'Python editor (GUI and command line) for the Brother PT-P750W over Wi-Fi, and USB on Linux.', AI],
       ['pLabels', gh('Privatehive/pLabels'), 'Qt GUI for Brother P-touch printers, built on ptouch-print.'],
       ['ptouch-rs (mlloyd5)', gh('mlloyd5/ptouch-rs'), 'Rust driver, command line and GUI for Brother P-touch printers over USB on Linux.'],
       ['ptouch-rs-notstupid', gh('wakuwakumiwaku/ptouch-rs-notstupid'), 'Rust driver, GUI designer and command line for Brother P-touch printers (tested with the PT-D600).'],
       ['ptouch-770', gh('probonopd/ptouch-770'), 'Python GTK3 GUI for the Brother PT-P700 on Linux.'],
-      ['PT-P710BT-Label-GUI', gh('danielrosehill/PT-P710BT-Label-GUI'), 'GUI for the Brother PT-P710BT on Ubuntu/KDE, wrapping ptouch-print.'],
-      ['oh-brother', gh('curtisgalloway/oh-brother'), 'Rust command line and web UI for Brother P-touch printers, a cross-platform replacement for P-touch Editor.'],
-      ['ptouch-editor-wine', gh('Robou/ptouch-editor-wine'), 'runs Brother\'s P-touch Editor 6 on Linux under Wine, printing to a PT-P700.'],
+      ['PT-P710BT-Label-GUI', gh('danielrosehill/PT-P710BT-Label-GUI'), 'GUI for the Brother PT-P710BT on Ubuntu/KDE, wrapping ptouch-print.', AI],
+      ['oh-brother', gh('curtisgalloway/oh-brother'), 'Rust command line and web UI for Brother P-touch printers, a cross-platform replacement for P-touch Editor.', AI],
+      ['ptouch-editor-wine', gh('Robou/ptouch-editor-wine'), 'runs Brother\'s P-touch Editor 6 on Linux under Wine, printing to a PT-P700.', AI],
       ['P-Tux', 'https://p-tux.com/', 'label designer for Brother P-touch printers on Linux and macOS (announced).'],
       ['LT200B-gui', gh('sgilissen/LT200B-gui'), 'GUI for the DYMO LetraTag LT-200B Bluetooth label maker.'],
     ],
@@ -79,10 +91,10 @@ export const OTHER_TOOLS = [
     tools: [
       ['brother_ql_web', gh('pklaus/brother_ql_web'), 'web service for Brother QL printers, built on brother_ql; maintained forks include FriedrichFroebel/brother_ql_web and DL6ER/brother_ql_web.'],
       ['brother_ql_app', gh('DeanCording/brother_ql_app'), 'web app and REST API for Brother QL printers: text, images, QR codes, PDFs, a print queue.'],
-      ['label-designer (teknopartz)', gh('teknopartz/label-designer'), 'WYSIWYG drag-and-drop designer for a Brother QL-700.'],
+      ['label-designer (teknopartz)', gh('teknopartz/label-designer'), 'WYSIWYG drag-and-drop designer for a Brother QL-700.', AI],
       ['bql-label-printer', gh('splitbrain/bql-label-printer'), 'simple text label interface for Brother QL printers with HTML templates.'],
-      ['labelle-web', gh('labelle-org/labelle-web'), 'browser designer for DYMO LabelManager printers through Labelle.'],
-      ['ptouch-labelmaker', gh('danhoban/ptouch-labelmaker'), 'web app for designing and printing on a Brother P-touch from a Raspberry Pi.'],
+      ['labelle-web', gh('labelle-org/labelle-web'), 'browser designer for DYMO LabelManager printers through Labelle.', AI],
+      ['ptouch-labelmaker', gh('danhoban/ptouch-labelmaker'), 'web app for designing and printing on a Brother P-touch from a Raspberry Pi.', AI],
       ['labeler', gh('PhilippMundhenk/labeler'), 'web interface for Brother P-touch printers around ptouch-print.'],
     ],
   },
@@ -98,7 +110,7 @@ export const OTHER_TOOLS = [
       ['brother_ql', gh('pklaus/brother_ql'), 'Python implementation of the Brother QL raster protocol; continued in brother_ql2 (matmair/brother_ql2).'],
       ['brotherql-webusb', gh('tylercrumpton/brotherql-webusb'), 'printing to Brother QL printers from the browser over WebUSB.'],
       ['node-brother-label-printer', gh('driehle/node-brother-label-printer'), 'Node.js library for Brother label printers.'],
-      ['thermal-label', 'https://thermal-label.github.io/', 'TypeScript drivers for DYMO LabelWriter, Brother and other label printers: Node.js, browser WebUSB and command line.'],
+      ['thermal-label', 'https://thermal-label.github.io/', 'TypeScript drivers for DYMO LabelWriter, Brother and other label printers: Node.js, browser WebUSB and command line.', AI],
       ['node-dymo-printer', gh('kozmoz/node-dymo-printer'), 'Node.js driver for DYMO label printers.'],
       ['dymonite', gh('ab2525/dymonite'), 'Python text and QR labels for DYMO LabelWriters, printed through CUPS.'],
       ['dymo-linux-service', gh('qixeo/dymo-linux-service'), 'stand-in for DYMO Connect\'s local web service on Linux, so web apps built for it can print.'],
@@ -118,11 +130,11 @@ export const OTHER_TOOLS = [
 ];
 
 export function othersMarkdown() {
-  const lines = [OTHER_TOOLS_INTRO];
+  const lines = [OTHER_TOOLS_INTRO, '', AI_NOTE];
   for (const { group, tools } of OTHER_TOOLS) {
     lines.push('', `**${group}**`, '');
-    for (const [name, url, what] of tools) {
-      lines.push(`- ${url ? `[${name}](${url})` : name}: ${what}`);
+    for (const [name, url, what, flags] of tools) {
+      lines.push(`- ${url ? `[${name}](${url})` : name}${flags?.ai ? ` (${AI_TAG})` : ''}: ${what}`);
     }
   }
   return lines.join('\n');

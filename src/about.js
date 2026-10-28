@@ -4,7 +4,7 @@
 // and tips. Shown once on the first visit and from the Help button.
 import { compatRows, NOT_PLANNED, STATUS_LABEL } from './compat.js';
 import { REPO_URL, printerReportUrl, labelRequestUrl } from './report.js';
-import { OTHER_TOOLS, OTHER_TOOLS_INTRO, AIMS, LOOK_ELSEWHERE } from './others.js';
+import { OTHER_TOOLS, OTHER_TOOLS_INTRO, AIMS, LOOK_ELSEWHERE, AI_TAG, AI_NOTE } from './others.js';
 import { CREDITS, CREDITS_INTRO } from './credits.js';
 
 export { REPO_URL };
@@ -162,9 +162,11 @@ function others() {
     el('ul', {}, ...LOOK_ELSEWHERE.map(([need, name, url]) => li(`${need}: try `, link(url, name), '.'))),
     el('h3', { textContent: 'Other tools' }),
     p(OTHER_TOOLS_INTRO),
+    p(AI_NOTE),
     ...OTHER_TOOLS.flatMap(({ group, tools }) => [
       el('h3', { textContent: group }),
-      el('ul', {}, ...tools.map(([name, href, what]) => li(href ? link(href, name) : b(name), `: ${what}`))),
+      el('ul', {}, ...tools.map(([name, href, what, flags]) => li(href ? link(href, name) : b(name),
+        flags?.ai ? ` (${AI_TAG})` : '', `: ${what}`))),
     ]),
     el('h3', { textContent: 'Credits' }),
     p(CREDITS_INTRO),
