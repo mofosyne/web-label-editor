@@ -85,26 +85,55 @@ function textMetrics(ctx, item, dpmm, sizeMm = item.size) {
   };
 }
 
+// Quarter turns clockwise (0-3) of an item's `rotate` (degrees, multiples of 90).
+export function quarterTurns(item) {
+  return ((Math.round((item.rotate ?? 0) / 90) % 4) + 4) % 4;
+}
+
 // Where a text item's lines go, in dots. Normal text is sized by item.size
 // and its box hugs the text. With item.fit the box is fixed (item.w × item.h
 // mm) and the largest size that fits is used, centred vertically and aligned
 // horizontally in the box.
+//
+// Rotated text (item.rotate: 90, 180 or 270, clockwise) turns about the
+// centre of its box: `box` is where it lands on the label, and the lines are
+// laid out unrotated at blockX/blockY, to be turned by `rotate` degrees about
+// `pivot` (relative to blockX/blockY). A fitted box keeps its shape on the
+// label, so text turned 90° fits its height to the box's width.
 export function textLayout(ctx, item, dpmm) {
   const x = item.x * dpmm;
   const y = item.y * dpmm;
+  const q = quarterTurns(item);
+  const sideways = q % 2 === 1;
+  let m;
+  let sizeMm;
+  let box;
+  let frameW;
+  let frameH;
   if (!item.fit) {
-    const m = textMetrics(ctx, item, dpmm);
-    return { ...m, sizeMm: item.size, box: { x, y, w: m.w, h: m.h }, blockX: x, blockY: y };
+    m = textMetrics(ctx, item, dpmm);
+    sizeMm = item.size;
+    frameW = m.w;
+    frameH = m.h;
+    box = { x, y, w: sideways ? m.h : m.w, h: sideways ? m.w : m.h };
+  } else {
+    box = { x, y, w: Math.max(1, item.w * dpmm), h: Math.max(1, item.h * dpmm) };
+    frameW = sideways ? box.h : box.w;
+    frameH = sideways ? box.w : box.h;
+    const ref = textMetrics(ctx, item, dpmm, 10);
+    sizeMm = Math.max(0.3, 10 * Math.min(frameW / ref.w, frameH / ref.h) * 0.99);
+    m = textMetrics(ctx, item, dpmm, sizeMm);
   }
-  const boxW = Math.max(1, item.w * dpmm);
-  const boxH = Math.max(1, item.h * dpmm);
-  const ref = textMetrics(ctx, item, dpmm, 10);
-  const sizeMm = Math.max(0.3, 10 * Math.min(boxW / ref.w, boxH / ref.h) * 0.99);
-  const m = textMetrics(ctx, item, dpmm, sizeMm);
-  let blockX = x;
-  if (item.align === 'center') blockX = x + (boxW - m.w) / 2;
-  else if (item.align === 'right') blockX = x + boxW - m.w;
-  return { ...m, sizeMm, box: { x, y, w: boxW, h: boxH }, blockX, blockY: y + (boxH - m.h) / 2 };
+  // The unrotated frame, centred on the box.
+  const cx = box.x + box.w / 2;
+  const cy = box.y + box.h / 2;
+  const fx = cx - frameW / 2;
+  const fy = cy - frameH / 2;
+  let blockX = fx;
+  if (item.fit && item.align === 'center') blockX = fx + (frameW - m.w) / 2;
+  else if (item.fit && item.align === 'right') blockX = fx + frameW - m.w;
+  const blockY = item.fit ? fy + (frameH - m.h) / 2 : fy;
+  return { ...m, sizeMm, box, blockX, blockY, rotate: q * 90, pivot: { x: cx - blockX, y: cy - blockY } };
 }
 
 // Item bounds in dots, relative to the printable strip.
@@ -130,6 +159,14 @@ export function itemBounds(ctx, item, dpmm) {
 
 function drawText(ctx, item, dpmm) {
   const m = textLayout(ctx, item, dpmm);
+  ctx.save();
+  if (m.rotate) {
+    const px = m.blockX + m.pivot.x;
+    const py = m.blockY + m.pivot.y;
+    ctx.translate(px, py);
+    ctx.rotate((m.rotate * Math.PI) / 180);
+    ctx.translate(-px, -py);
+  }
   ctx.font = fontString(item, m.px);
   ctx.fillStyle = '#000';
   ctx.textBaseline = 'alphabetic';
@@ -139,6 +176,7 @@ function drawText(ctx, item, dpmm) {
     else if (item.align === 'right') dx = m.w - m.widths[i];
     ctx.fillText(line, m.blockX + dx, m.blockY + i * m.lineH + m.ascent);
   });
+  ctx.restore();
 }
 
 // Draw the image already reduced to pure black/white so the global

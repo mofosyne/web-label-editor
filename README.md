@@ -175,7 +175,7 @@ The app has its own welcome page and **Help** with the same information.
 ## Features
 
 - **Items:** text (multi-line, any installed font, fixed size or fitted to a
-  box), QR codes, barcodes (Code 128, EAN-13, UPC-A), images (threshold or
+  box, turned 90°, 180° or 270° for cable flags and vertical text), QR codes, barcodes (Code 128, EAN-13, UPC-A), images (threshold or
   dithering) and boxes. Drag to move, corner handle to resize.
 - **Editing:** click selected text (or double-click it, or press Enter / F2)
   to edit it in place, right on the label; double-click empty space to add

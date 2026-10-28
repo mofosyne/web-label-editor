@@ -1,5 +1,5 @@
 import { MODELS, mediumMargins } from './printers/models.js';
-import { renderDesign, bitmapToCanvas, itemError } from './render.js';
+import { renderDesign, bitmapToCanvas, itemError, quarterTurns } from './render.js';
 import { SYMBOLOGIES } from './codes/barcode.js';
 import { UsbTransport, SerialTransport, support } from './transport.js';
 import { openHelp } from './help.js';
@@ -1192,6 +1192,7 @@ function buildProps() {
         ? [pair(num('Box width (mm)', 'w', 0.5, 1), num('Box height (mm)', 'h', 0.5, 1)), fitInfo()]
         : [num('Size (mm)', 'size', 0.1, 0.5)]),
       field('Align', 'align', { type: 'select', choices: [['left', 'Left'], ['center', 'Centre'], ['right', 'Right']] }),
+      rotateField(item),
       field('Bold', 'bold', { type: 'checkbox' }),
       field('Italic', 'italic', { type: 'checkbox' }),
     );
@@ -1285,6 +1286,47 @@ function buildProps() {
     btn('Delete', () => deleteItem(item)),
   );
   panel.append(row);
+}
+
+// Quarter-turn rotation (e.g. for cable flags). The item turns about its
+// centre; a fitted box turns with it, so the text keeps its size.
+const ROTATIONS = [[0, 'None'], [90, '90° clockwise'], [180, '180°'], [270, '90° anticlockwise']];
+function rotateField(item) {
+  const l = document.createElement('label');
+  l.textContent = 'Rotate';
+  const sel = document.createElement('select');
+  const now = quarterTurns(item) * 90;
+  ROTATIONS.forEach(([v, t]) => sel.add(new Option(t, String(v), false, v === now)));
+  sel.onchange = () => setRotation(item, Number(sel.value));
+  l.append(sel);
+  return l;
+}
+
+function setRotation(item, degrees) {
+  const b = last?.bounds[design.items.indexOf(item)];
+  const turned = (quarterTurns(item) - degrees / 90) % 2 !== 0;
+  item.rotate = degrees;
+  if (turned && b) {
+    const w = b.w / last.dpmm;
+    const h = b.h / last.dpmm;
+    const cx = item.x + w / 2;
+    const cy = item.y + h / 2;
+    if (item.fit) [item.w, item.h] = [item.h, item.w];
+    // Turned about its centre, then kept on the label: inside the printable
+    // band across, or centred on it when it is longer than the band.
+    const mg = margins(laneOf(item));
+    const room = acrossMm() - mg.top - mg.bottom;
+    const y = cy - w / 2;
+    if (item.fit && w > room) {
+      // A fitted box shrinks to the band; the text refits.
+      item.h = round1(room);
+      item.y = round1(mg.top);
+    } else {
+      item.y = round1(w <= room ? Math.min(Math.max(y, mg.top), mg.top + room - w) : mg.top + (room - w) / 2);
+    }
+    item.x = round1(Math.max(mg.left, cx - h / 2));
+  }
+  refresh({ props: true });
 }
 
 // "Fit text in box": switching on keeps the text where it is by starting
@@ -1536,6 +1578,9 @@ function positionEditor() {
     minWidth: `${Math.max(16, l.w * scale)}px`,
     font: `${item.italic ? 'italic ' : ''}${item.bold ? 'bold ' : ''}${l.px * scale}px ${item.font || 'sans-serif'}`,
     lineHeight: `${l.lineH * scale}px`,
+    // Rotated text is edited rotated, turning about the same point.
+    transformOrigin: `${l.pivot.x * scale + 2}px ${l.pivot.y * scale}px`,
+    transform: l.rotate ? `rotate(${l.rotate}deg)` : '',
     textAlign: item.align || 'left',
   });
 }
