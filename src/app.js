@@ -2235,7 +2235,51 @@ function nextX() {
   return round1(right ? right + 3 : start);
 }
 
+// On a die-cut label new text is a fitted box (its size follows the box),
+// filling free space in the safe area, as in DYMO Label: the label's area
+// is what there is to fill. On tape and rolls, which grow with the text, it
+// keeps a set size. Returns the free rectangles (mm, label coordinates),
+// largest first: the whole safe area on an empty label, else the strips
+// beside, below, above and before what is there.
+function freeAreas(lane = currentLane()) {
+  if (!medium().lengthDots || !last) return [];
+  const page = pageSize();
+  let mg = itemMargins(lane);
+  if (medium().shape === 'round') {
+    // The largest box inside the safe circle.
+    const even = evenMargins(mg);
+    const dx = ((page.w - even.left - even.right) * (1 - Math.SQRT1_2)) / 2;
+    const dy = ((page.h - even.top - even.bottom) * (1 - Math.SQRT1_2)) / 2;
+    mg = { left: Math.max(mg.left, even.left + dx), right: even.right + dx, top: even.top + dy, bottom: even.bottom + dy };
+  }
+  const S = { x0: mg.left, y0: mg.top, x1: page.w - mg.right, y1: page.h - mg.bottom };
+  const slot = last.slots.find((sl) => sl.lane === lane);
+  if (!slot) return [];
+  const boxes = last.bounds.map((b, i) => (b && last.lanes[i] === lane ? b : null)).filter(Boolean)
+    .map((b) => ({ x0: (b.x - slot.ox) / last.dpmm, y0: (b.y - slot.oy) / last.dpmm, x1: (b.x - slot.ox + b.w) / last.dpmm, y1: (b.y - slot.oy + b.h) / last.dpmm }));
+  const gap = 0.5;
+  const areas = boxes.length ? [
+    { ...S, y0: Math.max(...boxes.map((b) => b.y1)) + gap }, // below
+    { ...S, x0: Math.max(...boxes.map((b) => b.x1)) + gap }, // after
+    { ...S, y1: Math.min(...boxes.map((b) => b.y0)) - gap }, // above
+    { ...S, x1: Math.min(...boxes.map((b) => b.x0)) - gap }, // before
+  ] : [S];
+  return areas
+    .filter((a) => a.x1 - a.x0 >= 6 && a.y1 - a.y0 >= 2.5)
+    .map((a) => ({ x: round1(a.x0), y: round1(a.y0), w: round1(a.x1 - a.x0), h: round1(a.y1 - a.y0) }))
+    .sort((a, b) => b.w * b.h - a.w * a.h);
+}
+const fittedText = (area, extra = {}) => ({
+  type: 'text', text: 'Text', font: 'sans-serif', size: Math.max(1.5, round1(area.h * 0.7)), bold: false, italic: false,
+  align: 'center', fit: true, ...area, ...extra,
+});
+
 function addText() {
+  const free = freeAreas()[0];
+  if (free) {
+    addItem(fittedText(free));
+    return;
+  }
   let size = newTextSize();
   let at = placeNew(size * 1.15);
   // A full fixed-size label: rather than on top of what is there, a smaller
@@ -2861,7 +2905,10 @@ function onDoubleClick(e) {
     const size = newTextSize();
     const x = pt.x - slot.ox / last.dpmm;
     const y = pt.y - slot.oy / last.dpmm;
-    design.items.push({
+    // On a die-cut label: a fitted box filling the free space clicked in.
+    const free = freeAreas(slot.lane).find((a) => x >= a.x && x <= a.x + a.w && y >= a.y && y <= a.y + a.h);
+    if (free) design.items.push({ id: uid(), ...fittedText(free), ...(mode() === 'separate' ? { lane: slot.lane } : {}) });
+    else design.items.push({
       id: uid(), type: 'text', text: 'Text', font: 'sans-serif', size, bold: false, italic: false, align: 'left',
       x: +Math.max(0, x).toFixed(1), y: +Math.max(0, y - size * 0.6).toFixed(1),
       ...(mode() === 'separate' ? { lane: slot.lane } : {}),
