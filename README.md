@@ -384,6 +384,10 @@ take a few seconds to send.
 - **Rulers** along the top and side of the preview measure in mm from the
   label's starting edge and from each label's top edge, and mark the
   selected item.
+- **The roll:** a short faded stub past the label's trailing end shows the
+  rest of the roll still in the printer (the gap and the next label, or the
+  tape running on), with a torn edge and an arrow the way the label moves
+  out.
 - **Which way it prints:** the ruler along the feed marks the end that comes
   out of the printer first (◀ ▶ ▲ ▼), where the label is cut (✂, with
   auto-cut on), and where a continuous label grows (»); the note under the

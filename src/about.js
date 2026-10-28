@@ -101,6 +101,8 @@ function tips() {
       li(b('1:1'), ' shows the label at its real size under the editor (or in the editor, when it is too long to fit), '
         + 'once you have calibrated your screen with a bank card or a ruler: the button asks the first time; Recalibrate… '
         + 'in the panel (or right-click 1:1) changes it.'),
+      li(b('The faded stub'), ' past one end of the label is the rest of the roll, still in the printer; its arrow shows '
+        + 'which way the label moves out.'),
       li(b('Ruler marks'), ': the arrow is the end that comes out of the printer first, ✂ where it is cut, » where a '
         + 'continuous label grows.'),
       li(b('Rotate'), ' turns text in quarter turns, for cable flags and vertical text; a fitted box turns with it '

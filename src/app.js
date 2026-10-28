@@ -100,6 +100,8 @@ let editZoom = 6; // the zoom chosen with − / +
 // itself switches to real size.
 let actualSize = false;
 let actualPanel = false;
+// Where the label starts on the editor canvas, CSS px (past the roll stub).
+let viewOrigin = { x: 0, y: 0 };
 let transport = null;
 let last = null; // last render result
 let loaded = null; // last tape status reported by the printer
@@ -407,24 +409,64 @@ function draw() {
   const scale = zoom / dpmm; // screen px per dot
   const cssW = display.width * scale;
   const cssH = display.height * scale;
+
+  // Which way the label comes out, where it is cut, and where it grows.
+  const along = (x) => (last.portrait ? geo.width - x : x); // strip x → display, along the feed
+  const leadX = m.leadingEnd === 'end' ? geo.width : 0;
+  const cuts = m.options.some((o) => o.id === 'autoCut') && option('autoCut') !== false;
+  const grows = !med.lengthDots && design.length.mode !== 'fixed';
+  const feed = { lead: along(leadX), trail: along(geo.width - leadX), cuts, grows };
+
+  // The roll still in the printer is sketched past the label's trailing
+  // end (a short stub with a torn edge and an arrow the way it moves), so
+  // the canvas is that much longer and the label starts `viewOrigin` in.
+  const alongPx = last.portrait ? cssH : cssW;
+  const stub = Math.round(Math.max(28, Math.min(alongPx / zoom / 4, 15) * zoom));
+  const stubAtStart = feed.trail < 1;
+  viewOrigin = {
+    x: !last.portrait && stubAtStart ? stub : 0,
+    y: last.portrait && stubAtStart ? stub : 0,
+  };
+  const fullW = cssW + (last.portrait ? 0 : stub);
+  const fullH = cssH + (last.portrait ? stub : 0);
   const dpr = window.devicePixelRatio || 1;
-  canvas.style.width = `${cssW}px`;
-  canvas.style.height = `${cssH}px`;
-  canvas.width = Math.round(cssW * dpr);
-  canvas.height = Math.round(cssH * dpr);
+  canvas.style.width = `${fullW}px`;
+  canvas.style.height = `${fullH}px`;
+  canvas.width = Math.round(fullW * dpr);
+  canvas.height = Math.round(fullH * dpr);
 
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.imageSmoothingEnabled = false;
   const colors = previewColors();
-  ctx.drawImage(bitmapToCanvas(display, colors.ink, colors.paper), 0, 0, cssW, cssH);
-  const px = (r) => ({ x: r.x * scale, y: r.y * scale, w: r.w * scale, h: r.h * scale });
-
-  // Label outlines: the canvas itself when it is just one label; otherwise
-  // each label is outlined and the liner around them tinted.
   const radius = (med.cornerMm ?? 0) * zoom;
+  drawFeedStub(ctx, {
+    stub, stubAtStart, portrait: last.portrait, cssW, cssH, colors, radius, cuts,
+    dieCut: !!med.lengthDots, gap: Math.min(3 * zoom, stub * 0.3),
+  });
+  ctx.translate(viewOrigin.x, viewOrigin.y);
+
+  // Label outlines: a single plain label is clipped to its rounded shape;
+  // otherwise each label is outlined and the liner around them tinted.
   const plain = slots.length === 1 && !geo.top && !geo.bottom && !geo.right;
-  canvas.style.borderRadius = plain && radius ? `${radius}px` : '0';
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, .25)';
+  ctx.shadowBlur = 4;
+  ctx.shadowOffsetY = 1;
+  ctx.fillStyle = `rgb(${colors.paper.join(',')})`;
+  ctx.beginPath();
+  ctx.roundRect(0, 0, cssW, cssH, plain ? radius : 0);
+  ctx.fill();
+  ctx.restore();
+  ctx.save();
+  if (plain && radius) {
+    ctx.beginPath();
+    ctx.roundRect(0, 0, cssW, cssH, radius);
+    ctx.clip();
+  }
+  ctx.drawImage(bitmapToCanvas(display, colors.ink, colors.paper), 0, 0, cssW, cssH);
+  ctx.restore();
+  const px = (r) => ({ x: r.x * scale, y: r.y * scale, w: r.w * scale, h: r.h * scale });
   if (!plain) {
     const shapes = new Path2D();
     for (const s of slots) {
@@ -497,12 +539,6 @@ function draw() {
       ctx.fillRect(h.x, h.y, h.size, h.size);
     }
   }
-  // Which way the label comes out, where it is cut, and where it grows.
-  const along = (x) => (last.portrait ? geo.width - x : x); // strip x → display, along the feed
-  const leadX = model().leadingEnd === 'end' ? geo.width : 0;
-  const cuts = model().options.some((o) => o.id === 'autoCut') && option('autoCut') !== false;
-  const grows = !med.lengthDots && design.length.mode !== 'fixed';
-  const feed = { lead: along(leadX), trail: along(geo.width - leadX), cuts, grows };
   drawRulers(selBounds, feed);
   placeLaneButtons(scale);
 
@@ -540,6 +576,83 @@ function draw() {
   if (editing) positionEditor();
 }
 
+// The roll still in the printer, past the label's trailing end: the gap
+// and the next label (die-cut) or the tape running on, faded, with a torn
+// far edge, an arrow the way the label moves, and the cut (dashed) when
+// the printer cuts. Drawn before the canvas is shifted to the label.
+function drawFeedStub(ctx, o) {
+  const { stub, stubAtStart, portrait, cssW, cssH, colors, radius, dieCut, gap, cuts } = o;
+  // Work in "along / across" terms, then map to x / y.
+  const across = portrait ? cssW : cssH;
+  const near = stubAtStart ? stub : (portrait ? cssH : cssW); // the label's trailing edge
+  const dir = stubAtStart ? -1 : 1; // from the label into the stub
+  const P = (a, c) => (portrait ? [c, a] : [a, c]);
+  const wave = (a0) => {
+    // The torn far edge, as a path along the across axis.
+    const pts = [];
+    for (let c = 0; c <= across; c += 4) pts.push(P(a0 + Math.sin(c / 5) * 2.5 * dir, c));
+    return pts;
+  };
+  const far = near + dir * (stub - 4);
+  ctx.save();
+  ctx.globalAlpha = 0.55;
+  // Backing or tape body: from the label's edge to the torn edge.
+  const region = new Path2D();
+  region.moveTo(...P(near, 0));
+  for (const pt of wave(far)) region.lineTo(...pt);
+  region.lineTo(...P(near, across));
+  region.closePath();
+  ctx.fillStyle = dieCut ? 'rgba(230, 190, 110, .6)' : `rgb(${colors.paper.join(',')})`;
+  ctx.fill(region);
+  if (dieCut) {
+    // The next label after the gap, clipped by the torn edge.
+    ctx.save();
+    ctx.clip(region);
+    ctx.fillStyle = `rgb(${colors.paper.join(',')})`;
+    const a = near + dir * gap;
+    const len = stub;
+    const [x, y] = P(Math.min(a, a + dir * len), 1);
+    const [w, h] = P(len, across - 2);
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, radius);
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = 'rgba(120, 120, 120, .6)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  wave(far).forEach((pt, i) => (i ? ctx.lineTo(...pt) : ctx.moveTo(...pt)));
+  ctx.stroke();
+  if (cuts && !dieCut) {
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(...P(near, 0));
+    ctx.lineTo(...P(near, across));
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // The arrow: the label moves away from the stub, towards its leading end.
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2463eb';
+  const mid = near + (dir * (stub - 4)) / 2;
+  const half = Math.min(stub * 0.3, 10);
+  const c = across / 2;
+  ctx.strokeStyle = accent;
+  ctx.fillStyle = accent;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(...P(mid + dir * half, c));
+  ctx.lineTo(...P(mid - dir * half, c));
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(...P(mid - dir * (half + 3), c));
+  ctx.lineTo(...P(mid - dir * (half - 4), c - 5));
+  ctx.lineTo(...P(mid - dir * (half - 4), c + 5));
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
 // On a 2-up row: a button on each dimmed copy to design that label
 // separately, and on the other labels of a separate design to link them
 // back to label 1. Rebuilt only when the layout changes, so a click isn't
@@ -571,8 +684,8 @@ function placeLaneButtons(scale) {
   const canvas = $('canvas');
   for (const b of box.children) {
     const s = last.slots[Number(b.dataset.lane)];
-    b.style.left = `${canvas.offsetLeft + (s.label.x + s.label.w) * scale - 4}px`;
-    b.style.top = `${canvas.offsetTop + s.label.y * scale + 4}px`;
+    b.style.left = `${canvas.offsetLeft + viewOrigin.x + (s.label.x + s.label.w) * scale - 4}px`;
+    b.style.top = `${canvas.offsetTop + viewOrigin.y + s.label.y * scale + 4}px`;
   }
 }
 
@@ -714,7 +827,9 @@ function drawRulers(sel, feed) {
   const labelW = slots[0].label.w;
   const labelH = slots[0].label.h;
 
-  const top = setup('ruler-top', display.width * scale, T);
+  const canvasEl = $('canvas');
+  const top = setup('ruler-top', parseFloat(canvasEl.style.width), T);
+  top.translate(viewOrigin.x, 0);
   if (sel) {
     top.fillStyle = `${accent}33`;
     top.fillRect(sel.x * scale, 0, sel.w * scale, T);
@@ -723,7 +838,8 @@ function drawRulers(sel, feed) {
   // A continuous roll's scale runs on past the label to the end of the view.
   scaleAt(top, uniq(slots.map((s) => s.ox)), display.width * scale, last.portrait ? labelW : display.width, true);
 
-  const side = setup('ruler-left', T, display.height * scale);
+  const side = setup('ruler-left', T, parseFloat(canvasEl.style.height));
+  side.translate(0, viewOrigin.y);
   if (sel) {
     side.fillStyle = `${accent}33`;
     side.fillRect(0, sel.y * scale, T, sel.h * scale);
@@ -1699,7 +1815,7 @@ function deleteItem(item) {
 
 function canvasPointToMm(e) {
   const r = $('canvas').getBoundingClientRect();
-  return { x: (e.clientX - r.left) / zoom, y: (e.clientY - r.top) / zoom };
+  return { x: (e.clientX - r.left - viewOrigin.x) / zoom, y: (e.clientY - r.top - viewOrigin.y) / zoom };
 }
 
 function hitTest(pt) {
@@ -1720,8 +1836,8 @@ function onHandle(e) {
   if (!b || !resizable(item)) return null;
   const r = $('canvas').getBoundingClientRect();
   const h = handleRect(b, zoom / last.dpmm);
-  const x = e.clientX - r.left;
-  const y = e.clientY - r.top;
+  const x = e.clientX - r.left - viewOrigin.x;
+  const y = e.clientY - r.top - viewOrigin.y;
   const pad = 4;
   return x >= h.x - pad && x <= h.x + h.size + pad && y >= h.y - pad && y <= h.y + h.size + pad ? item : null;
 }
@@ -1865,8 +1981,8 @@ function positionEditor() {
   const scale = zoom / last.dpmm;
   const canvas = $('canvas');
   Object.assign(ta.style, {
-    left: `${canvas.offsetLeft + l.blockX * scale - 2}px`,
-    top: `${canvas.offsetTop + l.blockY * scale}px`,
+    left: `${canvas.offsetLeft + viewOrigin.x + l.blockX * scale - 2}px`,
+    top: `${canvas.offsetTop + viewOrigin.y + l.blockY * scale}px`,
     minWidth: `${Math.max(16, l.w * scale)}px`,
     font: `${item.italic ? 'italic ' : ''}${item.bold ? 'bold ' : ''}${l.px * scale}px ${item.font || 'sans-serif'}`,
     lineHeight: `${l.lineH * scale}px`,
