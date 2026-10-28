@@ -373,6 +373,12 @@ take a few seconds to send.
   on a dimmed copy switches to a design per label, starting from a copy of
   the first; **🔗 Same as label 1** links it back (its own items are kept,
   hidden, until you unlink again).
+- **Actual size (1:1):** after a one-time screen calibration (match an
+  outline to a bank card or a ruler held against the screen), the 1:1
+  button shows the label at its real size, so you can hold the label or the
+  thing it goes on up to the screen. Saved per browser; it follows browser
+  zoom, but a different monitor needs its own calibration (right-click 1:1
+  to recalibrate).
 - **Rulers** along the top and side of the preview measure in mm from the
   label's starting edge and from each label's top edge, and mark the
   selected item.

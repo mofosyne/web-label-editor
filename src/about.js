@@ -98,6 +98,8 @@ function tips() {
         + 'die cut may trim them.'),
       li(b('Portrait'), ' (▭ ▯ in the toolbar) lets you design the label standing upright; it is turned for printing. '
         + 'On tape it grows downwards with the content.'),
+      li(b('1:1'), ' shows the label at its real size once you have calibrated your screen with a bank card or a ruler '
+        + '(the button asks the first time; right-click it to recalibrate).'),
       li(b('Ruler marks'), ': the arrow is the end that comes out of the printer first, ✂ where it is cut, » where a '
         + 'continuous label grows.'),
       li(b('Rotate'), ' turns text in quarter turns, for cable flags and vertical text; a fitted box turns with it '

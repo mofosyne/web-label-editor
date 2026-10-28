@@ -15,6 +15,7 @@ import {
 } from './layout.js';
 import { newRollId, rollCode, parseRollCode } from './rolls.js';
 import { UndoHistory } from './undo.js';
+import { actualPxPerMm, openScreenCalibration } from './screen.js';
 
 const STORAGE_KEY = 'web-label-editor:design';
 const $ = (id) => document.getElementById(id);
@@ -93,6 +94,8 @@ let design = loadDesign();
 const undo = new UndoHistory(JSON.stringify(design));
 let selectedId = design.items[0]?.id ?? null;
 let zoom = 6; // screen px per mm
+// Showing the label at its real size (zoom follows the screen calibration).
+let actualSize = false;
 let transport = null;
 let last = null; // last render result
 let loaded = null; // last tape status reported by the printer
@@ -393,6 +396,7 @@ function draw() {
   const { display, dpmm, geo, slots, toDisplay } = last;
 
   const canvas = $('canvas');
+  if (actualSize) zoom = actualPxPerMm() ?? zoom;
   const scale = zoom / dpmm; // screen px per dot
   const cssW = display.width * scale;
   const cssH = display.height * scale;
@@ -522,7 +526,8 @@ function draw() {
     + (last.hidden ? `  ·  ${last.hidden} item${last.hidden > 1 ? 's' : ''} on the other label${lanes?.count > 2 ? 's' : ''} hidden (choose "A different design on each")` : '')
     + `  ·  ${feedNote}`;
   dims.classList.toggle('warn', offLabel);
-  $('zoom-label').textContent = `${Math.round((zoom / 6) * 100)}%`;
+  $('zoom-label').textContent = actualSize ? '1:1' : `${Math.round((zoom / 6) * 100)}%`;
+  updateActualButton();
   updateCodeInfo();
   updateFitInfo();
   if (editing) positionEditor();
@@ -1988,6 +1993,17 @@ function onPaste(e) {
   }
 }
 
+// The 1:1 button: dimmed until the screen is calibrated, pressed while on.
+function updateActualButton() {
+  const b = $('zoom-actual');
+  const ready = !!actualPxPerMm();
+  b.classList.toggle('unset', !ready);
+  b.setAttribute('aria-pressed', String(actualSize));
+  b.title = ready
+    ? 'Actual size: the label at its real size on this screen (right-click to recalibrate)'
+    : 'Actual size: calibrate this screen first (a bank card or a ruler against the screen)';
+}
+
 // ---------- undo ----------
 
 function updateUndoButtons() {
@@ -2081,8 +2097,21 @@ function wire() {
   $('add-box').onclick = addBox;
   $('add-qr').onclick = addQr;
   $('add-barcode').onclick = addBarcode;
-  $('zoom-in').onclick = () => { stopEdit(); zoom = Math.min(30, zoom * 1.25); refresh(); };
-  $('zoom-out').onclick = () => { stopEdit(); zoom = Math.max(1, zoom / 1.25); refresh(); };
+  $('zoom-in').onclick = () => { stopEdit(); actualSize = false; zoom = Math.min(30, zoom * 1.25); refresh(); };
+  $('zoom-out').onclick = () => { stopEdit(); actualSize = false; zoom = Math.max(1, zoom / 1.25); refresh(); };
+  // Actual size needs the screen calibrated first; until then the button
+  // opens the calibration.
+  const calibrate = () => openScreenCalibration($('screen-dialog'), {
+    onDone: (ok) => { actualSize = ok; refresh(); },
+  });
+  $('zoom-actual').onclick = () => {
+    stopEdit();
+    if (!actualPxPerMm()) calibrate();
+    else { actualSize = !actualSize; if (!actualSize) zoom = 6; refresh(); }
+  };
+  $('zoom-actual').oncontextmenu = (e) => { e.preventDefault(); calibrate(); };
+  // Browser zoom or a move to another screen changes devicePixelRatio.
+  window.addEventListener('resize', () => { if (actualSize) refresh(); });
 
   $('btn-export').onclick = () => {
     const { labelId, ...plain } = design;

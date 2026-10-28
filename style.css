@@ -209,6 +209,14 @@ dialog.help .row { justify-content: flex-end; margin: 0; }
 .seg button:last-child { border-radius: 0 6px 6px 0; margin-left: -1px; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 
+/* Screen calibration for the actual-size preview. */
+dialog.screen .cal-stage { padding: 12px 0; overflow: auto; }
+dialog.screen .cal-outline { border: 2px solid var(--accent); background: rgba(36, 99, 235, .08); box-sizing: border-box; }
+dialog.screen .cal-outline.card { border-radius: 3mm; }
+dialog.screen .row input[type="range"] { flex: 1; }
+#zoom-actual.unset { opacity: .55; }
+#zoom-actual[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
 /* Rulers above and left of the label. */
 .ruled {
   display: grid;
