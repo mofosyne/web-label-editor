@@ -92,12 +92,24 @@ function pTouch({ name, status, devices, productId, maxTapeMm = 24, quirks = {},
     transports: bluetooth ? ['usb', 'serial'] : ['usb'],
     usbFilters: [{ vendorId: 0x04f9, productId }],
     media: [],
-    options: quirks.precut === false ? [] : [
-      { id: 'autoCut', label: 'Cut after label', type: 'checkbox', default: true },
+    options: [
+      ...(quirks.precut === false && !quirks.halfCut ? [] : [{ id: 'autoCut', label: 'Cut after label', type: 'checkbox', default: true }]),
+      ...(quirks.halfCut ? [{ id: 'halfCut', label: 'Half cut between copies (easy peel strip)', type: 'checkbox', default: false }] : []),
+      ...(quirks.halfCut || quirks.advanced ? [{
+        id: 'chain', type: 'checkbox', default: false,
+        label: 'Chain printing: save tape (the last label stays in the printer until the next print)',
+      }] : []),
     ],
     note,
     encode(bitmap, medium, opts) {
-      return encodePTouch(bitmap, { autoCut: opts.autoCut, quirks, tapeMm: medium.statusMm, tailDots: Math.round((PT_TAIL_MM * 180) / 25.4) });
+      return this.encodePages([bitmap], medium, opts);
+    },
+    // Copies go in one job, a page each: less blank tape, and on models with
+    // a half cutter they can stay on one strip.
+    encodePages(bitmaps, medium, opts) {
+      return encodePTouch(bitmaps, {
+        autoCut: opts.autoCut, halfCut: opts.halfCut, chain: opts.chain, quirks, tapeMm: medium.statusMm, tailDots: Math.round((PT_TAIL_MM * 180) / 25.4),
+      });
     },
     async queryStatus(transport) {
       await transport.write(initCommand());
@@ -176,9 +188,12 @@ export const MODELS = {
     ],
     productId: 0x20af,
     bluetooth: true,
+    // Chain printing (ESC i K), per Brother's raster reference; no half cutter.
+    quirks: { advanced: true },
   }),
   'brother-pt-p700': pTouch({ name: 'Brother PT-P700', status: 'experimental', productId: 0x2061, quirks: { p700Init: true }, note: `${PT_NOTE} ${PLITE}` }),
-  'brother-pt-p750w': pTouch({ name: 'Brother PT-P750W', status: 'experimental', productId: 0x2062, quirks: { p700Init: true, precut: false }, note: `${PT_NOTE} ${PLITE}` }),
+  // Has a half cutter (Brother's raster reference for the E550W/P750W/P710BT).
+  'brother-pt-p750w': pTouch({ name: 'Brother PT-P750W', status: 'experimental', productId: 0x2062, quirks: { p700Init: true, precut: false, halfCut: true }, note: `${PT_NOTE} ${PLITE}` }),
   'brother-pt-h500': pTouch({ name: 'Brother PT-H500', status: 'experimental', productId: 0x205e }),
   'brother-pt-e500': pTouch({ name: 'Brother PT-E500', status: 'experimental', productId: 0x205f, quirks: { precut: false } }),
   'brother-pt-d600': pTouch({ name: 'Brother PT-D600', status: 'experimental', productId: 0x2074, quirks: { precut: false } }),

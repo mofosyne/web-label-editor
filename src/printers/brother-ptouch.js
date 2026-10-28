@@ -134,50 +134,76 @@ export function parseStatus(buf) {
 //   precut    supports ESC i M auto-cut
 //   magic     PT-D410/D460BT/E310BT family: extra ESC i d command, and
 //             the info command asks for a final feed
+//   halfCut   has a half cutter (ESC i K bit 2), per Brother's raster
+//             reference; also takes ESC i M auto cut and ESC i A
+//   advanced  takes ESC i K (advanced mode: chain printing) without a half
+//             cutter: the PT-P710BT, per the same reference
 export const PT_DEFAULT_QUIRKS = { packbits: true, p700Init: false, infoCmd: false, precut: true, magic: false };
 
-export function encodePTouch(bitmap, opts = {}) {
+// Encodes one label, or several (copies) as the pages of one job: each
+// page gets its print settings and raster lines, then FF (print) or, after
+// the last, Control-Z (print with feeding). Per Brother's raster reference
+// (PT-E550W/P750W/P710BT), ported in part from ptlabel.
+//   opts.autoCut   cut after each label (ESC i M; ESC i A on halfCut models)
+//   opts.halfCut   on models with a half cutter (quirk halfCut): half-cut
+//                  between labels, so they stay on one strip of backing,
+//                  and cut fully after the last (ESC i K)
+//   opts.chain     on models with advanced mode (quirk advanced): chain
+//                  printing, which saves tape: the last label is not fed
+//                  out and cut, but stays in the printer until the next
+//                  print (ESC i K bit 3 off)
+export function encodePTouch(pages, opts = {}) {
+  const list = Array.isArray(pages) ? pages : [pages];
   const autoCut = opts.autoCut ?? true;
   const q = { ...PT_DEFAULT_QUIRKS, ...opts.quirks };
   const bytesPerLine = HEAD_DOTS / 8;
-  const top = Math.floor((HEAD_DOTS - bitmap.height) / 2);
-  const { width, height, data } = bitmap;
 
   const w = new ByteWriter();
   w.add(initCommand());
   if (q.packbits) w.push(0x4d, 0x02); // M 02: PackBits compression
   if (q.p700Init) w.push(ESC, 0x69, 0x61, 0x01); // ESC i a 01: raster mode
   else w.push(ESC, 0x69, 0x52, 0x01); // ESC i R 01: raster mode
-  if (q.infoCmd) {
-    // ESC i z: media width (mm) and number of raster lines
-    w.push(ESC, 0x69, 0x7a, 0, 0, opts.tapeMm ?? 0, 0,
-      width & 0xff, (width >> 8) & 0xff, (width >> 16) & 0xff, (width >>> 24) & 0xff,
-      q.magic ? 0x02 : 0x00, 0);
-  }
-  if (q.magic) w.push(ESC, 0x69, 0x64, 0x01, 0x00, 0x4d, 0x00); // ESC i d: margin
-  if (q.precut) w.push(ESC, 0x69, 0x4d, autoCut ? 0x40 : 0x00); // ESC i M: auto cut
 
-  const line = new Uint8Array(bytesPerLine);
-  for (let x = 0; x < width; x++) {
-    line.fill(0);
-    for (let y = 0; y < height; y++) {
-      if (!data[y * width + x]) continue;
-      const dot = top + y;
-      if (dot < 0 || dot >= HEAD_DOTS) continue;
-      line[dot >> 3] |= 0x80 >> (dot & 7);
-    }
-    const out = q.packbits ? packBits(line) : line.slice(); // `line` is reused
-    w.push(0x47, out.length & 0xff, out.length >> 8); // G n1 n2
-    w.add(out);
-  }
-  // Blank lines after the content: the printer leaves off the end of the
-  // raster data, so these are what it drops instead.
   const blank = q.packbits ? packBits(new Uint8Array(bytesPerLine)) : new Uint8Array(bytesPerLine);
-  for (let i = 0; i < (opts.tailDots ?? 0); i++) {
-    w.push(0x47, blank.length & 0xff, blank.length >> 8);
-    w.add(blank);
-  }
+  list.forEach((bitmap, page) => {
+    const { width, height, data } = bitmap;
+    const top = Math.floor((HEAD_DOTS - height) / 2);
+    if (q.infoCmd) {
+      // ESC i z: media width (mm), number of raster lines, and the page
+      // (0 first, 1 others; the magic models ask for a final feed with 2).
+      w.push(ESC, 0x69, 0x7a, 0, 0, opts.tapeMm ?? 0, 0,
+        width & 0xff, (width >> 8) & 0xff, (width >> 16) & 0xff, (width >>> 24) & 0xff,
+        q.magic && page === list.length - 1 ? 0x02 : page ? 0x01 : 0x00, 0);
+    }
+    if (q.magic) w.push(ESC, 0x69, 0x64, 0x01, 0x00, 0x4d, 0x00); // ESC i d: margin
+    if (q.precut || q.halfCut) w.push(ESC, 0x69, 0x4d, autoCut ? 0x40 : 0x00); // ESC i M: auto cut
+    if (q.halfCut && autoCut) w.push(ESC, 0x69, 0x41, 0x01); // ESC i A 01: cut each label
+    if (q.halfCut || q.advanced) {
+      // ESC i K: half cut (bit 2); no chain printing (bit 3): feed and cut
+      // after the last label, unless chain printing saves that tape.
+      w.push(ESC, 0x69, 0x4b, (q.halfCut && opts.halfCut ? 0x04 : 0) | (opts.chain ? 0 : 0x08));
+    }
 
-  w.push(0x1a); // print with feed (and cut)
+    const line = new Uint8Array(bytesPerLine);
+    for (let x = 0; x < width; x++) {
+      line.fill(0);
+      for (let y = 0; y < height; y++) {
+        if (!data[y * width + x]) continue;
+        const dot = top + y;
+        if (dot < 0 || dot >= HEAD_DOTS) continue;
+        line[dot >> 3] |= 0x80 >> (dot & 7);
+      }
+      const out = q.packbits ? packBits(line) : line.slice(); // `line` is reused
+      w.push(0x47, out.length & 0xff, out.length >> 8); // G n1 n2
+      w.add(out);
+    }
+    // Blank lines after the content: the printer leaves off the end of the
+    // raster data, so these are what it drops instead.
+    for (let i = 0; i < (opts.tailDots ?? 0); i++) {
+      w.push(0x47, blank.length & 0xff, blank.length >> 8);
+      w.add(blank);
+    }
+    w.push(page === list.length - 1 ? 0x1a : 0x0c); // print with feed (and cut) after the last; FF between
+  });
   return w.toUint8Array();
 }

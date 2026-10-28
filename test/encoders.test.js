@@ -204,3 +204,33 @@ test('P-touch: blank tail lines after the content', () => {
   assert.ok(lines.slice(3).every((l) => l.length === 16 && l.every((v) => !v)));
   assert.deepEqual(rest, [0x1a]);
 });
+
+test('P-touch: copies as pages of one job; half cut on models with a half cutter', () => {
+  const page = bitmap(2, 76, () => false);
+  // PT-P710BT: FF between pages, Control-Z after the last, settings per page.
+  const three = encodePTouch([page, page, page], { autoCut: true });
+  // Each extra page: ESC i M (4), two blank lines (G n1 n2 + 2 PackBits bytes each), FF (1).
+  assert.equal(three.length - encodePTouch(page, { autoCut: true }).length, 2 * (4 + 2 * (3 + 2) + 1));
+  assert.deepEqual([...three].filter((b, i, a) => a[i - 1] !== 0x47 && a[i - 2] !== 0x47 && (b === 0x0c || b === 0x1a)), [0x0c, 0x0c, 0x1a]);
+  // PT-P750W with half cut: ESC i M 40, ESC i A 01, ESC i K 0C on every page.
+  const half = encodePTouch([page, page], { autoCut: true, halfCut: true, quirks: { p700Init: true, precut: false, halfCut: true } });
+  const find = (out, seq) => {
+    let n = 0;
+    for (let i = 0; i < out.length; i++) if (seq.every((v, k) => out[i + k] === v)) n++;
+    return n;
+  };
+  assert.equal(find(half, [0x1b, 0x69, 0x4d, 0x40]), 2);
+  assert.equal(find(half, [0x1b, 0x69, 0x41, 0x01]), 2);
+  assert.equal(find(half, [0x1b, 0x69, 0x4b, 0x0c]), 2);
+  const full = encodePTouch([page], { autoCut: true, halfCut: false, quirks: { halfCut: true } });
+  assert.equal(find(full, [0x1b, 0x69, 0x4b, 0x08]), 1, 'no half cut: just feed and cut after the last');
+  // Without the advanced quirk no ESC i K is sent, and never ESC i A without a half cutter.
+  assert.equal(find(three, [0x1b, 0x69, 0x4b]), 0);
+  assert.equal(find(three, [0x1b, 0x69, 0x41]), 0);
+  // PT-P710BT (advanced): ESC i K 08 normally, 00 with chain printing; still no ESC i A.
+  const p710 = { advanced: true };
+  assert.equal(find(encodePTouch([page], { quirks: p710 }), [0x1b, 0x69, 0x4b, 0x08]), 1);
+  const chained = encodePTouch([page, page], { chain: true, quirks: p710 });
+  assert.equal(find(chained, [0x1b, 0x69, 0x4b, 0x00]), 2);
+  assert.equal(find(chained, [0x1b, 0x69, 0x41]), 0);
+});

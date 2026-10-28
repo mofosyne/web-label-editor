@@ -1251,6 +1251,12 @@ async function sendRows(rows, med = medium()) {
   const a = adjust();
   const shift = { feed: feedDots(a.feedMm, model(), dpmm), across: Math.round(a.acrossMm * dpmm), grow: !med.lengthDots };
   const opts = Object.fromEntries(model().options.map((o) => [o.id, option(o.id)]));
+  // Printers that take several pages per job get all the copies at once.
+  if (model().encodePages) {
+    const bitmaps = new Map(rows.map((row) => [row, jobBitmap(row.bitmap, row.geo, model(), shift)]));
+    await transport.write(model().encodePages(rows.map((row) => bitmaps.get(row)), med, opts));
+    return;
+  }
   const jobs = new Map(); // identical rows share one encoded job
   for (const row of rows) {
     if (!jobs.has(row)) jobs.set(row, model().encode(jobBitmap(row.bitmap, row.geo, model(), shift), med, opts));
