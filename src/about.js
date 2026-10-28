@@ -31,10 +31,16 @@ function welcome(go) {
       + 'continuous rolls or auto-sizing text well. Linux users shouldn\'t be second-class citizens with label printers; a '
       + 'web page that talks to the printer directly works the same everywhere.'),
     el('h3', { textContent: 'Philosophy' }),
+    p(b('Ease of use over features.'), ' Making a label should be quick and obvious: click the text and type, it fits '
+      + 'its box, the preview is what prints, and the printer just works. A feature earns its place only if it doesn\'t '
+      + 'make that harder.'),
+    p(b('Reuse what commercial label software learned the hard way:'), ' editing text on the label, text that shrinks '
+      + 'to fit, a canvas at the real label size with the unprintable edges shown, labels picked from a list, quick '
+      + 'reprints and undo. Where they got it right, copy it.'),
     el('ul', {},
-      li(b('Modelled on the original DYMO Label software'), ' (not DYMO Connect): a preview that shows exactly what will '
-        + 'print, copy and paste between labels, and above all ', b('text that sizes itself to fit'), '. Too many label '
-        + 'editors leave you guessing, and text gets cut off.'),
+      li(b('Modelled on the original DYMO Label software'), ' (not DYMO Connect): editing text right on the label, a '
+        + 'preview that shows exactly what will print, copy and paste between labels, and above all ',
+      b('text that sizes itself to fit'), '. Too many label editors leave you guessing, and text gets cut off.'),
       li(b('Continuous rolls are the normal case.'), ' A label is as long as its content unless you say otherwise.'),
       li(b('What you see is what prints.'), ' The preview is the exact dots the printer will burn. Hatched: the printer '
         + 'cannot reach. Dashed: the safe area; going past it, even onto the liner, is allowed. You decide.'),
@@ -50,7 +56,7 @@ function welcome(go) {
     el('h3', { textContent: 'Getting started' }),
     el('ol', {},
       li('Pick your printer and label in the ', b('Printer'), ' panel. See ', start, ' for what is supported.'),
-      li('Add text, QR codes, barcodes, images or boxes. Drag to move; double-click text to edit it. Tick ',
+      li('Add text, QR codes, barcodes, images or boxes. Drag to move; click text again to edit it on the label. Tick ',
         b('Fit text in a fixed box'), ' to let the size follow the box.'),
       li('Click ', b('Connect USB'), ' (or Bluetooth), then ', b('Print'), '. If the browser is refused access, the app '
         + 'explains the one-time fix for your system.'),
@@ -107,7 +113,8 @@ function tips() {
       li(b('Ctrl+C / Ctrl+X / Ctrl+V'), ': copy, cut, paste items. Paste text or images from other apps too.'),
       li(b('Ctrl+D'), ': duplicate. ', b('Delete'), ': remove. ', b('Arrows'), ': nudge 0.1 mm (Shift: 1 mm).'),
       li(b('Ctrl+Z'), ': undo. ', b('Ctrl+Shift+Z'), ' or ', b('Ctrl+Y'), ': redo (also the ↶ ↷ buttons).'),
-      li(b('Double-click'), ' text to edit it on the label; double-click empty space to add text.')),
+      li(b('Click'), ' selected text, double-click it, or press ', b('Enter'), ' / ', b('F2'), ' to edit it on the label; '
+        + 'double-click empty space to add text.')),
     el('h3', { textContent: 'Your designs' }),
     p('The ', b('Labels'), ' button keeps your saved labels (open one, or use it as a template for a new label) and the '
       + 'history of what you printed, so you can reprint it. They and the current design are kept in this browser; use ',

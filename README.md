@@ -19,7 +19,7 @@ This editor is for you if:
 
 - You have a **DYMO LabelWriter** (400 / 450 family) and/or a **Brother P-touch** (or QL) and want one editor for both, in the browser on Linux, Windows, macOS and ChromeOS (Windows needs a one-time driver switch for USB).
 - You print on **continuous rolls or tape**, where the label is as long as its content.
-- You want to **edit text right on the label** (double-click and type) and have it **fit**: sized automatically to its box, never cut off, as in the original DYMO Label software.
+- You want to **edit text right on the label** (click it and type) and have it **fit**: sized automatically to its box, never cut off, as in the original DYMO Label software.
 - Position matters: the preview shows the **true printable area**, and test prints and **per-roll calibration** handle third-party label stock.
 
 Another tool may suit you better if:
@@ -55,9 +55,25 @@ continuous rolls treated as the normal case rather than an afterthought.
 
 ## Philosophy
 
+**Ease of use over features.** The aim is not the longest feature list: it
+is that making a label is quick and obvious. Click the text and type; it
+fits its box; the preview is what prints; the printer just works. A feature
+earns its place only if it doesn't make that everyday case harder, and the
+rest below follows from this.
+
+**Reuse the lessons commercial label software already learned the hard
+way,** instead of relearning them. Over years of users, programs like the
+original DYMO Label and Brother's P-touch Editor settled on things that
+work: text you edit right on the label, text that shrinks to fit rather than
+getting cut off, a canvas that is the real label size with the unprintable
+edges shown, picking the label from a list instead of typing dimensions,
+quick reprints of past labels, and undo for everything. Where they got it
+right, copy it; don't make users discover the same problems again.
+
 - **Modelled on the original DYMO Label software, not DYMO Connect.** The
-  things it got right: a preview that shows what will print, copy and paste
-  between labels, and above all **text that sizes itself to fit** a box.
+  things it got right: **editing text right on the label**, a preview that
+  shows what will print, copy and paste between labels, and above all
+  **text that sizes itself to fit** a box.
   Too many label editors leave you guessing, and text gets cut off.
 - **Continuous rolls are the normal case.** A label is as long as its
   content unless you say otherwise; fixed sizes and die-cut labels are the
@@ -139,8 +155,8 @@ described [below](#adding-a-printer).
 
 1. Open the [site](https://mofosyne.github.io/web-label-editor/), pick your
    printer and label in the **Printer** panel.
-2. Add text, QR codes, barcodes, images or boxes. Drag to move; double-click
-   text to edit it on the label. Tick **Fit text in a fixed box** and the text
+2. Add text, QR codes, barcodes, images or boxes. Drag to move; click text
+   again (or double-click it) to edit it on the label. Tick **Fit text in a fixed box** and the text
    size follows the box.
 3. **Connect USB** (or Bluetooth), then **Print**. If your OS refuses the
    browser access, the app shows the one-time fix (see
@@ -161,8 +177,9 @@ The app has its own welcome page and **Help** with the same information.
 - **Items:** text (multi-line, any installed font, fixed size or fitted to a
   box), QR codes, barcodes (Code 128, EAN-13, UPC-A), images (threshold or
   dithering) and boxes. Drag to move, corner handle to resize.
-- **Editing:** double-click text to edit it in place; double-click empty space
-  to add text; Ctrl+C / Ctrl+X / Ctrl+V for items (and pasting text or images
+- **Editing:** click selected text (or double-click it, or press Enter / F2)
+  to edit it in place, right on the label; double-click empty space to add
+  text; Ctrl+C / Ctrl+X / Ctrl+V for items (and pasting text or images
   from other apps); Ctrl+D duplicates; arrow keys nudge; Ctrl+Z / Ctrl+Shift+Z
   (or Ctrl+Y) undo and redo, with a drag or a burst of typing as one step.
 - **Continuous rolls:** *Fit to content* makes the label as long as what is on

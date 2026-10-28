@@ -12,7 +12,7 @@ const gh = (path) => `https://github.com/${path}`;
 export const AIMS = [
   'You have a **DYMO LabelWriter** (400 / 450 family) and/or a **Brother P-touch** (or QL) and want one editor for both, in the browser on Linux, Windows, macOS and ChromeOS (Windows needs a one-time driver switch for USB).',
   'You print on **continuous rolls or tape**, where the label is as long as its content.',
-  'You want to **edit text right on the label** (double-click and type) and have it **fit**: sized automatically to its box, never cut off, as in the original DYMO Label software.',
+  'You want to **edit text right on the label** (click it and type) and have it **fit**: sized automatically to its box, never cut off, as in the original DYMO Label software.',
   'Position matters: the preview shows the **true printable area**, and test prints and **per-roll calibration** handle third-party label stock.',
 ];
 

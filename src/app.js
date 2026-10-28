@@ -1423,11 +1423,12 @@ function onPointerDown(e) {
     return;
   }
   const item = hitTest(pt);
+  const wasSelected = !!item && item.id === selectedId;
   selectedId = item?.id ?? null;
   if (item) {
     undo.checkpoint();
     activeLane = laneOf(item);
-    drag = { item, dx: pt.x - item.x, dy: pt.y - item.y };
+    drag = { item, dx: pt.x - item.x, dy: pt.y - item.y, wasSelected, from: pt, moved: false };
     $('canvas').setPointerCapture(e.pointerId);
   } else if (mode() === 'separate') {
     activeLane = slotAt(pt)?.lane ?? activeLane;
@@ -1448,6 +1449,9 @@ function onPointerMove(e) {
     refresh();
     return;
   }
+  // A small wobble during a click isn't a drag.
+  if (!drag.moved && Math.hypot(pt.x - drag.from.x, pt.y - drag.from.y) * zoom < 3) return;
+  drag.moved = true;
   it.x = Math.round((pt.x - drag.dx) * 10) / 10;
   it.y = Math.round((pt.y - drag.dy) * 10) / 10;
   // With a design per label, dragging an item onto another label moves it there.
@@ -1466,18 +1470,27 @@ function onPointerMove(e) {
   refresh();
 }
 
+// Clicking text that is already selected (without dragging it) edits it in
+// place, as in DYMO Label; the first click selects it.
 function onPointerUp() {
-  if (drag) {
-    drag = null;
-    refresh({ props: true });
-  }
+  if (!drag) return;
+  const { item, wasSelected, moved, resize } = drag;
+  drag = null;
+  refresh({ props: true });
+  if (item.type === 'text' && wasSelected && !moved && !resize) startEdit(item, { selectAll: false });
 }
 
 // ---------- in-place text editing ----------
 
 let editing = null;
 
-function startEdit(item) {
+// selectAll: select the whole text (double-click, Enter) rather than put the
+// cursor at the end (a click on selected text).
+function startEdit(item, { selectAll = true } = {}) {
+  if (editing?.item === item) {
+    if (selectAll) editing.ta.select();
+    return;
+  }
   if (!last?.textLayouts[design.items.indexOf(item)]) return;
   const ta = document.createElement('textarea');
   ta.className = 'inplace';
@@ -1506,7 +1519,8 @@ function startEdit(item) {
   });
   ta.addEventListener('blur', () => stopEdit());
   ta.focus();
-  ta.select();
+  if (selectAll) ta.select();
+  else ta.setSelectionRange(ta.value.length, ta.value.length);
 }
 
 // Lays the editor over the text exactly where the renderer put it.
@@ -1680,6 +1694,11 @@ function onUndoKey(e) {
 function onKey(e) {
   const item = selected();
   if (!item) return;
+  if (item.type === 'text' && (e.key === 'Enter' || e.key === 'F2') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault();
+    startEdit(item);
+    return;
+  }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
     e.preventDefault();
     duplicateSelected();
