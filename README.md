@@ -195,7 +195,8 @@ The app has its own welcome page and **Help** with the same information.
   dithering) and boxes. Drag to move, corner handle to resize.
 - **Editing:** click selected text (or double-click it, or press Enter / F2)
   to edit it in place, right on the label; the bar above the label sets its
-  font, fit or size (A− / A+), bold, italic, alignment and turning, as in
+  font, size (Auto fits it to its box; A− / A+), bold, italic, alignment
+  and turning, as in
   DYMO Label; double-click empty space to add
   text; Ctrl+C / Ctrl+X / Ctrl+V for items (and pasting text or images
   from other apps); Ctrl+D duplicates; arrow keys nudge; Ctrl+Z / Ctrl+Shift+Z

@@ -2385,27 +2385,33 @@ function buildFormatBar() {
     refresh({ props: true });
   };
   const font = el('select', { ariaLabel: 'Font', title: 'Font' });
-  const fit = el('select', { ariaLabel: 'Text size', title: 'Fit to box: the text takes the largest size that fits its box' });
-  fit.append(new Option('Fit to box', 'fit'), new Option('Fixed size', 'fixed'));
-  const size = el('input', { type: 'number', step: 0.5, min: 0.5, ariaLabel: 'Size (mm)', title: 'Text size in mm' });
+  // One size box, as in DYMO Label: Auto sizes the text to fit its box, a
+  // number is a set size; the list suggests common ones, any can be typed.
+  const size = el('input', { type: 'text', inputMode: 'decimal', ariaLabel: 'Text size (mm), or Auto to fit its box' });
+  size.setAttribute('list', 'text-sizes');
+  const sizes = el('datalist', { id: 'text-sizes' },
+    ...['Auto', 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25].map((v) => new Option(String(v), String(v))));
   const button = (label, title, onClick, cls = '') => {
     const b = el('button', { type: 'button', className: `icon ${cls}`, title, ariaLabel: title, textContent: label });
     b.onclick = change(onClick);
     return b;
   };
   font.onchange = change((it) => { it.font = font.value; });
-  fit.onchange = change((it) => toggleFit(it, fit.value === 'fit'));
   size.onchange = change((it) => {
-    const v = parseFloat(size.value);
-    if (v > 0) { if (it.fit) toggleFit(it, false); it.size = round1(v); }
+    if (/^\s*a/i.test(size.value)) { if (!it.fit) toggleFit(it, true); } else {
+      const v = parseFloat(size.value.replace(',', '.'));
+      if (v > 0) { if (it.fit) toggleFit(it, false); it.size = round1(v); }
+    }
+    size.blur(); // shows the size as set ("Auto", or the number)
   });
+  size.onfocus = () => size.select();
   const step = (f) => (it) => {
     if (it.fit) toggleFit(it, false);
     it.size = Math.max(0.5, round1((it.size || 3) * f));
   };
   const turn = (it) => setRotation(it, ((quarterTurns(it) + 1) % 4) * 90);
   bar.replaceChildren(
-    font, fit, size, el('span', { className: 'unit', textContent: 'mm' }),
+    font, size, sizes, el('span', { className: 'unit', textContent: 'mm' }),
     button('A−', 'Smaller', step(1 / 1.15)),
     button('A+', 'Bigger', step(1.15)),
     el('span', { className: 'sep' }),
@@ -2432,18 +2438,19 @@ function syncFormatBar() {
   bar.classList.toggle('idle', !text);
   for (const c of bar.querySelectorAll('select, input, button')) c.disabled = !text;
   if (!text) return;
-  const [font, fit, size] = bar.querySelectorAll('select, input');
+  const [font, size] = bar.querySelectorAll('select, input');
   if (document.activeElement !== font) {
     // The usual fonts, plus the text's own if it is another.
     const fonts = [...new Set([...FONTS, text.font])];
     if (font.options.length !== fonts.length) font.replaceChildren(...fonts.map((f) => new Option(f, f)));
     font.value = text.font;
   }
-  fit.value = text.fit ? 'fit' : 'fixed';
   if (document.activeElement !== size) {
     const l = last?.textLayouts[design.items.indexOf(text)];
-    size.value = String(round1(text.fit && l ? l.sizeMm : text.size));
-    size.title = text.fit ? 'Fitted to the box; typing a size switches to a fixed size' : 'Text size in mm';
+    size.value = text.fit ? 'Auto' : String(round1(text.size));
+    size.title = text.fit
+      ? `Auto: sized to fit its box${l ? ` (now ${round1(l.sizeMm)} mm)` : ''}. Type or pick a size to set one.`
+      : 'Text size in mm. Auto sizes it to fit a box.';
   }
   for (const b of bar.querySelectorAll('button')) {
     if (b.title === 'Bold') b.setAttribute('aria-pressed', String(!!text.bold));
@@ -2459,9 +2466,17 @@ function toggleFit(item, on) {
   const l = last?.textLayouts[i];
   const slot = last?.slots.find((sl) => sl.lane === last.lanes[i]);
   if (on) {
-    const b = last?.bounds[i] ?? { w: 20 * last.dpmm, h: 5 * last.dpmm };
-    item.w = item.w ?? round1(b.w / last.dpmm);
-    item.h = item.h ?? round1(b.h / last.dpmm);
+    // The box is the text's outline as it is now, so nothing moves.
+    const b = last?.bounds[i];
+    if (b && slot) {
+      item.x = round1((b.x - slot.ox) / last.dpmm);
+      item.y = round1((b.y - slot.oy) / last.dpmm);
+      item.w = round1(b.w / last.dpmm);
+      item.h = round1(b.h / last.dpmm);
+    } else {
+      item.w = item.w ?? 20;
+      item.h = item.h ?? 5;
+    }
     item.fit = true;
     return;
   }
@@ -2726,12 +2741,7 @@ function fitToggle(item) {
   input.type = 'checkbox';
   input.checked = !!item.fit;
   input.onchange = () => {
-    if (input.checked) {
-      const b = last.bounds[design.items.indexOf(item)] ?? { w: 20 * last.dpmm, h: 5 * last.dpmm };
-      item.w = item.w ?? round1(b.w / last.dpmm);
-      item.h = item.h ?? round1(b.h / last.dpmm);
-    }
-    item.fit = input.checked;
+    toggleFit(item, input.checked);
     refresh({ props: true });
   };
   l.append(input, ' Fit text in a fixed box (size is automatic)');
