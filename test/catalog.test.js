@@ -114,3 +114,24 @@ test('recfix accepts the catalogue and rejects a bad one', { skip: !hasRecutils 
   writeFileSync(bad, `${catalogText}\nId: 30252\nFamily: dymo-lw\nName: dup\nKind: continuous\nWidthMm: 1\nSource: x\n`);
   assert.throws(() => execFileSync('recfix', [bad], { stdio: 'pipe' }), undefined, 'duplicate Id');
 });
+
+test('custom size: a record that builds the medium the preview uses, round or rectangular', async () => {
+  const { customRecord, mediumFromRecord } = await import('../src/catalog.js');
+  const lw = MODELS['dymo-lw450'];
+  const rec = customRecord('dymo-lw', { name: '', kind: 'diecut', widthMm: 40, lengthMm: 40, shape: 'round', marginMm: 2 });
+  assert.match(rec, /^Id: custom-40-40-mm\nFamily: dymo-lw\nName: Round 40 × 40 mm\nKind: diecut\n/);
+  assert.match(rec, /\nMarginLeftMm: 5\.84\n/, 'the LabelWriter\'s leading margin is kept');
+  assert.match(rec, /\nShape: round\n/);
+  assert.doesNotMatch(rec, /CornerMm/);
+  const m = mediumFromRecord(rec, lw);
+  assert.deepEqual([m.shape, m.lengthDots, m.margins.top], ['round', 472, 2]);
+  const roll = mediumFromRecord(customRecord('dymo-lw', { name: 'Acme 57', kind: 'continuous', widthMm: 57 }), lw);
+  assert.deepEqual([roll.continuous, roll.name, roll.lengthDots], [true, 'Acme 57 57 mm continuous', undefined]);
+  // A record recfix accepts, with the catalogue's own descriptor.
+  if (hasRecutils) {
+    const dir = mkdtempSync(join(tmpdir(), 'rec-'));
+    const file = join(dir, 'media.rec');
+    writeFileSync(file, `${catalogText}\n${rec}\n`);
+    execFileSync('recfix', [file]);
+  }
+});

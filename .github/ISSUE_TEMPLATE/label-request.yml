@@ -7,7 +7,8 @@ body:
     attributes:
       value: |
         Label sizes live in `catalog/media.rec`. Pull requests that add a record are welcome too:
-        see "Adding a label or tape size" in the README.
+        see "Adding a label or tape size" in the README. Tip: on a LabelWriter, Media → "Custom size…"
+        lets you try the size first; its Generate report fills in this form, record included.
   - type: input
     id: printer
     attributes:
@@ -34,6 +35,13 @@ body:
     attributes:
       label: Size
       description: Width × length in mm (for continuous, just the width). Measured or from the packaging/datasheet.
+  - type: textarea
+    id: record
+    attributes:
+      label: Catalogue record (from Custom size…)
+      description: >-
+        Filled in by the app's Generate report on a size you tried with Custom size…. Say whether the
+        Grid test lined up with these margins.
   - type: textarea
     id: details
     attributes:

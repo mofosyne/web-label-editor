@@ -38,6 +38,8 @@ export const GENERIC_DEFAULTS = {
   lengthMm: 152.4,
   gapMm: 3,
   marginMm: 1,
+  shape: 'rect',
+  cornerMm: 0,
   darkness: '',
   rotate: false,
 };
@@ -123,7 +125,7 @@ export function customMedium(cfg, dpi, headDots) {
   const margin = Number(cfg.marginMm) || 0;
   const medium = {
     id: 'custom',
-    name: length ? `Your labels, ${width} × ${length} mm` : `Your roll, ${width} mm continuous`,
+    name: length ? `Your ${cfg.shape === 'round' ? 'round ' : ''}labels, ${width} × ${length} mm` : `Your roll, ${width} mm continuous`,
     acrossDots: Math.min(Math.round(width * dpmm), headDots),
     continuous: !length,
     widthMm: width,
@@ -132,6 +134,8 @@ export function customMedium(cfg, dpi, headDots) {
   if (length) {
     medium.lengthDots = Math.round(length * dpmm);
     medium.lengthMm = length;
+    if (cfg.shape === 'round') medium.shape = 'round';
+    else if (Number(cfg.cornerMm)) medium.cornerMm = Number(cfg.cornerMm);
   }
   return medium;
 }

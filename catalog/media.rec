@@ -22,6 +22,9 @@
 #   OffsetRightDots, FeedMarginDots  Brother QL placement and feed values
 #   Margin*Mm      edges the printer cannot print on (default 0)
 #   CornerMm       corner radius drawn in the preview (die-cut only)
+#   Shape          rect (default) or round: a round label in its square,
+#                  e.g. round stickers; the safe area is the circle inset
+#                  by the margins
 #   LabelsAcross   labels side by side in each row ("2 up"); WidthMm is the
 #                  whole row and the editor designs one label of it
 #   StatusMm       tape width the printer reports in its status (Brother)
@@ -36,6 +39,7 @@
 %type: Kind enum continuous diecut
 %type: WidthMm,LengthMm,MarginLeftMm,MarginRightMm,MarginTopMm,MarginBottomMm,CornerMm real
 %type: PrintableDots,PrintableLengthDots,OffsetRightDots,FeedMarginDots,StatusMm,LabelsAcross int
+%type: Shape enum rect round
 
 # ---------------------------------------------------------------------------
 # DYMO LabelWriter 400 / 450 / 4XL (300 dpi; 672-dot head, 1248 on the 4XL)

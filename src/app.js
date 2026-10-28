@@ -11,7 +11,9 @@ import { openHelp } from './help.js';
 import { openAbout } from './about.js';
 import { labels, history, openLibrary } from './library.js';
 import { printerReportUrl, labelRequestUrl, systemInfo } from './report.js';
-import { loadCatalog, loadPrinters } from './catalog.js';
+import {
+  loadCatalog, loadPrinters, CUSTOM_MEDIA, customRecord, mediumFromRecord,
+} from './catalog.js';
 import { testPatternDesign } from './calibration.js';
 import {
   viewGeometry, jobBitmap, stretchGeometry, rowMode, itemLane, itemVisible, canOverprint, blit, blankBitmap, MAX_BLEED_MM,
@@ -84,6 +86,27 @@ function saveDesign() {
   if (undo.record(json, { merge: !!drag })) updateUndoButtons();
 }
 
+// "Custom size…": a label size entered by the user, per printer, kept in this
+// browser; on printers that take any size (CUSTOM_MEDIA in catalog.js).
+const CUSTOM_MEDIA_KEY = 'web-label-editor:custom-media';
+function customMediaSettings() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_MEDIA_KEY)) ?? {}; } catch { return {}; }
+}
+function customMediaFor(id) {
+  const m = MODELS[id];
+  return { ...CUSTOM_MEDIA[m.family], ...customMediaSettings()[id] };
+}
+// Puts (or refreshes) the printer's custom size at the end of its media.
+function applyCustomMedium(id) {
+  const m = MODELS[id];
+  if (!CUSTOM_MEDIA[m.family]) return;
+  const medium = mediumFromRecord(customRecord(m.family, customMediaFor(id)), m);
+  medium.id = 'custom';
+  medium.customName = medium.name;
+  medium.name = `Custom size: ${medium.name}`;
+  m.media = [...m.media.filter((x) => x.id !== 'custom'), medium];
+}
+
 // "Other printer": the settings the user entered for it, kept in this browser.
 // Catalogued ones (catalog/printers.rec) keep the label size the user set.
 const GENERIC_KEY = 'web-label-editor:generic';
@@ -97,6 +120,7 @@ try {
   await loadCatalog(MODELS);
   await loadPrinters(MODELS);
   for (const [id, m] of Object.entries(MODELS)) if (m.custom) m.configure(loadGeneric(id));
+  for (const id of Object.keys(MODELS)) applyCustomMedium(id);
 } catch (err) {
   const b = $('banner');
   b.textContent = `${err.message}. Reload the page; if it persists, the catalogue file is broken.`;
@@ -488,14 +512,16 @@ function draw() {
   ctx.imageSmoothingEnabled = false;
   const colors = previewColors();
   const radius = (med.cornerMm ?? 0) * zoom;
+  const round = med.shape === 'round';
   drawFeedStub(ctx, {
-    stub, stubAtStart, portrait: last.portrait, cssW, cssH, colors, radius, cuts,
+    stub, stubAtStart, portrait: last.portrait, cssW, cssH, colors, radius, cuts, round,
     dieCut: !!med.lengthDots, gap: Math.min(3 * zoom, stub * 0.3),
   });
   ctx.translate(viewOrigin.x, viewOrigin.y);
 
-  // Label outlines: a single plain label is clipped to its rounded shape;
-  // otherwise each label is outlined and the liner around them tinted.
+  // Label outlines: a single plain label is clipped to its shape (rounded
+  // corners, or a circle); otherwise each label is outlined and the liner
+  // around them tinted.
   const plain = slots.length === 1 && !geo.top && !geo.bottom && !geo.right;
   ctx.save();
   ctx.shadowColor = 'rgba(0, 0, 0, .25)';
@@ -503,13 +529,14 @@ function draw() {
   ctx.shadowOffsetY = 1;
   ctx.fillStyle = `rgb(${colors.paper.join(',')})`;
   ctx.beginPath();
-  ctx.roundRect(0, 0, cssW, cssH, plain ? radius : 0);
+  if (plain) labelOutline(ctx, 0, 0, cssW, cssH, radius, round);
+  else ctx.rect(0, 0, cssW, cssH);
   ctx.fill();
   ctx.restore();
   ctx.save();
-  if (plain && radius) {
+  if (plain && (radius || round)) {
     ctx.beginPath();
-    ctx.roundRect(0, 0, cssW, cssH, radius);
+    labelOutline(ctx, 0, 0, cssW, cssH, radius, round);
     ctx.clip();
   }
   ctx.drawImage(bitmapToCanvas(display, colors.ink, colors.paper), 0, 0, cssW, cssH);
@@ -519,7 +546,7 @@ function draw() {
     const shapes = new Path2D();
     for (const s of slots) {
       const l = px(s.label);
-      shapes.roundRect(l.x, l.y, l.w, l.h, radius);
+      labelOutline(shapes, l.x, l.y, l.w, l.h, radius, round);
     }
     const liner = new Path2D();
     liner.rect(0, 0, cssW, cssH);
@@ -555,7 +582,7 @@ function draw() {
   ctx.fillRect(0, hard.y0, hard.x0, hard.y1 - hard.y0);
   ctx.fillRect(hard.x1, hard.y0, cssW - hard.x1, hard.y1 - hard.y0);
   const safe = slots.map((s) => {
-    const mg = margins(s.lane);
+    const mg = round ? evenMargins(margins(s.lane)) : margins(s.lane);
     const a = px(toDisplay({
       x: mg.left * dpmm, y: s.y + mg.top * dpmm,
       w: geo.length - (mg.left + mg.right) * dpmm, h: geo.labelDots - (mg.top + mg.bottom) * dpmm,
@@ -568,7 +595,11 @@ function draw() {
   slots.forEach((s, k) => {
     const a = safe[k];
     const l = px(s.label);
-    if (a.x0 > l.x || a.y0 > l.y || a.x1 < l.x + l.w || a.y1 < l.y + l.h) ctx.strokeRect(a.x0, a.y0, a.x1 - a.x0, a.y1 - a.y0);
+    if (round) {
+      ctx.beginPath();
+      labelOutline(ctx, a.x0, a.y0, a.x1 - a.x0, a.y1 - a.y0, 0, true);
+      ctx.stroke();
+    } else if (a.x0 > l.x || a.y0 > l.y || a.x1 < l.x + l.w || a.y1 < l.y + l.h) ctx.strokeRect(a.x0, a.y0, a.x1 - a.x0, a.y1 - a.y0);
   });
   ctx.setLineDash([]);
 
@@ -615,7 +646,16 @@ function draw() {
     ? `  ·  ⚠ The ${kinds[cutOff[0].type]}${short(cutOff[0])}${cutOff.length > 1 ? ` and ${cutOff.length - 1} more` : ''} `
       + `${cutOff.length > 1 ? 'go' : 'goes'} past where the printer can print and will be cut off`
     : '';
-  const overprint = !offLabel && shownBounds.some(({ b, lane }) => outside(b, safe[lane]));
+  // On a round label, a corner of an item outside the safe circle.
+  const outsideCircle = (b, a) => {
+    const cx = (a.x0 + a.x1) / 2;
+    const cy = (a.y0 + a.y1) / 2;
+    const rx = (a.x1 - a.x0) / 2 + slack;
+    const ry = (a.y1 - a.y0) / 2 + slack;
+    return [[b.x, b.y], [b.x + b.w, b.y], [b.x, b.y + b.h], [b.x + b.w, b.y + b.h]]
+      .some(([x, y]) => ((x * scale - cx) / rx) ** 2 + ((y * scale - cy) / ry) ** 2 > 1);
+  };
+  const overprint = !offLabel && shownBounds.some(({ b, lane }) => outside(b, safe[lane]) || (round && outsideCircle(b, safe[lane])));
   const dims = $('dims');
   // In words: the ends as seen in the preview.
   const end = (p) => (last.portrait ? (p ? 'bottom' : 'top') : (p ? 'right' : 'left'));
@@ -636,12 +676,31 @@ function draw() {
   if (editing) positionEditor();
 }
 
+// A round label's safe area is the circle inset evenly from its edge (the
+// smallest margin); a wider margin on one side, like the LabelWriter's
+// leading margin, shows as hatched instead of squashing the circle.
+function evenMargins(mg) {
+  const m = Math.min(mg.left, mg.right, mg.top, mg.bottom);
+  return { left: m, right: m, top: m, bottom: m };
+}
+
+// A label's outline on a canvas or Path2D: a rounded rectangle, or the
+// circle (ellipse) inside the box for a round label.
+function labelOutline(p, x, y, w, h, radius, round) {
+  if (!round) {
+    p.roundRect(x, y, w, h, radius);
+    return;
+  }
+  p.moveTo(x + w, y + h / 2);
+  p.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, 2 * Math.PI);
+}
+
 // The roll still in the printer, past the label's trailing end: the gap
 // and the next label (die-cut) or the tape running on, faded, with a torn
 // far edge, an arrow the way the label moves, and the cut (dashed) when
 // the printer cuts. Drawn before the canvas is shifted to the label.
 function drawFeedStub(ctx, o) {
-  const { stub, stubAtStart, portrait, cssW, cssH, colors, radius, dieCut, gap, cuts } = o;
+  const { stub, stubAtStart, portrait, cssW, cssH, colors, radius, dieCut, gap, cuts, round } = o;
   // Work in "along / across" terms, then map to x / y.
   const across = portrait ? cssW : cssH;
   const near = stubAtStart ? stub : (portrait ? cssH : cssW); // the label's trailing edge
@@ -674,7 +733,7 @@ function drawFeedStub(ctx, o) {
     const [x, y] = P(Math.min(a, a + dir * len), 1);
     const [w, h] = P(len, across - 2);
     ctx.beginPath();
-    ctx.roundRect(x, y, w, h, radius);
+    labelOutline(ctx, x, y, w, h, radius, round);
     ctx.fill();
     ctx.restore();
   }
@@ -999,7 +1058,10 @@ function buildSetup() {
   const roll = currentRoll();
   const types = document.createElement('optgroup');
   types.label = 'Label types';
-  types.append(...m.media.map((md) => new Option(md.name, md.id, false, !roll && md.id === medium().id)));
+  types.append(...m.media.filter((md) => md.id !== 'custom' || m.custom)
+    .map((md) => new Option(md.name, md.id, false, !roll && md.id === medium().id)));
+  const custom = !m.custom && m.media.find((md) => md.id === 'custom');
+  if (custom) types.append(new Option('Custom size…', 'custom', false, !roll && medium().id === 'custom'));
   mediumSel.replaceChildren(types);
   const mine = rolls.filter((r) => r.printer === design.printer && m.media.some((md) => md.id === r.medium));
   if (mine.length) {
@@ -1010,7 +1072,8 @@ function buildSetup() {
   }
 
   buildGeneric();
-  $('request-label').hidden = !!m.custom;
+  buildCustomMedia();
+  $('request-label').hidden = !!m.custom || medium().id === 'custom';
 
   const fixedLength = !!medium().lengthDots;
   $('length-controls').hidden = fixedLength;
@@ -1330,6 +1393,100 @@ function reportUrl() {
   return printerReportUrl({ printer: m.name, label: medium().name, connection: transport?.label });
 }
 
+// A report block: the text to copy or save, and a button that opens the
+// GitHub issue with it filled in. text() is called when it is shown.
+function reportBlock({ title = 'Generate report', note, text, fileName, url, urlLabel }) {
+  const report = document.createElement('details');
+  report.className = 'generic-report';
+  const summary = document.createElement('summary');
+  summary.textContent = title;
+  const area = document.createElement('textarea');
+  area.readOnly = true;
+  area.rows = 10;
+  area.spellcheck = false;
+  area.ariaLabel = title;
+  const fill = () => { area.value = text(); };
+  report.ontoggle = () => { if (report.open) fill(); };
+  const btn = (label, onClick) => Object.assign(document.createElement('button'), { type: 'button', textContent: label, onclick: onClick });
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.append(
+    btn('Copy', async () => {
+      fill();
+      try { await navigator.clipboard.writeText(area.value); showBanner('Copied.'); } catch { area.select(); }
+    }),
+    btn('Save as file…', () => { fill(); download(new Blob([`${area.value}\n`], { type: 'text/plain' }), fileName()); }),
+    Object.assign(document.createElement('a'), { href: url(), target: '_blank', rel: 'noopener', className: 'button primary', textContent: urlLabel }),
+  );
+  const help = document.createElement('p');
+  help.className = 'note';
+  help.textContent = note;
+  report.append(summary, help, area, row);
+  return report;
+}
+
+// "Custom size…": the form for the size, and a label request with the
+// record ready for catalog/media.rec.
+function buildCustomMedia() {
+  const box = $('custom-media-box');
+  const m = model();
+  const show = !m.custom && medium().id === 'custom' && !currentRoll();
+  box.hidden = !show;
+  if (!show) { box.replaceChildren(); return; }
+  const c = customMediaFor(design.printer);
+  const set = (key, value) => {
+    const all = customMediaSettings();
+    all[design.printer] = { ...all[design.printer], [key]: value };
+    try { localStorage.setItem(CUSTOM_MEDIA_KEY, JSON.stringify(all)); } catch { /* storage unavailable */ }
+    keepFitting(() => applyCustomMedium(design.printer));
+    undo.checkpoint();
+    refresh({ setup: true });
+  };
+  const input = (key, attrs) => {
+    const i = Object.assign(document.createElement('input'), { ...attrs, value: String(c[key] ?? '') });
+    i.onchange = () => set(key, attrs.type === 'number' ? Number(i.value) || 0 : i.value);
+    return i;
+  };
+  const select = (key, choices) => {
+    const s = document.createElement('select');
+    for (const [v, t] of choices) s.add(new Option(t, v, false, v === c[key]));
+    s.onchange = () => set(key, s.value);
+    return s;
+  };
+  const field = (label, el, title) => {
+    const l = document.createElement('label');
+    l.append(label, el);
+    if (title) l.title = title;
+    return l;
+  };
+  const h = document.createElement('h3');
+  h.textContent = 'Custom size';
+  const intro = document.createElement('p');
+  intro.className = 'note';
+  intro.textContent = 'For labels not in the list, such as third-party ones: enter the size from the packaging or '
+    + 'measure one, print the Grid test, then request it so it joins the list for everyone.';
+  const dieCut = c.kind === 'diecut';
+  box.replaceChildren(h, intro,
+    field('Name or part number (optional)', input('name', { type: 'text', placeholder: 'e.g. 30334, or the brand' })),
+    field('Kind', select('kind', [['diecut', 'Die-cut labels'], ['continuous', 'Continuous roll']])),
+    field(dieCut ? 'Width across the roll (mm)' : 'Roll width (mm)', input('widthMm', { type: 'number', step: 0.5, min: 5 })),
+    ...(dieCut ? [
+      field('Length along the roll (mm)', input('lengthMm', { type: 'number', step: 0.5, min: 5 })),
+      field('Shape', select('shape', [['rect', 'Rectangle'], ['round', 'Round (circle or oval)']])),
+      ...(c.shape === 'round' ? [] : [field('Corner radius (mm)', input('cornerMm', { type: 'number', step: 0.5, min: 0 }))]),
+    ] : []),
+    field('Safe margin (mm)', input('marginMm', { type: 'number', step: 0.5, min: 0 }), 'Kept clear inside the edges.'),
+    reportBlock({
+      title: 'Generate report',
+      note: 'The size as a record for the label list, to copy or save; the GitHub button opens a label request with '
+        + 'it filled in. Say whether the Grid test lined up.',
+      text: () => customRecord(m.family, c),
+      fileName: () => `label-${customRecord(m.family, c).match(/^Id: (.*)$/m)[1]}.rec`,
+      url: () => labelRequestUrl({ printer: m.name, label: medium().customName, record: customRecord(m.family, c) }),
+      urlLabel: 'Request this size on GitHub',
+    }));
+}
+
 // The settings form for "Other printer": what the printer speaks and how
 // big its head and labels are. Kept in this browser and sent with a report.
 function buildGeneric() {
@@ -1421,6 +1578,10 @@ function buildGeneric() {
     ...printerFields,
     field('Label width (mm)', 'widthMm', number('widthMm', 0.5, 5)),
     field('Label length (mm, 0 for a continuous roll)', 'lengthMm', number('lengthMm', 0.5, 0)),
+    ...(Number(c.lengthMm) ? [
+      field('Shape', 'shape', select('shape', [['rect', 'Rectangle'], ['round', 'Round (circle or oval)']])),
+      ...(c.shape === 'round' ? [] : [field('Corner radius (mm)', 'cornerMm', number('cornerMm', 0.5, 0))]),
+    ] : []),
     ...(c.language === 'tspl' ? [field('Gap between labels (mm)', 'gapMm', number('gapMm', 0.5, 0))] : []),
     field('Margin (mm)', 'marginMm', number('marginMm', 0.5, 0), 'The safe area inset from each edge.'),
     field(c.language === 'zpl' ? 'Darkness (0–30, blank: the printer\'s own)' : c.language === 'tspl' ? 'Darkness (0–15, blank: the printer\'s own)' : 'Darkness (not used)', 'darkness', number('darkness', 1, 0)),
@@ -2309,7 +2470,16 @@ function buildProps() {
       }
       refresh({ props: true });
     };
-    row.append(btn('Fill safe area', () => fill(itemMargins(laneOf(item)))));
+    // On a round label, the largest box inside the circle (√2 smaller).
+    const inCircle = (all) => {
+      if (medium().shape !== 'round') return all;
+      const mg = evenMargins(all);
+      const page = pageSize();
+      const dx = ((page.w - mg.left - mg.right) * (1 - Math.SQRT1_2)) / 2;
+      const dy = ((page.h - mg.top - mg.bottom) * (1 - Math.SQRT1_2)) / 2;
+      return { left: mg.left + dx, right: mg.right + dx, top: mg.top + dy, bottom: mg.bottom + dy };
+    };
+    row.append(btn('Fill safe area', () => fill(inCircle(itemMargins(laneOf(item))))));
     // Overprint: the whole label the printer can reach, ignoring the safe area.
     row.append(btn('Fill to edge', () => fill(itemEdge(laneOf(item)))));
   } else if (item.type === 'text') {
@@ -2803,7 +2973,8 @@ function drawActualPanel(real) {
   const colors = previewColors();
   ctx.drawImage(bitmapToCanvas(display, colors.ink, colors.paper), 0, 0, w, h);
   const plain = last.slots.length === 1 && !last.geo.top && !last.geo.bottom && !last.geo.right;
-  c.style.borderRadius = plain && medium().cornerMm ? `${medium().cornerMm * real}px` : '0';
+  c.style.borderRadius = plain && medium().shape === 'round' ? '50%'
+    : plain && medium().cornerMm ? `${medium().cornerMm * real}px` : '0';
   const calibrated = !!actualPxPerMm();
   const title = $('actual-title');
   title.textContent = calibrated ? 'Actual size' : 'Approximate size: this screen is not calibrated yet';

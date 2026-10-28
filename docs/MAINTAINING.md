@@ -90,11 +90,24 @@ numbered line should be that many mm from its edge.
 
 ## 4. A label or tape size
 
-Add a record to [`catalog/media.rec`](../catalog/media.rec); the comment at
-the top of that file explains each field, and the README section "Adding a
-label or tape size" walks through measuring one. `Id`s are saved in designs:
-never rename or reuse one. Run `recfix catalog/media.rec`. Label requests
-come in labelled `label request`.
+Label requests come in labelled `label request`. Those made from the
+app's **Custom size…** (LabelWriter) have a **Catalogue record** box with a
+record ready to paste, built the same way the app built the preview:
+
+1. Check the reporter says the Grid test lined up with those margins, and
+   that the size matches the packaging or a datasheet. Third-party sizes are
+   welcome; name them by brand or part number.
+2. Paste the record into [`catalog/media.rec`](../catalog/media.rec) next
+   to similar labels. Give it a real `Id` (the part number, e.g. `30334`,
+   or `brand-size`), a `Name` people will recognise, and the issue as
+   `Source`. `Id`s are saved in designs: never rename or reuse one.
+3. Run `recfix catalog/media.rec` and the [checks](#checks-before-merging).
+
+Otherwise, add the record by hand; the comment at the top of `media.rec`
+explains each field, and the README section "Adding a label or tape size"
+walks through measuring one. Round labels take `Shape: round`; shapes that
+are neither a rectangle nor a circle are an open question (see the issue on
+fancier label shapes, [#5](https://github.com/mofosyne/web-label-editor/issues/5)).
 
 ## 5. A model for a protocol we already speak
 

@@ -124,6 +124,8 @@ function tips() {
         + 'which way the label moves out.'),
       li(b('Ruler marks'), ': the arrow is the end that comes out of the printer first, ✂ where it is cut, » where a '
         + 'continuous label grows.'),
+      li(b('Custom size…'), ' (LabelWriter, last in Media): any label size, die-cut or continuous, rectangular or '
+        + 'round. Generate report turns it into a request to add it to the list.'),
       li(b('Print quality'), ' (DYMO LabelWriter, most Brother QL): High prints 300 × 600 dpi, twice as fine along '
         + 'the label, so barcode bars come out at the width asked for and text is smoother; Auto does this only for '
         + 'barcodes. QR codes don\'t gain from it.'),

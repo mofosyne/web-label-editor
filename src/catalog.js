@@ -73,6 +73,9 @@ function toMedium(rec, model) {
   if (printableDots != null) medium.tapeMm = widthMm;
   const corner = num('CornerMm');
   if (corner) medium.cornerMm = corner;
+  const shape = text('Shape');
+  if (shape && shape !== 'rect' && shape !== 'round') throw new Error(`${where}: Shape must be rect or round`);
+  if (shape === 'round') medium.shape = 'round';
   const statusMm = num('StatusMm');
   if (statusMm != null) medium.statusMm = statusMm;
   return medium;
@@ -156,6 +159,52 @@ export async function loadPrinters(models, url = PRINTERS_URL) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Could not load the printer list (${res.status})`);
   return applyPrinters(await res.text(), models);
+}
+
+// "Custom size…": a label size the user enters, on printers that print any
+// size they are given (the LabelWriter feeds to the gap; a Brother QL checks
+// the loaded roll against the size sent, P-touch tape comes in set widths).
+// It is built as a catalogue record, so the preview and the record in a
+// label request are the same thing.
+export const CUSTOM_MEDIA = {
+  'dymo-lw': {
+    name: '', kind: 'diecut', widthMm: 25, lengthMm: 54, cornerMm: 2, shape: 'rect', marginMm: 1.5,
+    // The LabelWriter starts printing this far into each label (see models.js).
+    leadingMm: 5.84,
+  },
+};
+
+export function customRecord(family, cfg, { source = '(link to this issue)' } = {}) {
+  const c = { ...CUSTOM_MEDIA[family], ...cfg };
+  const fmt = (v) => String(Math.round(Number(v) * 100) / 100);
+  const size = c.kind === 'diecut' ? `${fmt(c.widthMm)} × ${fmt(c.lengthMm)} mm` : `${fmt(c.widthMm)} mm continuous`;
+  const name = c.name ? `${c.name} ${size}` : `${c.shape === 'round' ? 'Round ' : ''}${size}`;
+  const slug = (c.name || `custom-${size}`).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const lines = [
+    `Id: ${slug}`,
+    `Family: ${family}`,
+    `Name: ${name}`,
+    `Kind: ${c.kind}`,
+    `WidthMm: ${fmt(c.widthMm)}`,
+  ];
+  if (c.kind === 'diecut') lines.push(`LengthMm: ${fmt(c.lengthMm)}`);
+  lines.push(
+    `MarginLeftMm: ${fmt(Math.max(c.leadingMm ?? 0, c.marginMm))}`,
+    `MarginRightMm: ${fmt(c.marginMm)}`,
+    `MarginTopMm: ${fmt(c.marginMm)}`,
+    `MarginBottomMm: ${fmt(c.marginMm)}`,
+  );
+  if (c.kind === 'diecut' && Number(c.cornerMm) && c.shape !== 'round') lines.push(`CornerMm: ${fmt(c.cornerMm)}`);
+  if (c.kind === 'diecut' && c.shape === 'round') lines.push('Shape: round');
+  lines.push(`Source: ${source}`);
+  return lines.join('\n');
+}
+
+// The medium a catalogue record describes, for `model`.
+export function mediumFromRecord(text, model) {
+  const rec = parseRec(text).records[0];
+  if (!rec) throw new Error('no record');
+  return toMedium(rec, model);
 }
 
 export async function loadCatalog(models, url = CATALOG_URL) {

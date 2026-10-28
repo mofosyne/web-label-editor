@@ -30,6 +30,7 @@ export function printerReportUrl({ printer, label, connection, settings }) {
   });
 }
 
-export function labelRequestUrl({ printer }) {
-  return issueUrl('label-request.yml', 'Label request: ', { printer });
+// record: a catalogue record for a size entered with "Custom size…".
+export function labelRequestUrl({ printer, label = '', record }) {
+  return issueUrl('label-request.yml', `Label request: ${label}`, { printer, label, record });
 }
