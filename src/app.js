@@ -1528,8 +1528,9 @@ function loadDataFile(file) {
     previewAt = 0;
     undo.checkpoint();
     refresh({ setup: true, props: true });
-    showBanner(`${file.name}: ${rows.length} row${rows.length === 1 ? '' : 's'}, columns ${columns.join(', ')}. `
-      + 'Put a column on the label with Insert field in a text\'s properties; Print makes one label per row.');
+    batchOpen = true;
+    showBanner(`${file.name}: ${rows.length} row${rows.length === 1 ? '' : 's'}. Now click a column in step 2 of the `
+      + 'Batch panel to put it on the label.');
   }).catch((err) => showBanner(`Could not read ${file.name}: ${err.message}`));
 }
 
@@ -1538,11 +1539,44 @@ function loadDataFile(file) {
 // Rebuilt only when what it shows changes, so its inputs keep focus.
 let dataBarKey = '';
 let rowsOpen = false;
+// The Batch panel: opened with Batch…, or when fields appear; × hides it.
+let batchOpen = false;
+let hadFields = false;
+
+// Puts a field on the label: into the text being edited at its cursor, else
+// at the end of the selected text, QR code or barcode, else as a new text.
+const PLACEHOLDERS = ['Hello label', 'Text'];
+function insertField(field) {
+  if (editing) {
+    const { ta } = editing;
+    const [a, b] = [ta.selectionStart, ta.selectionEnd];
+    ta.setRangeText(field, a, b, 'end');
+    ta.dispatchEvent(new Event('input'));
+    return;
+  }
+  const item = selected();
+  const key = { text: 'text', qr: 'data', barcode: 'data' }[item?.type];
+  if (key) {
+    const text = String(item[key] ?? '');
+    // A placeholder ('Hello label', a new 'Text') is replaced, not added to.
+    if (item.type === 'text' && PLACEHOLDERS.includes(text)) item[key] = field;
+    else item[key] = item.type === 'text' && text && !/\s$/.test(text) ? `${text} ${field}` : text + field;
+  } else {
+    addText();
+    selected().text = field;
+  }
+  undo.checkpoint();
+  refresh({ props: true });
+}
 function updateDataBar() {
   const bar = $('data-bar');
-  const show = hasFields(design) || !!design.data;
+  // Opens by itself when fields or data first appear (typed, or a saved label).
+  const has = hasFields(design) || !!design.data;
+  if (has && !hadFields) batchOpen = true;
+  hadFields = has;
+  const show = batchOpen;
   const runs = show ? labelRuns(design, 1) : [];
-  const key = JSON.stringify([show, design.data?.name, design.data?.rows.length, design.data?.skip, previewAt,
+  const key = JSON.stringify([show, design.data?.name, design.data?.columns, design.data?.rows.length, design.data?.skip, previewAt,
     [...usedFields(design)], runs.length]);
   $('btn-print').textContent = $('btn-print').textContent === 'Printing…' ? 'Printing…' : printText();
   if (key === dataBarKey) return;
@@ -1561,31 +1595,29 @@ function updateDataBar() {
     return b;
   };
   const used = usedFields(design);
-  const lines = [];
   const data = design.data;
-  if (data) {
-    const chosen = chosenRows(design);
-    const rows = el('details', { className: 'data-rows', open: rowsOpen, ontoggle: () => { rowsOpen = rows.open; } },
-      el('summary', { textContent: `Choose rows (${chosen.length} of ${data.rows.length})` }),
-      dataTable());
-    lines.push(el('div', { className: 'row' },
+  const step = (n, title, ...body) => el('section', { className: 'batch-step' },
+    el('h3', {}, el('span', { className: 'num', textContent: n }), title), ...body);
+
+  // 1. Data, optional.
+  const one = data
+    ? step('1', 'Data', el('div', { className: 'row' },
       el('strong', { textContent: data.name ?? 'Data' }),
-      el('span', { className: 'muted', textContent: `${data.rows.length} rows · ${data.columns.join(', ')}` }),
+      el('span', { className: 'muted', textContent: `${data.rows.length} rows · columns ${data.columns.join(', ')}` }),
       button('Replace…', () => $('data-file').click()),
-      button('Remove', () => { delete design.data; previewAt = 0; undo.checkpoint(); refresh({ setup: true, props: true }); })));
-    if (!usesData(design)) {
-      lines.push(el('p', { className: 'note', textContent: 'No column is on the label yet: select a text, QR code or barcode and use Insert field.' }));
-    } else lines.push(rows);
-  }
-  if (usesData(design) || used.has(COUNTER)) {
-    const step = (d) => { previewAt += d; undo.checkpoint(); refresh(); };
-    const nav = el('div', { className: 'row' },
-      el('span', { textContent: 'Showing' }),
-      button('◀', () => step(-1), { className: 'icon', disabled: previewAt <= 0, ariaLabel: 'Previous label' }),
-      el('span', { textContent: `label ${previewAt + 1} of ${runs.length}` }),
-      button('▶', () => step(1), { className: 'icon', disabled: previewAt >= runs.length - 1, ariaLabel: 'Next label' }));
-    if (runs.length > 1) lines.push(nav);
-  }
+      button('Remove', () => { delete design.data; previewAt = 0; undo.checkpoint(); refresh({ setup: true, props: true }); })))
+    : step('1', 'Data (optional)', el('div', { className: 'row' },
+      button('Open data file…', () => $('data-file').click(), { className: 'primary' }),
+      el('span', { className: 'muted', textContent: 'A CSV, Markdown table, JSON or recfile; each row becomes a label. '
+        + 'Skip this to number or date labels.' })));
+
+  // 2. Fields on the label: one click each.
+  const chip = (text, field, title) => {
+    const b = button(text, () => insertField(field), { className: 'chip', title });
+    b.onmousedown = (e) => e.preventDefault(); // keep the text being edited open
+    return b;
+  };
+  const counter = [];
   if (used.has(COUNTER)) {
     const c = design.counter ?? {};
     const num = (label, k, def, min) => {
@@ -1596,15 +1628,51 @@ function updateDataBar() {
       };
       return el('label', { className: 'inline' }, `${label} `, input);
     };
-    lines.push(el('div', { className: 'row counter' },
-      el('span', { textContent: 'Counter {n}:' }), num('start', 'start', 1), num('step', 'step', 1), num('digits', 'digits', 0, 0)));
+    counter.push(el('div', { className: 'row counter' },
+      el('span', { textContent: 'Counter:' }), num('start', 'start', 1), num('step', 'step', 1), num('digits', 'digits', 0, 0)));
+  }
+  const two = step('2', 'Put fields on the label',
+    el('div', { className: 'row' },
+      ...(data?.columns ?? []).map((c) => chip(c, `{${c}}`, `Each label shows its row's ${c}`)),
+      chip('Counter', '{n}', 'A number that goes up on each label: 1, 2, 3…'),
+      chip('Date', '{date}', 'The date of printing'),
+      chip('Time', '{time}', 'The time of printing')),
+    el('p', { className: 'note', textContent: 'Click one to add it to the selected text (at the cursor while you edit '
+      + 'it on the label), or as a new text. You can also type it in braces, e.g. '
+      + `${data?.columns[0] ? `{${data.columns[0]}}` : '{n}'}, in any text, QR code or barcode.` }),
+    ...counter);
+
+  // 3. Check each label, choose rows, print.
+  const check = [];
+  if (runs.length > 1) {
+    const go = (d) => { previewAt += d; undo.checkpoint(); refresh(); };
+    check.push(el('div', { className: 'row' },
+      button('◀', () => go(-1), { className: 'icon', disabled: previewAt <= 0, ariaLabel: 'Previous label' }),
+      el('span', { textContent: `Showing label ${previewAt + 1} of ${runs.length}` }),
+      button('▶', () => go(1), { className: 'icon', disabled: previewAt >= runs.length - 1, ariaLabel: 'Next label' })));
+  }
+  if (data && usesData(design)) {
+    const chosen = chosenRows(design);
+    const rows = el('details', { className: 'data-rows', open: rowsOpen, ontoggle: () => { rowsOpen = rows.open; } },
+      el('summary', { textContent: `Choose rows (${chosen.length} of ${data.rows.length})` }),
+      dataTable());
+    check.push(rows);
   }
   const copies = Math.max(1, parseInt($('copies').value, 10) || 1);
   const total = labelRuns(design, copies).length;
-  lines.push(el('p', { className: 'note', textContent: usesData(design)
-    ? `Print makes ${total} label${total === 1 ? '' : 's'}: one per chosen row${copies > 1 ? `, ${copies} copies each` : ''}.`
-    : used.has(COUNTER) ? `Print makes ${total} label${total === 1 ? '' : 's'} (Copies), numbered in turn; the next print carries on from there.`
-      : '{date} and {time} are filled in when you print.' }));
+  check.push(el('p', { className: 'note', textContent: !hasFields(design)
+    ? 'Nothing on the label changes yet: add a field in step 2.'
+    : usesData(design)
+      ? `Print makes ${total} label${total === 1 ? '' : 's'}: one per chosen row${copies > 1 ? `, ${copies} copies each` : ''}.`
+      : used.has(COUNTER)
+        ? `Print makes ${total} label${total === 1 ? '' : 's'} (set by Copies), numbered in turn; the next print carries on from there.`
+        : data ? 'Add a column in step 2 to print one label per row. Date and time are filled in when you print.'
+          : 'Date and time are filled in when you print.' }));
+  const three = step('3', 'Check each label, then print', ...check);
+
+  const close = button('×', () => { batchOpen = false; dataBarKey = ''; refresh(); },
+    { className: 'close', ariaLabel: 'Close', title: hasFields(design) || data ? 'Hide (the fields stay on the label; Batch… shows it again)' : 'Close' });
+  const lines = [el('header', {}, el('h2', { textContent: 'Batch: labels from data, numbered or dated' }), close), one, two, three];
   bar.replaceChildren(...lines);
 }
 
@@ -2628,6 +2696,12 @@ function wire() {
   $('image-file').onchange = (e) => {
     if (e.target.files[0]) addImage(e.target.files[0]);
     e.target.value = '';
+  };
+  $('btn-batch').onclick = () => {
+    batchOpen = $('data-bar').hidden;
+    dataBarKey = '';
+    refresh();
+    if (batchOpen) $('data-bar').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   };
   $('data-file').onchange = (e) => {
     if (e.target.files[0]) loadDataFile(e.target.files[0]);

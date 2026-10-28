@@ -135,11 +135,13 @@ function tips() {
       li(b('Rulers'), ' measure from the label\'s starting edge and from each label\'s top, and mark the selected item.')),
     el('h3', { textContent: 'Batches: data, numbers and dates' }),
     el('ul', {},
-      li('Type a field in braces in any text, QR code or barcode, or pick it from ', b('Insert field'), ' under its '
-        + 'content: ', b('{n}'), ' is a counter, ', b('{date}'), ' and ', b('{time}'), ' are when you print.'),
-      li(b('Data from a file'), ' (Insert field → Data from a file): a CSV, the first Markdown table in a file, JSON (a '
-        + 'list of records) or a GNU recfile. Its column names become fields, e.g. ', b('{Name}'), '; Print makes one '
-        + 'label per row (times Copies).'),
+      li(b('Batch…'), ' in the toolbar opens the Batch panel under the label, in three steps: open a data file '
+        + '(optional), click the fields to put on the label, then check each label and print.'),
+      li(b('Data files'), ': a CSV, the first Markdown table in a file, JSON (a list of records) or a GNU recfile. '
+        + 'Its column names become fields, e.g. ', b('{Name}'), '; Print makes one label per row (times Copies).'),
+      li('Fields are just text in braces, so you can also type them in any text, QR code or barcode (or use ',
+        b('Insert field'), ' under its content): ', b('{n}'), ' is a counter, ', b('{date}'), ' and ', b('{time}'),
+        ' are when you print.'),
       li('The bar under the label steps through the labels (◀ ▶) so you can check each one fits, and ',
         b('Choose rows'), ' picks which rows print; click a row to show it.'),
       li('The counter has a start, a step and a number of digits (3 digits: 001, 002…). After a print it carries on '

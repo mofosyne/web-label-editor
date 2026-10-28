@@ -348,7 +348,14 @@ a.small-link { display: block; font-size: 12px; color: var(--accent); margin: -4
 #report-printer { color: var(--accent); }
 
 /* Data rows, counter and date: under the editor while the design has fields. */
-.data-bar { margin: 8px 0 0; padding: 10px 12px; background: var(--stage); border-radius: 8px; font-size: 13px; display: grid; gap: 6px; }
+.data-bar { margin: 8px 0 0; padding: 10px 12px; background: var(--stage); border-radius: 8px; font-size: 13px; display: grid; gap: 10px; }
+.data-bar header { display: flex; align-items: center; justify-content: space-between; }
+.data-bar h2 { margin: 0; font-size: 13px; }
+.data-bar h3 { margin: 0 0 6px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.data-bar h3 .num { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: var(--accent-text); font-size: 11px; }
+.data-bar .batch-step { display: grid; gap: 6px; }
+.data-bar .chip { border-radius: 999px; padding: 3px 12px; font-size: 13px; }
+.data-bar .close { padding: 0 8px; }
 .data-bar .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .data-bar .muted { color: var(--muted); overflow-wrap: anywhere; }
 .data-bar .note { margin: 0; }

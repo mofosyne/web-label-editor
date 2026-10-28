@@ -198,8 +198,9 @@ The app has its own welcome page and **Help** with the same information.
   from other apps); Ctrl+D duplicates; arrow keys nudge; Ctrl+Z / Ctrl+Shift+Z
   (or Ctrl+Y) undo and redo, with a drag or a burst of typing as one step.
 - **Batches from data, numbering and dates:** put `{Name}` (a column),
-  `{n}` (a counter) or `{date}` / `{time}` in any text, QR code or barcode,
-  or pick one from *Insert field*. Data comes from a CSV, a Markdown table,
+  `{n}` (a counter) or `{date}` / `{time}` in any text, QR code or barcode.
+  The *Batch…* button walks through it: open a data file, click the fields
+  to put on the label, check each label, print. Data comes from a CSV, a Markdown table,
   JSON or a GNU recfile; Print makes one label per chosen row, as one job
   where the printer allows. Step through the labels before printing to check
   each one fits; the counter carries on from where the last print stopped.
