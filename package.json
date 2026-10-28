@@ -8,6 +8,7 @@
   "scripts": {
     "test": "node --test test/*.test.js",
     "serve": "python3 -m http.server 8000",
-    "docs": "node scripts/update-readme.mjs"
+    "docs": "node scripts/update-readme.mjs",
+    "screenshots": "node scripts/screenshots.mjs"
   }
 }

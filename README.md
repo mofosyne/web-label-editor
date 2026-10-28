@@ -553,6 +553,7 @@ Plain HTML and JavaScript modules, no build step.
 npm run serve   # http://localhost:8000
 npm test        # unit tests
 npm run docs    # regenerate this README's generated sections
+npm run screenshots  # regenerate docs/screenshots (needs Playwright + Chromium)
 ```
 
 Tests check every encoder's command stream byte by byte against its reference

@@ -186,11 +186,14 @@ dialog.help .row { justify-content: flex-end; margin: 0; }
 .note.error { color: var(--danger); }
 
 .stage { padding: 16px; min-width: 0; }
-.toolbar { display: flex; gap: 6px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.toolbar { display: flex; gap: 4px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.toolbar > button { padding: 6px 10px; }
 .toolbar .spacer { flex: 1; }
-.toolbar .icon { padding: 6px 9px; min-width: 32px; }
+/* The view controls wrap as one group, never one button at a time. */
+.toolbar .tools { display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
+.toolbar .icon { padding: 6px 8px; min-width: 30px; }
 .toolbar .seg + .icon { margin-left: 4px; }
-#zoom-label { min-width: 48px; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
+#zoom-label { min-width: 42px; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .canvas-wrap {
   position: relative;
