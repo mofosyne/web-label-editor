@@ -126,19 +126,6 @@ const key = (name) => name.trim().toLowerCase();
 // The field as it is typed in a label.
 export const fieldTag = (name) => `{{${name}}}`;
 
-// Designs from before double braces wrote {name}: those that name a field
-// (a built-in, or a column of the design's data) become {{name}}. Others
-// stay, as they were text then too.
-export function upgradeFieldBraces(design) {
-  const known = new Set([...BUILT_IN, ...(design.data?.columns ?? []).map(key)]);
-  for (const it of design.items ?? []) {
-    const prop = FIELD_PROPS[it.type];
-    if (!prop || typeof it[prop] !== 'string') continue;
-    it[prop] = it[prop].replace(/(?<!\{)\{([^{}\n]+)\}(?!\})/g, (all, name) => (known.has(key(name)) ? fieldTag(name) : all));
-  }
-  return design;
-}
-
 // The field names a design uses that something can fill: built-ins, and
 // the data's columns. Lower case.
 export function usedFields(design) {

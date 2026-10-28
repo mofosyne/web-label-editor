@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  parseCsv, parseData, usedFields, upgradeFieldBraces, fieldValues, fillItems, fillText, labelRuns, counterText, chosenRows,
+  parseCsv, parseData, usedFields, fieldValues, fillItems, fillText, labelRuns, counterText, chosenRows,
 } from '../src/fields.js';
 
 test('CSV: quotes, doubled quotes, line breaks in quotes, CRLF, blank lines', () => {
@@ -70,16 +70,3 @@ test('data: recfiles, first record type, repeated fields joined', () => {
   assert.deepEqual(parseData('Name,Bin\nAnn,1').rows, [['Ann', '1']]);
 });
 
-test('single-brace fields from older designs become double braces; other braces stay', () => {
-  const d = {
-    data: { columns: ['Name'], rows: [] },
-    items: [
-      { type: 'text', text: 'Hi {Name} #{n} on {date} {code} {{n}}' },
-      { type: 'qr', data: '{"to": "{name}"}' },
-      { type: 'box' },
-    ],
-  };
-  upgradeFieldBraces(d);
-  assert.equal(d.items[0].text, 'Hi {{Name}} #{{n}} on {{date}} {code} {{n}}');
-  assert.equal(d.items[1].data, '{"to": "{{name}}"}');
-});

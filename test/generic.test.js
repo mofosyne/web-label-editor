@@ -54,7 +54,7 @@ test('ESC/POS: GS v 0 in bands of 255 lines, then feed', () => {
 test('the model follows its settings: resolution, head and the label as its one medium', () => {
   const m = genericPrinter();
   assert.equal(m.dpi, 203);
-  m.configure({ dpi: 300, headMm: 48, widthMm: 58, lengthMm: 0 });
+  m.configure({ dpi: 300, headMm: 48, widthMm: 58, kind: 'continuous' });
   assert.equal(m.headDots, 567);
   assert.deepEqual([m.media.length, m.media[0].acrossDots, m.media[0].continuous], [1, 567, true], 'clipped to the head');
   const die = customMedium({ widthMm: 50, lengthMm: 30, marginMm: 1 }, 203, 832);

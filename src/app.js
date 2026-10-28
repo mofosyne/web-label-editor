@@ -5,7 +5,7 @@ import { ICONS, SYMBOLS } from './icons.js';
 import { renderDesign, bitmapToCanvas, itemError, quarterTurns } from './render.js';
 import {
   parseData, usedFields, hasFields, usesData, chosenRows, fieldValues, fillItems, labelRuns, counterText, COUNTER,
-  fieldTag, upgradeFieldBraces,
+  fieldTag,
 } from './fields.js';
 import { SYMBOLOGIES } from './codes/barcode.js';
 import { UsbTransport, SerialTransport, support } from './transport.js';
@@ -52,51 +52,11 @@ function uid() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-// Designs from before version 2 placed items on Brother media relative to
-// the printable band; they are now relative to the whole tape or label, so
-// such items move by the band's offset to stay where they print.
-function migrateDesign(d) {
-  if ((d.fieldsVersion ?? 1) < 2) {
-    upgradeFieldBraces(d);
-    d.fieldsVersion = 2;
-  }
-  if (d.border) {
-    // The Border option drew on the die cut, where the printer can't print
-    // reliably: it is now a box inside the safe area (die-cut labels), or
-    // gone (tape and rolls, whose length isn't fixed).
-    const m = MODELS[d.printer];
-    const med = m?.media.find((x) => x.id === d.medium);
-    if (med?.lengthDots) {
-      const r1 = (v) => Math.round(v * 10) / 10;
-      const mg = mediumMargins(med);
-      const dpmm = m.dpi / 25.4;
-      const [W, H] = [med.lengthDots / dpmm, med.acrossDots / dpmm];
-      const [pw, ph] = d.orientation === 'portrait' ? [H, W] : [W, H];
-      const [l, r, t, b] = d.orientation === 'portrait' ? [mg.top, mg.bottom, mg.right, mg.left] : [mg.left, mg.right, mg.top, mg.bottom];
-      d.items = [...(d.items ?? []), {
-        id: uid(), type: 'box', shape: 'rect', x: r1(l), y: r1(t), w: r1(pw - l - r), h: r1(ph - t - b), stroke: 0.4, fill: false,
-      }];
-    }
-  }
-  delete d.border;
-  if ((d.version ?? 1) >= 2) return d;
-  const m = MODELS[d.printer];
-  const med = m?.media.find((x) => x.id === d.medium);
-  if (med?.band) {
-    const dpmm = m.dpi / 25.4;
-    for (const it of d.items ?? []) {
-      it.y = Math.round((it.y + med.band.y / dpmm) * 10) / 10;
-      if (med.band.x) it.x = Math.round((it.x + med.band.x / dpmm) * 10) / 10;
-    }
-  }
-  d.version = 2;
-  return d;
-}
 
 function loadDesign() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return migrateDesign(JSON.parse(raw));
+    if (raw) return JSON.parse(raw);
   } catch { /* storage unavailable */ }
   return newDesign();
 }
@@ -3533,7 +3493,7 @@ function wire() {
     try {
       const d = JSON.parse(await file.text());
       if (!Array.isArray(d.items)) throw new Error('not a label design');
-      design = { ...newDesign(), ...migrateDesign(d) };
+      design = { ...newDesign(), ...d };
       selectedId = design.items[0]?.id ?? null;
       refresh({ setup: true, props: true });
     } catch (err) {
@@ -3584,7 +3544,7 @@ function thumbnail(d) {
   try {
     const m = MODELS[d.printer] ?? model();
     const med = m.media.find((x) => x.id === d.medium) ?? m.media[0];
-    const plain = migrateDesign(JSON.parse(JSON.stringify(d)));
+    const plain = JSON.parse(JSON.stringify(d));
     const { display } = renderView(filledDesign(plain, labelRuns(plain, 1)[0]), m, med);
     const full = bitmapToCanvas(display);
     const scale = Math.min(1, 240 / full.width, 80 / full.height);
@@ -3640,7 +3600,7 @@ function showLibrary(tab) {
     currentLabelId: design.labelId,
     describe: describeDesign,
     onOpen(d, labelId) {
-      design = { ...newDesign(), ...migrateDesign(JSON.parse(JSON.stringify(d))) };
+      design = { ...newDesign(), ...JSON.parse(JSON.stringify(d)) };
       if (labelId) design.labelId = labelId;
       else delete design.labelId;
       selectedId = design.items[0]?.id ?? null;

@@ -122,7 +122,6 @@ const ENCODERS = { zpl: encodeZpl, tspl: encodeTspl, escpos: encodeEscPos };
 export function customMedium(cfg, dpi, headDots) {
   const dpmm = dpi / 25.4;
   const width = Number(cfg.widthMm) || 50;
-  // Older settings had no kind: a length of 0 meant a continuous roll.
   const length = cfg.kind === 'continuous' ? 0 : Number(cfg.lengthMm) || 0;
   const margin = Number(cfg.marginMm) || 0;
   const medium = {
@@ -173,7 +172,6 @@ export function genericPrinter(preset = null) {
     config: { ...GENERIC_DEFAULTS },
     configure(cfg) {
       this.config = { ...GENERIC_DEFAULTS, ...preset?.defaults, ...cfg, ...fixed };
-      if (!cfg.kind && cfg.lengthMm === 0) this.config.kind = 'continuous';
       if (preset) this.config.name = preset.name;
       this.dpi = Number(this.config.dpi) || 203;
       this.headDots = Math.max(8, Math.round(((Number(this.config.headMm) || 104) * this.dpi) / 25.4));
