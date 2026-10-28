@@ -110,3 +110,18 @@ test('QL status reply', () => {
   assert.deepEqual(s.errors, ['Cover open']);
   assert.equal(parseQLStatus(new Uint8Array(4)), null);
 });
+
+test('QL high resolution: ESC i K bit 6 on models that have it, minimum length in 600 dpi lines', () => {
+  const medium = { continuous: true, widthMm: 62, offsetRightDots: 12, feedMarginDots: 35 };
+  const flags = (name, highRes) => {
+    const out = encodeQL(bitmap(1, 696, () => false), medium, qlParams(name), { cut: true, highRes });
+    const k = out.findIndex((b, i) => b === 0x1b && out[i + 1] === 0x69 && out[i + 2] === 0x4b);
+    const z = out.findIndex((b, i) => b === 0x1b && out[i + 1] === 0x69 && out[i + 2] === 0x7a);
+    return { k: out[k + 3], lines: out[z + 7] | (out[z + 8] << 8) };
+  };
+  assert.deepEqual(flags('QL-570', true), { k: 0x48, lines: 300 }, 'cut at end + high resolution; 2 × 150 lines');
+  assert.deepEqual(flags('QL-570', false), { k: 0x08, lines: 150 });
+  assert.equal(flags('QL-560', true).k, 0x08, 'no 600 dpi mode on the QL-560');
+  assert.equal(qlParams('QL-820NWB').highRes, true);
+  assert.equal(qlParams('QL-500').highRes, false);
+});

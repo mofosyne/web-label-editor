@@ -38,13 +38,17 @@ export const QL_MODELS = {
   'QL-1115NWB': { bytesPerRow: 162, additionalOffsetR: 44, minLengthDots: 301 },
 };
 
+// Models with a 300 x 600 dpi mode, per Brother's specifications.
+const HIGH_RES = ['QL-570', 'QL-700', 'QL-710W', 'QL-720NW', 'QL-800', 'QL-810W', 'QL-820NWB', 'QL-1050', 'QL-1060N',
+  'QL-1100', 'QL-1110NWB', 'QL-1115NWB'];
+
 const DEFAULTS = {
   bytesPerRow: 90, additionalOffsetR: 0, modeSetting: true, cutting: true, expandedMode: true, invalidateBytes: 200,
   minLengthDots: 150,
 };
 
 export function qlParams(name) {
-  return { ...DEFAULTS, ...QL_MODELS[name] };
+  return { ...DEFAULTS, highRes: HIGH_RES.includes(name), ...QL_MODELS[name] };
 }
 
 // One raster row per strip column, right end first.
@@ -65,7 +69,10 @@ export function qlRows(bitmap, medium, params) {
   return rows;
 }
 
-export function encodeQL(bitmap, medium, params, { cut = true } = {}) {
+// highRes: 300 x 600 dpi ("high resolution printing", bit 6 of ESC i K, as
+// brother_ql's --600dpi sends it); the bitmap then has two raster lines per
+// 300 dpi dot along the feed.
+export function encodeQL(bitmap, medium, params, { cut = true, highRes = false } = {}) {
   const w = new ByteWriter();
   const switchMode = () => { if (params.modeSetting) w.push(ESC, 0x69, 0x61, 0x01); }; // ESC i a 01: raster mode
   switchMode();
@@ -77,7 +84,8 @@ export function encodeQL(bitmap, medium, params, { cut = true } = {}) {
   // A continuous label shorter than the model's minimum is padded with
   // blank lines at its end.
   const lines = qlRows(bitmap, medium, params);
-  if (medium.continuous) while (lines.length < params.minLengthDots) lines.push(new Uint8Array(params.bytesPerRow));
+  const minLines = params.minLengthDots * (highRes ? 2 : 1);
+  if (medium.continuous) while (lines.length < minLines) lines.push(new Uint8Array(params.bytesPerRow));
 
   // ESC i z: media type, width, length (mm), raster line count; all
   // fields valid plus high quality (0xCE).
@@ -92,7 +100,8 @@ export function encodeQL(bitmap, medium, params, { cut = true } = {}) {
     w.push(ESC, 0x69, 0x4d, 0x40); // ESC i M: auto cut
     w.push(ESC, 0x69, 0x41, 0x01); // ESC i A: cut every label
   }
-  if (params.expandedMode) w.push(ESC, 0x69, 0x4b, cut ? 0x08 : 0x00); // ESC i K: cut at end
+  // ESC i K: cut at end (bit 3), high resolution (bit 6).
+  if (params.expandedMode) w.push(ESC, 0x69, 0x4b, (cut ? 0x08 : 0) | (highRes && params.highRes ? 0x40 : 0));
   const feed = medium.feedMarginDots ?? 0;
   w.push(ESC, 0x69, 0x64, feed & 0xff, feed >> 8); // ESC i d: feed margin
 

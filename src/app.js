@@ -13,7 +13,7 @@ import { printerReportUrl, labelRequestUrl } from './report.js';
 import { loadCatalog } from './catalog.js';
 import { testPatternDesign } from './calibration.js';
 import {
-  viewGeometry, jobBitmap, rowMode, itemLane, itemVisible, canOverprint, blit, blankBitmap, MAX_BLEED_MM,
+  viewGeometry, jobBitmap, stretchGeometry, rowMode, itemLane, itemVisible, canOverprint, blit, blankBitmap, MAX_BLEED_MM,
   stripToPage, stripRectToPage,
 } from './layout.js';
 import { newRollId, rollCode, parseRollCode } from './rolls.js';
@@ -307,7 +307,7 @@ function pageSize() {
 // overprint border. Bounds and text layouts are per design item, in view
 // dots (null for an item not shown). `filled` leaves later labels of the row
 // blank, for printing one label at a time.
-function renderView(d = design, m = model(), med = medium(), { filled, adj, onAssetLoad, laneItems } = {}) {
+function renderView(d = design, m = model(), med = medium(), { filled, adj, onAssetLoad, laneItems, stretch = 1 } = {}) {
   const dpmm = m.dpi / 25.4;
   const a = adj ?? { feedMm: 0, acrossMm: 0 };
   const md = rowMode(d, med);
@@ -323,11 +323,17 @@ function renderView(d = design, m = model(), med = medium(), { filled, adj, onAs
   const slots = viewGeometry(m, med, { ...opts, length: 0 }).slots.map((s) => {
     const items = md === 'separate' ? shown.filter((it) => itemLane(it, md, count) === s.lane)
       : (s.lane > 0 && laneItems?.(s.lane)) || shown;
-    const r = renderDesign(d, m, med, onAssetLoad, { items, ext: s.ext, length, portrait: upright });
+    const r = renderDesign(d, m, med, onAssetLoad, { items, ext: s.ext, length, portrait: upright, stretch });
     length = r.length;
     return { ...s, items, r, copy: md !== 'separate' && s.lane > 0 };
   });
   const geo = viewGeometry(m, med, { ...opts, length });
+  // For a print at a finer resolution along the feed: just the job.
+  if (stretch > 1) {
+    const fine = blankBitmap(geo.width * stretch, geo.height);
+    slots.forEach((s, k) => { if (filled == null || k < filled) blit(fine, s.r.bitmap, 0, s.y - s.ext.top); });
+    return { bitmap: fine, geo: stretchGeometry(geo, stretch), stretch };
+  }
   const bitmap = blankBitmap(geo.width, geo.height);
   slots.forEach((s, k) => { if (filled == null || k < filled) blit(bitmap, s.r.bitmap, 0, s.y - s.ext.top); });
 
@@ -605,6 +611,7 @@ function draw() {
     + (feed.cuts ? `, cut at the ${end(feed.trail)}` : '')
     + (feed.grows ? `; grows ${last.portrait ? 'downwards' : 'to the right'} as you add content` : '');
   dims.textContent = `${tape} × ${lenMm.toFixed(1)} mm long${last.portrait ? ', portrait' : ''}  ·  ${geo.width} × ${geo.height} dots @ ${m.dpi} dpi`
+    + (highResJob() ? ' (prints at 300 × 600 dpi)' : '')
     + cutNote
     + (overprint ? '  ·  Overprinting past the safe area (the die cut may trim it)' : '')
     + (last.hidden ? `  ·  ${last.hidden} item${last.hidden > 1 ? 's' : ''} on the other label${lanes?.count > 2 ? 's' : ''} hidden (choose "A different design on each")` : '')
@@ -1015,8 +1022,11 @@ function buildSetup() {
     } else {
       label.textContent = o.label;
       const sel = document.createElement('select');
-      o.choices.forEach((c) => sel.add(new Option(c, c, false, c === option(o.id))));
-      sel.onchange = () => { design.options[o.id] = sel.value; saveDesign(); };
+      o.choices.forEach((c) => {
+        const [v, t] = Array.isArray(c) ? c : [c, c];
+        sel.add(new Option(t, v, false, v === option(o.id)));
+      });
+      sel.onchange = () => { design.options[o.id] = sel.value; refresh({ props: true }); };
       label.append(sel);
     }
     return label;
@@ -1501,7 +1511,8 @@ function labelDesigns(copies) {
 function batchRows(designs) {
   const adj = adjust();
   const count = laneCount();
-  if (count === 1 || mode() === 'separate') return designs.map((d) => renderView(d, model(), medium(), { adj }));
+  const stretch = jobStretch();
+  if (count === 1 || mode() === 'separate') return designs.map((d) => renderView(d, model(), medium(), { adj, stretch }));
   const rows = [];
   for (let i = 0; i < designs.length; i += count) {
     const group = designs.slice(i, i + count);
@@ -1509,7 +1520,7 @@ function batchRows(designs) {
       .filter((it) => itemVisible(it, mode(), count))
       .map((it) => ({ ...it, id: `${it.id}-${lane}`, lane })));
     const row = { ...design, options: { ...design.options, rowMode: 'separate' }, items };
-    rows.push(renderView(row, model(), medium(), { adj, filled: group.length }));
+    rows.push(renderView(row, model(), medium(), { adj, filled: group.length, stretch }));
   }
   return rows;
 }
@@ -1771,21 +1782,46 @@ function fieldPicker(item, key, holder) {
   return sel;
 }
 
+// ---------- print quality (300 x 600 dpi) ----------
+
+// A barcode whose bars run along the feed (on a landscape label), and how
+// far its bars are from the width asked for at 300 and at 600 dpi.
+function barcodeSizing(item, upright = portrait()) {
+  if (item?.type !== 'barcode' || upright) return null;
+  const dpmm = model().dpi / 25.4;
+  const at = (s) => Math.max(1, Math.round(item.module * dpmm * s)) / (dpmm * s);
+  return { asked: item.module, standard: at(1), high: at(2) };
+}
+// Prints this job at 300 x 600 dpi: chosen, or on Auto when a barcode's
+// bars would come out noticeably off size at 300 dpi.
+function highResJob() {
+  if (!model().highRes) return false;
+  const q = option('quality');
+  if (q === 'high') return true;
+  if (q === 'standard') return false;
+  return design.items.some((it) => {
+    const b = barcodeSizing(it);
+    return b && Math.abs(b.standard - b.asked) / b.asked > 0.04;
+  });
+}
+const jobStretch = () => (highResJob() ? 2 : 1);
+
 // The rows to print for `copies`, as view bitmaps. On a multi-up label
 // ("2 up") each row fills every label, except 'each' mode, where copies
 // counts labels and the last row may be partly blank.
 function rowsFor(copies) {
   const adj = adjust();
   const count = laneCount();
+  const stretch = jobStretch();
   if (mode() !== 'each' || count === 1) {
-    const { bitmap, geo } = renderView(design, model(), medium(), { adj });
-    return Array(copies).fill({ bitmap, geo });
+    const row = renderView(design, model(), medium(), { adj, stretch });
+    return Array(copies).fill(row);
   }
   const rows = [];
   const byFill = new Map();
   for (let left = copies; left > 0; left -= count) {
     const filled = Math.min(left, count);
-    if (!byFill.has(filled)) byFill.set(filled, renderView(design, model(), medium(), { adj, filled }));
+    if (!byFill.has(filled)) byFill.set(filled, renderView(design, model(), medium(), { adj, filled, stretch }));
     rows.push(byFill.get(filled));
   }
   return rows;
@@ -1794,9 +1830,13 @@ function rowsFor(copies) {
 // Applies the position adjustment, encodes and sends each row.
 async function sendRows(rows, med = medium()) {
   const dpmm = model().dpi / 25.4;
+  const stretch = rows[0]?.stretch ?? 1;
   const a = adjust();
-  const shift = { feed: feedDots(a.feedMm, model(), dpmm), across: Math.round(a.acrossMm * dpmm), grow: !med.lengthDots };
+  const shift = {
+    feed: feedDots(a.feedMm, model(), dpmm * stretch), across: Math.round(a.acrossMm * dpmm), grow: !med.lengthDots,
+  };
   const opts = Object.fromEntries(model().options.map((o) => [o.id, option(o.id)]));
+  opts.highRes = stretch > 1;
   // Printers that take several pages per job get all the copies at once.
   if (model().encodePages) {
     const bitmaps = new Map(rows.map((row) => [row, jobBitmap(row.bitmap, row.geo, model(), shift)]));
@@ -2240,7 +2280,16 @@ function updateCodeInfo() {
     p.textContent = b ? `Prints ${(b.w / dpmm).toFixed(1)} mm square. Leave a few mm clear around it for scanning.` : '';
   } else {
     const dots = Math.max(1, Math.round(item.module * dpmm));
-    p.textContent = `Bars snap to ${dots} dot${dots > 1 ? 's' : ''} (${(dots / dpmm).toFixed(2)} mm). Quiet zones are included in the item width.`;
+    const fine = model().highRes ? barcodeSizing(item) : null;
+    const mm = (v) => `${v.toFixed(2)} mm`;
+    if (fine && highResJob()) {
+      p.textContent = `Bars print ${mm(fine.high)} wide (300 × 600 dpi print quality). Quiet zones are included in the item width.`;
+    } else if (fine && Math.abs(fine.standard - fine.asked) / fine.asked > 0.04) {
+      p.textContent = `Bars snap to ${mm(fine.standard)} at 300 dpi; set Print quality (Printer panel) to Auto or High `
+        + `to print them ${mm(fine.high)} wide.`;
+    } else {
+      p.textContent = `Bars snap to ${dots} dot${dots > 1 ? 's' : ''} (${mm(dots / dpmm)}). Quiet zones are included in the item width.`;
+    }
   }
 }
 

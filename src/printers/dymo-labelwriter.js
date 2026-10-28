@@ -26,6 +26,8 @@ export function encodeLabelWriter(bitmap, opts = {}) {
   // ESC q); its ESC h sets print speed rather than text quality, so it gets
   // neither (DYMO's LabelWriter SE450 Technical Reference).
   const se450 = !!opts.se450;
+  // 300 x 600 dpi: the bitmap has two raster lines per 300 dpi dot along the feed.
+  const highRes = !!opts.highRes && !se450;
 
   const across = Math.min(bitmap.height + offset, headDots);
   const bytesPerLine = Math.ceil(across / 8);
@@ -35,7 +37,10 @@ export function encodeLabelWriter(bitmap, opts = {}) {
   w.fill(ESC, 156);
   w.push(ESC, 0x51, 0, 0); // ESC Q: line tab 0
   w.push(ESC, 0x42, 0); // ESC B: dot tab 0
-  if (!se450) w.push(ESC, 0x68); // ESC h: text quality, 300x300
+  // ESC h: text quality, 300 x 300 dpi; ESC i: barcode and graphics
+  // quality, 300 x 600 dpi (raster lines at 600 per inch along the feed), as
+  // DYMO's CUPS driver sends for its "Barcodes and Graphics" setting.
+  if (!se450) w.push(ESC, highRes ? 0x69 : 0x68);
   w.push(ESC, density); // ESC c/d/e/g: print density
   // ESC q: roll select on the Twin Turbo ('0' auto, '1' left, '2' right).
   if (opts.roll) w.push(ESC, 0x71, { auto: 0x30, left: 0x31, right: 0x32 }[opts.roll] ?? 0x30);

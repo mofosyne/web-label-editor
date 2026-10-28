@@ -216,6 +216,13 @@ The app has its own welcome page and **Help** with the same information.
   left.
 - **QR codes and barcodes** are drawn on whole printer dots, so edges stay
   sharp and they scan. Leave a few mm of blank space around QR codes.
+- **300 × 600 dpi print quality** on the DYMO LabelWriter 400/450 family and
+  the Brother QL models that have it: twice the raster lines along the feed.
+  Barcode bars (measured along the feed on a landscape label) are then sized
+  to 1/600 inch, so a 0.30 mm bar prints 0.30 mm rather than 0.34 mm, and
+  text is smoother. *Auto* uses it only when a barcode needs it; QR codes
+  gain nothing (their square modules are set by the 300 dpi across the
+  head). The preview stays at 300 dpi.
 - **Tape detection** (P-touch, QL): the printer reports the loaded tape; the
   app switches to it, previews in the tape's colours (P-touch), and stops a
   print if the tape changed or the printer reports a problem.

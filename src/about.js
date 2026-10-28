@@ -123,6 +123,9 @@ function tips() {
         + 'which way the label moves out.'),
       li(b('Ruler marks'), ': the arrow is the end that comes out of the printer first, ✂ where it is cut, » where a '
         + 'continuous label grows.'),
+      li(b('Print quality'), ' (DYMO LabelWriter, most Brother QL): High prints 300 × 600 dpi, twice as fine along '
+        + 'the label, so barcode bars come out at the width asked for and text is smoother; Auto does this only for '
+        + 'barcodes. QR codes don\'t gain from it.'),
       li(b('Rotate'), ' turns text in quarter turns, for cable flags and vertical text; a fitted box turns with it '
         + 'and its text refits.'),
       li(b('Fit text in a fixed box'), ' picks the largest size that fits; ', b('Fill safe area'), ' makes the box '

@@ -36,16 +36,21 @@ export function itemError(item) {
 }
 
 // Geometry of a QR/barcode item in whole dots, so every module is crisp.
-function codeLayout(ctx, item, dpmm) {
+//
+// sx: dots per page x unit when page x is printed at a finer resolution
+// than y (2 for 300 x 600 dpi along a landscape label): barcode bars, which
+// are measured along x, are then sized in those finer dots.
+function codeLayout(ctx, item, dpmm, sx = 1) {
   const { code, error } = encodeItem(item);
-  const x = Math.round(item.x * dpmm);
+  const bars = item.type === 'barcode' ? sx : 1;
+  const x = Math.round(item.x * dpmm * bars) / bars;
   const y = Math.round(item.y * dpmm);
   if (error) return { x, y, w: Math.round(5 * dpmm), h: Math.round(5 * dpmm), error };
   if (item.type === 'qr') {
     const m = Math.max(1, Math.floor((item.size * dpmm) / code.size));
     return { x, y, w: code.size * m, h: code.size * m, m, code };
   }
-  const m = Math.max(1, Math.round(item.module * dpmm));
+  const m = Math.max(1, Math.round(item.module * dpmm * bars)) / bars;
   const barH = Math.max(1, Math.round(item.height * dpmm));
   const w = (code.quietLeft + code.modules.length + code.quietRight) * m;
   let textPx = 0;
@@ -229,8 +234,8 @@ function drawImage(ctx, item, dpmm, onLoad) {
   ctx.drawImage(tmp, Math.round(b.x), Math.round(b.y));
 }
 
-function drawCode(ctx, item, dpmm) {
-  const l = codeLayout(ctx, item, dpmm);
+function drawCode(ctx, item, dpmm, sx = 1) {
+  const l = codeLayout(ctx, item, dpmm, sx);
   if (l.error) return;
   ctx.fillStyle = '#000';
   if (item.type === 'qr') {
@@ -295,6 +300,11 @@ export function stripLength(design, medium, dpi, ctx, items = design.items, port
 // (across the head is the page's width, the feed its height), and the
 // bitmap is turned into strip orientation for printing; bounds and text
 // layouts stay in page coordinates.
+//
+// opts.stretch: dots per dot along the feed in the bitmap (2 for a printer's
+// 300 x 600 dpi mode). Everything is laid out as usual, then drawn that many
+// times finer along the feed; the bitmap is that much longer, while length,
+// bounds and text layouts stay in ordinary dots.
 export function renderDesign(design, model, medium, onAssetLoad, opts = {}) {
   const dpi = model.dpi;
   const dpmm = dpi / 25.4;
@@ -314,23 +324,31 @@ export function renderDesign(design, model, medium, onAssetLoad, opts = {}) {
   const offY = portrait ? ext.right : ext.top;
   const width = portrait ? ext.top + across + ext.bottom : length + ext.right;
   const height = portrait ? ext.right + length : ext.top + across + ext.bottom;
-  canvas.width = width;
-  canvas.height = height;
+  // Along the feed is page x on a landscape label, page y upright.
+  const stretch = opts.stretch ?? 1;
+  const sx = portrait ? 1 : stretch;
+  const sy = portrait ? stretch : 1;
+  const W = width * sx;
+  const H = height * sy;
+  canvas.width = W;
+  canvas.height = H;
 
   ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(0, 0, W, H);
+  ctx.imageSmoothingEnabled = false;
+  ctx.setTransform(sx, 0, 0, sy, 0, 0);
   ctx.translate(offX, offY);
   for (const item of items) {
     if (item.type === 'text') drawText(ctx, item, dpmm);
     else if (item.type === 'image') drawImage(ctx, item, dpmm, onAssetLoad);
     else if (item.type === 'box') drawBox(ctx, item, dpmm);
-    else if (item.type === 'qr' || item.type === 'barcode') drawCode(ctx, item, dpmm);
+    else if (item.type === 'qr' || item.type === 'barcode') drawCode(ctx, item, dpmm, sx);
   }
   if (design.border) drawBox(ctx, { x: 0, y: 0, w: labelW / dpmm, h: labelH / dpmm, stroke: 0.4 }, dpmm);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-  const id = ctx.getImageData(0, 0, width, height);
-  const data = new Uint8Array(width * height);
+  const id = ctx.getImageData(0, 0, W, H);
+  const data = new Uint8Array(W * H);
   for (let i = 0; i < data.length; i++) {
     const p = i * 4;
     const l = 0.299 * id.data[p] + 0.587 * id.data[p + 1] + 0.114 * id.data[p + 2];
@@ -341,7 +359,7 @@ export function renderDesign(design, model, medium, onAssetLoad, opts = {}) {
 
   const bounds = items.map((item) => itemBounds(ctx, item, dpmm));
   const textLayouts = items.map((item) => (item.type === 'text' ? textLayout(ctx, item, dpmm) : null));
-  const surface = { width, height, data };
+  const surface = { width: W, height: H, data };
   return { bitmap: portrait ? pageToStrip(surface) : surface, length, bounds, textLayouts, dpmm };
 }
 

@@ -99,6 +99,14 @@ export function viewGeometry(model, medium, { length, bleed = 0, feed = 0, acros
   return { width, height, length, labelDots: W, rowDots: P, top, bottom, right, skip, slots, reach, bleed: b, band };
 }
 
+// The geometry of a view rendered `s` times finer along the feed (a
+// printer's 300 x 600 dpi mode), for jobBitmap.
+export function stretchGeometry(geo, s) {
+  if (s === 1) return geo;
+  const band = geo.band && { ...geo.band, ...(geo.band.w != null ? { x: geo.band.x * s, w: geo.band.w * s } : {}) };
+  return { ...geo, width: geo.width * s, length: geo.length * s, right: geo.right * s, skip: geo.skip * s, band };
+}
+
 // The job to encode from a rendered view: applies the position adjustment
 // and drops what the printer can't reach. For a LabelWriter the job is made
 // tall enough for an overprint border above the row (or a negative Across)

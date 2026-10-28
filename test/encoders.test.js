@@ -247,3 +247,14 @@ test('LabelWriter SE450: the 450 raster stream without ESC h or ESC G', async ()
   // 448 dots = 56 bytes per line (ESC D 56).
   assert.ok([...se].some((v, i) => v === 0x1b && se[i + 1] === 0x44 && se[i + 2] === 56));
 });
+
+test('LabelWriter: ESC i (300 x 600 dpi) instead of ESC h when high resolution; never on the SE450', () => {
+  const has = (out, a, b) => out.some((v, i) => v === a && out[i + 1] === b);
+  const bmp = bitmap(4, 8, () => false);
+  const hi = encodeLabelWriter(bmp, { highRes: true });
+  assert.ok(has(hi, 0x1b, 0x69) && !has(hi, 0x1b, 0x68));
+  const std = encodeLabelWriter(bmp, {});
+  assert.ok(has(std, 0x1b, 0x68) && !has(std, 0x1b, 0x69));
+  const se = encodeLabelWriter(bmp, { highRes: true, se450: true });
+  assert.ok(!has(se, 0x1b, 0x69) && !has(se, 0x1b, 0x68));
+});

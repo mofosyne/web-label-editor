@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { viewGeometry, jobBitmap, rowMode, itemLane, itemVisible } from '../src/layout.js';
+import { viewGeometry, jobBitmap, rowMode, itemLane, itemVisible, stretchGeometry } from '../src/layout.js';
 
 // A LabelWriter 450 with a 28 mm die-cut label (330 dots), 6 mm leading
 // margin (71 dots at 300 dpi), and a P-touch-like printer without overprint.
@@ -122,4 +122,18 @@ test('Brother media: hatched edges outside the printable band, and the job is th
   assert.deepEqual(gd.reach, { x0: 36, x1: 1027, y0: 18, y1: 324 });
   const dj = jobBitmap(bmp(1063, 343, (x, y) => x === 36 && y === 18), gd, ql, {});
   assert.deepEqual([dj.width, dj.height, dj.data[0]], [991, 306, 1]);
+});
+
+test('stretchGeometry: a job twice as fine along the feed (300 x 600 dpi)', () => {
+  const ql = { dpi: 300, headDots: 720 };
+  const dk = { acrossDots: 343, lengthDots: 1063, band: { y: 18, h: 306, x: 36, w: 991 } };
+  const g = stretchGeometry(viewGeometry(ql, dk, { length: 1063 }), 2);
+  assert.deepEqual([g.width, g.length, g.band], [2126, 2126, { y: 18, h: 306, x: 72, w: 1982 }]);
+  const job = jobBitmap(bmp(2126, 343, (x, y) => x === 72 && y === 18), g, ql, {});
+  assert.deepEqual([job.width, job.height, job.data[0]], [1982, 306, 1]);
+  const lw = { dpi: 300, headDots: 672, skipLeadingMargin: true, overprint: true };
+  const label = { acrossDots: 331, lengthDots: 1050, marginLeftMm: 5 };
+  const plain = viewGeometry(lw, label, { length: 1050 });
+  assert.equal(stretchGeometry(plain, 2).skip, plain.skip * 2);
+  assert.equal(stretchGeometry(plain, 1), plain);
 });

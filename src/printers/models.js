@@ -19,6 +19,14 @@ import {
 } from './brother-ptouch.js';
 import { encodeQL, qlParams, parseQLStatus } from './brother-ql.js';
 
+// Print quality, on printers with a 300 x 600 dpi mode: twice the raster
+// lines along the feed, for barcode bars sized to 1/600 inch and smoother
+// text (slower). Auto uses it when a barcode's bars run along the feed.
+const QUALITY = {
+  id: 'quality', label: 'Print quality', type: 'select', default: 'auto',
+  choices: [['auto', 'Auto (600 dpi for barcodes)'], ['standard', 'Standard (300 dpi)'], ['high', 'High (300 × 600 dpi, slower)']],
+};
+
 // ---- DYMO LabelWriter 400 / 450 / 4XL ----
 
 const DYMO_NOTE = 'The LabelWriter cannot report which labels are loaded, so pick the media yourself.';
@@ -30,6 +38,7 @@ function labelWriter({ name, status, devices, dpi = 300, headDots = 672, product
   if (rollSelect) {
     options.push({ id: 'roll', label: 'Roll', type: 'select', default: 'auto', choices: ['auto', 'left', 'right'] });
   }
+  if (!se450) options.push(QUALITY);
   return {
     brand: 'DYMO',
     name,
@@ -37,6 +46,7 @@ function labelWriter({ name, status, devices, dpi = 300, headDots = 672, product
     devices: devices ?? [{ name, status }],
     family: 'dymo-lw',
     dpi,
+    highRes: !se450,
     headDots,
     transports: ['usb'],
     // 0x0922 is DYMO; class 7 is USB Printer.
@@ -63,6 +73,7 @@ function labelWriter({ name, status, devices, dpi = 300, headDots = 672, product
         headDots,
         roll: rollSelect ? opts.roll : undefined,
         se450,
+        highRes: opts.highRes,
       });
     },
   };
@@ -141,15 +152,19 @@ function brotherQL(name, { editorLite = false, status = 'experimental' } = {}) {
     // The strip's right end prints first (see brother-ql.js).
     leadingEnd: 'end',
     dpi: 300,
+    highRes: params.highRes && params.expandedMode,
     headDots: params.bytesPerRow * 8,
     transports: ['usb'],
     usbFilters: [{ vendorId: 0x04f9, classCode: 7 }],
     media: [],
     // The QL-500 has no automatic cutter.
-    options: params.cutting ? [{ id: 'autoCut', label: 'Cut after label', type: 'checkbox', default: true }] : [],
+    options: [
+      ...(params.cutting ? [{ id: 'autoCut', label: 'Cut after label', type: 'checkbox', default: true }] : []),
+      ...(params.highRes && params.expandedMode ? [QUALITY] : []),
+    ],
     note: editorLite ? `${QL_NOTE} ${EDITOR_LITE}` : QL_NOTE,
     encode(bitmap, medium, opts) {
-      return encodeQL(bitmap, medium, params, { cut: params.cutting && (opts.autoCut ?? true) });
+      return encodeQL(bitmap, medium, params, { cut: params.cutting && (opts.autoCut ?? true), highRes: opts.highRes });
     },
     async queryStatus(transport) {
       const init = new Uint8Array(params.invalidateBytes + 5);
