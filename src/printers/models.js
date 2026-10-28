@@ -111,7 +111,7 @@ function pTouch({ name, status, devices, productId, maxTapeMm = 24, quirks = {},
 // ---- Brother QL (DK rolls, 300 dpi) ----
 // Model parameters from brother_ql; see brother-ql.js.
 
-const QL_NOTE = 'Brother QL: print 62 mm and narrower DK rolls; the QL-1050, QL-1060N and QL-1100 series also take 102 mm rolls. On continuous rolls the printer leaves about 3 mm of blank tape before and after the print (measured on a QL-570).';
+const QL_NOTE = 'Brother QL: print 62 mm and narrower DK rolls; the QL-1050, QL-1060N and QL-1100 series also take 102 mm rolls. Measured on a QL-570: on 62 mm stock it prints to about 1.5 mm from each long edge of the label (the backing extends a little further), and on continuous rolls it leaves about 3 mm of blank tape before and after the print.';
 const EDITOR_LITE = 'Turn off Editor Lite (hold its button until the light goes out): in that mode the printer appears as a USB drive, not a printer.';
 
 function brotherQL(name, { editorLite = false, status = 'experimental' } = {}) {
