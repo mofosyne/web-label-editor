@@ -55,8 +55,11 @@ export const OTHER_TOOLS_INTRO = 'This is a focused, low-frills editor: fewer fe
   + 'these fits you better, use it. Developers: the libraries are where most of the protocol knowledge lives.';
 
 export const AI_NOTE = `${AI_TAG} marks projects written largely with AI coding assistants ("vibe coded"), judged from `
-  + 'their own commits, README or AI config files as of October 2026. This editor is one of them: written largely with '
-  + 'Claude Code, directed by its author and tested on real printers.';
+  + 'their own commits, README or AI config files as of October 2026. This editor is AI-assisted too: written largely '
+  + 'with Claude Code, but steered by use rather than by a feature list. Its author tries each change on real printers '
+  + 'and labels, and judges it by how it feels to use: whether the everyday label got quicker or clearer, often by '
+  + 'borrowing what commercial label software already learned. Many requests end up smaller than first asked, or as a '
+  + 'ticket for later.';
 
 export const OTHER_TOOLS = [
   {
