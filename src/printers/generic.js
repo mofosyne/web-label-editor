@@ -166,7 +166,8 @@ export function genericPrinter(preset = null) {
     usbFilters: [],
     options: [],
     note: preset
-      ? `Set up from a printer report${preset.source ? ` (${preset.source})` : ''}: language, resolution and head are fixed; set your label size below.`
+      ? `Language, resolution and head width are set for this printer${preset.source ? ` (${preset.source})` : ''}; set your label size below.`
+        + (preset.status === 'tested' ? '' : ' Not printed with yet: print the Grid test, then send a report, whether it worked or not.')
       : 'Experimental: describe your printer below, print the Grid test, then send a report with the settings '
         + 'that worked, so your printer can get its own entry.',
     config: { ...GENERIC_DEFAULTS },

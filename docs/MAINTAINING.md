@@ -63,7 +63,10 @@ Source: (link to this issue)
    once deployed."
 
 A later report against that entry (the report link then says "via its
-entry") moves it to `tested`, or corrects a field.
+entry") moves it to `tested`, or corrects a field. Some entries (common
+second-hand Zebra and Rollo models) were entered from the makers'
+specifications rather than a report; their `Source` says so, and the first
+report that prints with one should replace it with the issue's URL.
 
 ## 2. An experimental printer printed correctly
 

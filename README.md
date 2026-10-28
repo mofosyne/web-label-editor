@@ -151,6 +151,15 @@ right, copy it; don't make users discover the same problems again.
 | Brother QL-1100 | 🧪 Experimental | Brother QL raster | USB | DK rolls and labels, up to 104 mm |
 | Brother QL-1110NWB | 🧪 Experimental | Brother QL raster | USB | DK rolls and labels, up to 104 mm |
 | Brother QL-1115NWB | 🧪 Experimental | Brother QL raster | USB | DK rolls and labels, up to 104 mm |
+| Zebra GK420d / GK420t | 🧪 Experimental | ZPL | USB, Bluetooth | Any size you enter |
+| Zebra GC420d / GC420t | 🧪 Experimental | ZPL | USB, Bluetooth | Any size you enter |
+| Zebra GX420d / GX420t | 🧪 Experimental | ZPL | USB, Bluetooth | Any size you enter |
+| Zebra GX430t (300 dpi) | 🧪 Experimental | ZPL | USB, Bluetooth | Any size you enter |
+| Zebra LP 2844-Z | 🧪 Experimental | ZPL | USB, Bluetooth | Any size you enter |
+| Zebra ZD420 / ZD421 (203 dpi) | 🧪 Experimental | ZPL | USB, Bluetooth | Any size you enter |
+| Zebra ZD410 / ZD411 (203 dpi) | 🧪 Experimental | ZPL | USB, Bluetooth | Any size you enter |
+| Rollo X1038 | 🧪 Experimental | TSPL | USB, Bluetooth | Any size you enter |
+| Rollo Wireless X1040 (by USB) | 🧪 Experimental | TSPL | USB, Bluetooth | Any size you enter |
 | Other label printers speaking ZPL, TSPL or ESC/POS raster | 🧪 Experimental | ZPL, TSPL or ESC/POS raster (you describe the printer) | USB, Bluetooth | Any size you enter |
 
 **Tried a printer?** [Report how it went](https://github.com/mofosyne/web-label-editor/issues/new?template=printer-report.yml), whether it worked or not: reports are how

@@ -33,3 +33,119 @@
 %type: Dpi int
 %type: HeadMm,DefaultWidthMm,DefaultLengthMm,GapMm,FeedMm,AcrossMm real
 %type: Rotate bool
+
+# Common second-hand printers, entered from the makers' specifications and
+# not yet printed with: each stays experimental until a report says it
+# printed. Zebra's desktop models speak ZPL (the older EPL-only ones, such
+# as the plain LP 2844 without "-Z", do not, and are left out); Rollo's
+# speak TSPL.
+
+Id: zebra-gk420d
+Name: Zebra GK420d / GK420t
+Brand: Zebra
+Language: zpl
+Dpi: 203
+HeadMm: 104
+Rotate: no
+DefaultWidthMm: 101.6
+DefaultLengthMm: 152.4
+Status: experimental
+Source: Zebra specifications: 203 dpi, 104 mm print width
+
+Id: zebra-gc420d
+Name: Zebra GC420d / GC420t
+Brand: Zebra
+Language: zpl
+Dpi: 203
+HeadMm: 104
+Rotate: no
+DefaultWidthMm: 101.6
+DefaultLengthMm: 152.4
+Status: experimental
+Source: Zebra specifications: 203 dpi, 104 mm print width
+
+Id: zebra-gx420d
+Name: Zebra GX420d / GX420t
+Brand: Zebra
+Language: zpl
+Dpi: 203
+HeadMm: 104
+Rotate: no
+DefaultWidthMm: 101.6
+DefaultLengthMm: 152.4
+Status: experimental
+Source: Zebra specifications: 203 dpi, 104 mm print width
+
+Id: zebra-gx430t
+Name: Zebra GX430t (300 dpi)
+Brand: Zebra
+Language: zpl
+Dpi: 300
+HeadMm: 104
+Rotate: no
+DefaultWidthMm: 101.6
+DefaultLengthMm: 152.4
+Status: experimental
+Source: Zebra specifications: 300 dpi, 104 mm print width
+
+Id: zebra-lp2844z
+Name: Zebra LP 2844-Z
+Brand: Zebra
+Language: zpl
+Dpi: 203
+HeadMm: 104
+Rotate: no
+DefaultWidthMm: 101.6
+DefaultLengthMm: 152.4
+Status: experimental
+Source: Zebra specifications: 203 dpi, 104 mm print width
+
+Id: zebra-zd420
+Name: Zebra ZD420 / ZD421 (203 dpi)
+Brand: Zebra
+Language: zpl
+Dpi: 203
+HeadMm: 104
+Rotate: no
+DefaultWidthMm: 101.6
+DefaultLengthMm: 152.4
+Status: experimental
+Source: Zebra specifications: 203 dpi, 104 mm print width
+
+Id: zebra-zd410
+Name: Zebra ZD410 / ZD411 (203 dpi)
+Brand: Zebra
+Language: zpl
+Dpi: 203
+HeadMm: 56
+Rotate: no
+DefaultWidthMm: 57
+DefaultLengthMm: 32
+Status: experimental
+Source: Zebra specifications: 203 dpi, 56 mm print width
+
+Id: rollo-x1038
+Name: Rollo X1038
+Brand: Rollo
+Language: tspl
+Dpi: 203
+HeadMm: 104
+Rotate: no
+DefaultWidthMm: 101.6
+DefaultLengthMm: 152.4
+GapMm: 3
+Status: experimental
+Source: Rollo specifications: 203 dpi, 104 mm print width
+
+Id: rollo-wireless
+Name: Rollo Wireless X1040 (by USB)
+Brand: Rollo
+Language: tspl
+Dpi: 203
+HeadMm: 104
+Rotate: no
+DefaultWidthMm: 101.6
+DefaultLengthMm: 152.4
+GapMm: 3
+Status: experimental
+Source: Rollo specifications: 203 dpi, 104 mm print width

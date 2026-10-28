@@ -65,24 +65,24 @@ test('a report\'s record goes into catalog/printers.rec and comes back as that p
   const { applyPrinters } = await import('../src/catalog.js');
   const { printerRecord } = await import('../src/printers/generic.js');
   const { readFileSync } = await import('node:fs');
-  const cfg = { ...GENERIC_DEFAULTS, name: 'Zebra GK420d', language: 'zpl', dpi: 203, headMm: 104, rotate: true, widthMm: 57, lengthMm: 32 };
+  const cfg = { ...GENERIC_DEFAULTS, name: 'Zebra ZT230', language: 'zpl', dpi: 203, headMm: 104, rotate: true, widthMm: 57, lengthMm: 32 };
   const record = printerRecord(cfg, { feedMm: -1.5, acrossMm: 0 }, 'https://github.com/mofosyne/web-label-editor/issues/99');
-  assert.match(record, /^Id: zebra-gk420d\nName: Zebra GK420d\nBrand: Zebra\nLanguage: zpl\n/);
+  assert.match(record, /^Id: zebra-zt230\nName: Zebra ZT230\nBrand: Zebra\nLanguage: zpl\n/);
   assert.match(record, /\nFeedMm: -1.5\n/);
   assert.doesNotMatch(record, /AcrossMm/);
   const header = readFileSync(new URL('../catalog/printers.rec', import.meta.url), 'utf8');
   const generic = genericPrinter();
   const models = applyPrinters(`${header}\n${record}\n`, { generic });
-  assert.deepEqual(Object.keys(models), ['zebra-gk420d', 'generic'], 'catalogued printers come before Other printer');
-  const m = models['zebra-gk420d'];
-  assert.equal(m.name, 'Zebra GK420d (ZPL)');
+  assert.deepEqual(Object.keys(models).slice(-2), ['zebra-zt230', 'generic'], 'catalogued printers come before Other printer');
+  const m = models['zebra-zt230'];
+  assert.equal(m.name, 'Zebra ZT230 (ZPL)');
   assert.equal(m.brand, 'Zebra');
   assert.deepEqual(m.defaultAdjust, { feedMm: -1.5, acrossMm: 0 });
   // The label is the user's; the printer's own settings stay as recorded.
   m.configure({ language: 'tspl', dpi: 300, widthMm: 50, lengthMm: 25 });
   assert.deepEqual([m.config.language, m.dpi, m.config.rotate, m.media[0].name], ['zpl', 203, true, 'Your labels, 50 × 25 mm']);
   assert.equal(genericPrinter().configure({}).config.widthMm, 101.6);
-  assert.equal(models['zebra-gk420d'].configure({}).config.widthMm, 57, 'starts from the recorded label');
+  assert.equal(models['zebra-zt230'].configure({}).config.widthMm, 57, 'starts from the recorded label');
 });
 
 test('Kind chooses die-cut or continuous; the length is kept for switching back', () => {
