@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Printer models: how to reach and drive each printer. The labels and tapes
 // each one takes (`media`) come from catalog/media.rec, loaded by catalog.js:
 // a model gets every record of its `family` that fits its head.

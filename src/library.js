@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // "My labels" (named saved designs, also used as templates) and the print
 // history, kept in this browser. Each entry stores the design and a small
 // thumbnail.

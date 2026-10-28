@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Small helper for building printer command streams.
 export class ByteWriter {
   constructor() {

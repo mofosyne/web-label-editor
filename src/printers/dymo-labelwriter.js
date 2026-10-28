@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // DYMO LabelWriter 400/450 raster protocol.
 // Command set follows DYMO's LabelWriter technical reference and the
 // official dymo-cups-drivers (src/lw/LabelWriterDriver.cpp), ported from

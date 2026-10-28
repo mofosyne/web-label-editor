@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Credits: the projects and documents this editor's printer support,
 // barcodes and data come from, including the code ported from them. Shown
 // in the help (Other tools & credits tab) and generated into the README by

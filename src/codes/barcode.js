@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Linear barcode encoders. Each returns { modules, text, quietLeft, quietRight }
 // where modules is an array of booleans (true = bar), one per narrow module.
 

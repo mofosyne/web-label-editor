@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Printer compatibility, generated from the models so the README table and
 // the in-app help never disagree with the code. Supported devices and their
 // status come from MODELS (each model's `devices`); devices not supported yet

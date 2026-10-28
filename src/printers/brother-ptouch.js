@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-only
 // Brother P-touch raster protocol (PT-P700 family, incl. PT-P710BT).
 // Follows Brother's "Raster Command Reference" and the command sequence used
 // by ptouch-print (libptouch.c), which is known to work on the PT-P710BT.

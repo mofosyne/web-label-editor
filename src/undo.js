@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Undo/redo history of the design, as JSON snapshots. Changes that come in
 // quick succession (typing a word, dragging an item) merge into one step.
 

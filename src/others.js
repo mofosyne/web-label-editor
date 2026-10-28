@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Other open-source label printer projects, shown in the help ("Other
 // tools") and generated into the README by `npm run docs`, so people can
 // find something that fits them and developers can build on existing work

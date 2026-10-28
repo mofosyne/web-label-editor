@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Brother QL raster protocol (DK rolls, 300 dpi).
 // Ported from brother_ql (conversion.py, raster.py, models.py, labels.py),
 // which documents Brother's "QL Series Raster Command Reference".

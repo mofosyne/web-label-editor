@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later AND MIT
 // QR Code encoder (ISO/IEC 18004), byte mode, versions 1–40.
 // Returns { size, version, modules } where modules[y][x] is true for dark.
 //

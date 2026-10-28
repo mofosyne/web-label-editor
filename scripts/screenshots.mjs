@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Regenerates the README screenshots in docs/screenshots from the app
 // itself, with fixed example designs.
 //

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Loads the label/tape catalogue (catalog/media.rec) into each printer
 // model's `media` list. See the comments in that file for the fields.
 import { parseRec, field } from './recfile.js';

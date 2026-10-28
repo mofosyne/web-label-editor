@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Transports deliver raw printer bytes. Both expose write(bytes),
 // read(length, timeoutMs) and close().
 

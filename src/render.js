@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Renders a design into a 1-bit "strip" bitmap at the printer's resolution.
 // Strip coordinates: x runs along the label length, y across the tape/head.
 // Design units are millimetres; (0,0) is the top-left of the printable area.

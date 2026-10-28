@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 import { MODELS, mediumMargins } from './printers/models.js';
 import { renderDesign, bitmapToCanvas, itemError, quarterTurns } from './render.js';
 import { SYMBOLOGIES } from './codes/barcode.js';

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // "My rolls": named label rolls with their own calibration, for label stock
 // that doesn't sit like the catalogue's genuine labels (e.g. third-party
 // rolls). Each roll has a short ID to write on the roll, and a calibration

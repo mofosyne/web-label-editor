@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Links to the GitHub issue forms (.github/ISSUE_TEMPLATE), pre-filled with
 // what the app knows, so reporting a printer or asking for a label size is a
 // couple of clicks.

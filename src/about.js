@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Welcome / help pages shown in a dialog: what this is, how to start, the
 // printer compatibility table (generated from the models, like the README)
 // and tips. Shown once on the first visit and from the Help button.

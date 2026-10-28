@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Hardware test prints, used to see where a printer actually puts ink on a
 // label and to measure the position adjustment.
 //

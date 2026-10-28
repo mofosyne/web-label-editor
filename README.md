@@ -667,4 +667,18 @@ This editor stands on work others did first. No third-party files are bundled, b
 
 ## License
 
-GPL-3.0. See [LICENSE](LICENSE).
+GPL-3.0-or-later (see [LICENSE](LICENSE)), with one file held at GPL-3.0
+only: each source file says which in its `SPDX-License-Identifier` line.
+
+- `src/printers/brother-ptouch.js` is **GPL-3.0-only**: it is ported from
+  [ptouch-print](https://git.familie-radermacher.ch/linux/ptouch-print.git),
+  which is licensed under GPL version 3 without the "or later" option.
+- `src/codes/qr.js` is GPL-3.0-or-later and keeps Project Nayuki's MIT
+  notice, as its structure follows their QR Code generator library.
+- Everything else, including the code ported from brother_ql
+  (GPL-3.0-or-later) and DYMO's drivers (GPL-2.0-or-later), is
+  **GPL-3.0-or-later**.
+
+So the editor as a whole can be used under GPL-3.0 today, and every part
+but the P-touch encoder under any later version too. See
+[Credits](#credits) for the sources.

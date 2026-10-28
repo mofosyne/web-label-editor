@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Regenerates the generated sections of README.md from the code: the
 // printer compatibility table (src/printers/models.js, src/compat.js and the
 // label catalogue), who it's for and the list of other tools (src/others.js), and the credits

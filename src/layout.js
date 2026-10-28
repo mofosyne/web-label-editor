@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // What the editor shows and prints, in dots: a "view" holding a row of one
 // or more label slots (two for 2-up rolls), each with an optional overprint
 // border past the label edge onto the liner, and the part of the view the

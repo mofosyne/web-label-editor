@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Minimal reader for GNU recutils files (https://www.gnu.org/software/recutils/).
 //
 // Supports what the catalogue uses: '#' comments, blank-line separated

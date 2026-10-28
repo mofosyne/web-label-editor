@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Printer connection help, shown in a dialog. Content is per OS; when it is
 // opened from a failed connection it highlights the step for that failure
 // and fills in the printer's own USB IDs.
