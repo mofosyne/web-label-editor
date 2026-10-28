@@ -120,8 +120,9 @@ function tips() {
         ' to 180°. Flexible ID tape holds best.')),
     el('h3', { textContent: 'Calibration and rolls' }),
     el('ul', {},
-      li('Print the ', b('Grid'), ' test: each numbered line should sit that many mm from the label\'s starting edge. If '
-        + 'line n is at n + d mm, set ', b('Feed'), ' to −d; the top edge gives ', b('Across'), '.'),
+      li('Print the ', b('Grid'), ' test. ', b('X'), ' (along the feed) is numbered from the end that comes out first, ',
+        b('Y'), ' (across) from the top edge; each numbered line should sit that many mm from its edge. If X line n is at '
+        + 'n + d mm, set ', b('Feed X'), ' to −d; a Y line gives ', b('Across Y'), ' the same way.'),
       li(b('Save as roll…'), ' stores a calibration for one roll (handy for third-party labels) with a short ID to write '
         + 'on it. Its calibration code sets the roll up on another computer.')),
     el('h3', { textContent: 'Keyboard' }),

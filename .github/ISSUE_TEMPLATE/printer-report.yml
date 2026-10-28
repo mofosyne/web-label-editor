@@ -38,6 +38,15 @@ body:
         - USB
         - Bluetooth
         - Other
+  - type: textarea
+    id: grid
+    attributes:
+      label: Grid test print (optional)
+      description: >-
+        If you printed the Grid test (Printer panel → Test prints & position): X runs along the feed from the end
+        that comes out first, Y across from the top edge. Where do the first and last X and Y lines land, measured
+        from those edges, and which Feed X / Across Y values (if any) made it line up?
+      placeholder: "e.g. X line 0 at 6.0 mm, X line 50 at 56.0 mm; Y line 0 at 1.0 mm; settled on Feed X −6.0, Across Y +1.0"
   - type: input
     id: system
     attributes:

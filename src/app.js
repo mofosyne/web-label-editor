@@ -163,13 +163,17 @@ function setAdjust(key, value) {
 // label may trim it off. Printing past the safe area is allowed: that is
 // how to overprint (bleed) to the edge.
 const dpmmNow = () => model().dpi / 25.4;
+// The Feed X adjustment in strip dots. Feed X is measured from the end that
+// comes out first, so on printers that feed the strip's far end first
+// (Brother QL) it shifts the other way along the strip.
+const feedDots = (feedMm, m, dpmm) => Math.round((m.leadingEnd === 'end' ? -1 : 1) * feedMm * dpmm);
 const bleedMm = () => (canOverprint(model(), medium()) ? Math.min(MAX_BLEED_MM, design.bleedMm ?? 0) : 0);
 function geometry(length = 0, adj = adjust()) {
   const dpmm = dpmmNow();
   return viewGeometry(model(), medium(), {
     length,
     bleed: Math.round(bleedMm() * dpmm),
-    feed: Math.round(adj.feedMm * dpmm),
+    feed: feedDots(adj.feedMm, model(), dpmm),
     across: Math.round(adj.acrossMm * dpmm),
   });
 }
@@ -258,7 +262,7 @@ function renderView(d = design, m = model(), med = medium(), { filled, adj, onAs
   const upright = isPortrait(d);
   const opts = {
     bleed: canOverprint(m, med) ? Math.round(Math.min(MAX_BLEED_MM, d.bleedMm ?? 0) * dpmm) : 0,
-    feed: Math.round(a.feedMm * dpmm),
+    feed: feedDots(a.feedMm, m, dpmm),
     across: Math.round(a.acrossMm * dpmm),
   };
   const shown = d.items.filter((it) => itemVisible(it, md, count));
@@ -889,7 +893,7 @@ function buildAdjust() {
   };
   const grid = document.createElement('div');
   grid.className = 'grid2';
-  grid.append(input('Feed (mm)', 'feedMm'), input('Across (mm)', 'acrossMm'));
+  grid.append(input('Feed X (mm)', 'feedMm'), input('Across Y (mm)', 'acrossMm'));
   const note = document.createElement('p');
   note.className = 'note';
   const roll = currentRoll();
@@ -913,8 +917,9 @@ function buildAdjust() {
   }
   const how = document.createElement('p');
   how.className = 'note';
-  how.textContent = 'Grid: each numbered line should be that many mm from the label\'s starting edge (the end that comes out first). '
-    + 'Measure one: if line n is at n + d mm, set Feed to −d; at n − d mm, set +d. Do the same from the top edge for Across. '
+  how.textContent = 'Grid: X (along the feed) is numbered from the end that comes out first, Y (across) from the top edge. '
+    + 'Each numbered line should be that many mm from its edge. Measure one: if X line n is at n + d mm, set Feed X to −d; '
+    + 'at n − d mm, set +d. Do the same with a Y line for Across Y. '
     + 'Lines in the hatched border may be missing; that is expected. Full black shows everything the printer can reach.';
   const needs = document.createElement('p');
   needs.className = 'note';
@@ -1224,7 +1229,7 @@ function rowsFor(copies) {
 async function sendRows(rows, med = medium()) {
   const dpmm = model().dpi / 25.4;
   const a = adjust();
-  const shift = { feed: Math.round(a.feedMm * dpmm), across: Math.round(a.acrossMm * dpmm), grow: !med.lengthDots };
+  const shift = { feed: feedDots(a.feedMm, model(), dpmm), across: Math.round(a.acrossMm * dpmm), grow: !med.lengthDots };
   const opts = Object.fromEntries(model().options.map((o) => [o.id, option(o.id)]));
   const jobs = new Map(); // identical rows share one encoded job
   for (const row of rows) {
@@ -1241,14 +1246,15 @@ async function printTestPattern(pattern) {
   const lengthMm = med.lengthDots ? med.lengthDots / dpmm : 60;
   // Test prints cover the whole row of a multi-up label.
   const rowMedium = med.lanes ? { ...med, acrossDots: med.lanes.pageDots, lanes: undefined } : med;
-  const test = testPatternDesign(pattern, lengthMm, rowMedium.acrossDots / dpmm, dpmm, { printer: design.printer, medium: med.id });
+  const test = testPatternDesign(pattern, lengthMm, rowMedium.acrossDots / dpmm, dpmm,
+    { printer: design.printer, medium: med.id, leadingAtEnd: model().leadingEnd === 'end' });
   try {
     const { bitmap, length } = renderDesign(test, model(), rowMedium);
     const a = adjust();
-    const geo = viewGeometry(model(), rowMedium, { length, feed: Math.round(a.feedMm * dpmm), across: Math.round(a.acrossMm * dpmm) });
+    const geo = viewGeometry(model(), rowMedium, { length, feed: feedDots(a.feedMm, model(), dpmm), across: Math.round(a.acrossMm * dpmm) });
     await sendRows([{ bitmap, geo }], rowMedium);
     showBanner(pattern === 'grid'
-      ? 'Grid sent. Measure a numbered line from the label\'s starting edge: if line n is at n + d mm, set Feed to −d (at n − d mm, +d). Same from the top edge for Across.'
+      ? 'Grid sent. X is numbered from the end that came out first, Y from the top edge. If X line n is at n + d mm, set Feed X to −d (at n − d mm, +d); a Y line gives Across Y the same way.'
       : 'Full black sent. The black area is everything the printer can reach on this label.');
   } catch (err) {
     if (err.usbProblem) showUsbProblem(err);

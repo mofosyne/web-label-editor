@@ -383,11 +383,14 @@ take a few seconds to send.
   label (DYMO's driver calls this the leading margin; measured 6 mm on a
   LabelWriter 450). The app leaves that part out of the job, so the rest lands
   where the preview shows it and the job ends at the label's end.
-- **Test prints:** *Grid* prints a millimetre grid numbered from where the
-  label should start. Each numbered line should sit that many mm from the
-  label's starting edge (the end that comes out first): if line *n* is at
-  *n + d* mm, set **Feed** to −*d*; the top edge gives **Across**. *Full black*
-  shows everything the printer can reach.
+- **Test prints:** *Grid* prints a millimetre grid with named axes: **X**
+  runs along the feed, numbered from the end that comes out of the printer
+  first (on any printer, including Brother QL, which feeds the strip's right
+  end first), and **Y** runs across, numbered from the top edge. Each
+  numbered line should sit that many mm from its edge: if X line *n* is at
+  *n + d* mm, set **Feed X** to −*d*; a Y line gives **Across Y** the same
+  way. Use X and Y when reporting measurements. *Full black* shows
+  everything the printer can reach.
 - **Test prints & position** (a collapsed section in the Printer panel) holds
   the test prints and the position adjustment, which is saved in the browser
   per label type on each printer.
