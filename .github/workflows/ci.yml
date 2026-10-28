@@ -26,11 +26,32 @@ jobs:
         run: recfix catalog/media.rec
       - run: npm test
 
+  # Browser smoke test: opens the app in Chromium, loads the example
+  # designs and the welcome page, and fails on any page error. The
+  # screenshots it takes are kept as an artifact to look over (not compared:
+  # fonts differ between machines).
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright@1.49.1
+          npx playwright install --with-deps chromium
+      - run: npm run screenshots
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: docs/screenshots
+
   # Publishes the static site to GitHub Pages on every push to main.
   # Requires Settings → Pages → Source: "GitHub Actions".
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: test
+    needs: [test, smoke]
     runs-on: ubuntu-latest
     permissions:
       contents: read

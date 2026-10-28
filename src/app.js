@@ -1934,9 +1934,14 @@ function duplicateSelected() {
   if (item) pasteItems([item]);
 }
 
+// The page's own text (a help dialog, or text selected on the page) gets
+// the browser's normal copy and paste, not the label's.
+const dialogOpen = () => !!document.querySelector('dialog[open]');
+const pageTextSelected = () => (window.getSelection()?.toString() ?? '') !== '';
+
 function onCopy(e, cut = false) {
   const item = selected();
-  if (typingInField() || editing || !item) return;
+  if (typingInField() || editing || !item || dialogOpen() || pageTextSelected()) return;
   e.preventDefault();
   const text = itemPlainText(item);
   clipboard = { text, items: [structuredClone(item)] };
@@ -1946,7 +1951,7 @@ function onCopy(e, cut = false) {
 }
 
 function onPaste(e) {
-  if (typingInField() || editing) return;
+  if (typingInField() || editing || dialogOpen()) return;
   const data = e.clipboardData;
   e.preventDefault();
   // Our own items (copied in this or another tab of the editor).
@@ -1998,7 +2003,7 @@ const doRedo = () => applyUndo(undo.redo());
 // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y anywhere but in a text field, where the
 // browser's own undo applies.
 function onUndoKey(e) {
-  if (!(e.ctrlKey || e.metaKey) || e.altKey || typingInField() || editing) return;
+  if (!(e.ctrlKey || e.metaKey) || e.altKey || typingInField() || editing || dialogOpen()) return;
   const key = e.key.toLowerCase();
   if (key === 'z') {
     e.preventDefault();
