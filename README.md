@@ -470,12 +470,16 @@ take a few seconds to send.
 
 ## Adding a label or tape size
 
-**Try it first with "Custom size…".** On a LabelWriter, the last entry in
-*Media* takes any size: die-cut or continuous, width and length, corner
+**Try it first with "Custom size…".** On a LabelWriter or a Brother QL, the
+last entry in *Media* takes any size (third-party rolls, round stickers): die-cut or continuous, width and length, corner
 radius or round, and a safe margin. Print the Grid test, then *Generate
 report* opens a label request with a ready record for the catalogue (or copy
 it, or save it as a file). Round labels show as a circle, with the safe area
-a circle inset from the edge.
+a circle inset from the edge. On a Brother QL it is experimental: the
+printer is sent the size, so enter the roll's own, and where it can print is
+an estimate (3 mm less than the label, the offset of the nearest Brother
+size) to fine-tune with the Grid test. Brother's round DK labels (12, 24 and
+58 mm) are in the list.
 
 Label and tape sizes live in [`catalog/media.rec`](catalog/media.rec), a
 [GNU recutils](https://www.gnu.org/software/recutils/) file: one record per

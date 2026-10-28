@@ -166,9 +166,12 @@ export async function loadPrinters(models, url = PRINTERS_URL) {
   return applyPrinters(await res.text(), models);
 }
 
-// "Custom size…": a label size the user enters, on printers that print any
-// size they are given (the LabelWriter feeds to the gap; a Brother QL checks
-// the loaded roll against the size sent, P-touch tape comes in set widths).
+// "Custom size…": a label size the user enters, to try a third-party roll
+// (P-touch tape comes in set widths, so not there). The LabelWriter feeds to
+// the gap whatever the size; a Brother QL is sent the size, so it has to
+// match the roll, and its printable area and offset are estimates (3 mm less
+// than the label, the offset of the nearest Brother size) to fine-tune with
+// the Grid test.
 // It is built as a catalogue record, so the preview and the record in a
 // label request are the same thing.
 export const CUSTOM_MEDIA = {
@@ -176,6 +179,11 @@ export const CUSTOM_MEDIA = {
     name: '', kind: 'diecut', widthMm: 25, lengthMm: 54, cornerMm: 2, shape: 'rect', marginMm: 1.5,
     // The LabelWriter starts printing this far into each label (see models.js).
     leadingMm: 5.84,
+  },
+  'brother-ql': {
+    name: '', kind: 'diecut', widthMm: 29, lengthMm: 42, cornerMm: 2, shape: 'rect',
+    // From the nearest catalogue size (set by the app).
+    offsetRightDots: 6, feedMarginDots: 0,
   },
 };
 
@@ -193,6 +201,19 @@ export function customRecord(family, cfg, { source = '(link to this issue)' } = 
     `WidthMm: ${fmt(c.widthMm)}`,
   ];
   if (c.kind === 'diecut') lines.push(`LengthMm: ${fmt(c.lengthMm)}`);
+  if (family === 'brother-ql') {
+    // Brother's printable dots: about 36 (3 mm at 300 dpi) less than the
+    // label across, 70 along a die-cut label (brother_ql's sizes).
+    const dots = (v) => Math.round((Number(v) * 300) / 25.4);
+    lines.push(`PrintableDots: ${Math.max(8, dots(c.widthMm) - 36)}`);
+    if (c.kind === 'diecut') lines.push(`PrintableLengthDots: ${Math.max(8, dots(c.lengthMm) - 70)}`);
+    lines.push(`OffsetRightDots: ${c.offsetRightDots ?? 0}`);
+    if (c.kind === 'continuous' || c.feedMarginDots) lines.push(`FeedMarginDots: ${c.kind === 'continuous' ? 35 : c.feedMarginDots}`);
+    if (c.kind === 'diecut' && Number(c.cornerMm) && c.shape !== 'round') lines.push(`CornerMm: ${fmt(c.cornerMm)}`);
+    if (c.kind === 'diecut' && c.shape === 'round') lines.push('Shape: round');
+    lines.push(`Source: ${source}`);
+    return lines.join('\n');
+  }
   lines.push(
     `MarginLeftMm: ${fmt(Math.max(c.leadingMm ?? 0, c.marginMm))}`,
     `MarginRightMm: ${fmt(c.marginMm)}`,

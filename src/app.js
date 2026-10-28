@@ -79,7 +79,15 @@ function customMediaSettings() {
 }
 function customMediaFor(id) {
   const m = MODELS[id];
-  return { ...CUSTOM_MEDIA[m.family], ...customMediaSettings()[id] };
+  const c = { ...CUSTOM_MEDIA[m.family], ...customMediaSettings()[id] };
+  if (m.family === 'brother-ql') {
+    // A QL's offset across the head and feed margin: those of the nearest
+    // Brother size of the same kind.
+    const near = m.media.filter((x) => x.id !== 'custom' && x.continuous === (c.kind === 'continuous'))
+      .sort((a, b) => Math.abs(a.widthMm - c.widthMm) - Math.abs(b.widthMm - c.widthMm))[0];
+    if (near) Object.assign(c, { offsetRightDots: near.offsetRightDots ?? 0, feedMarginDots: near.feedMarginDots ?? 0 });
+  }
+  return c;
 }
 // Puts (or refreshes) the printer's custom size at the end of its media.
 function applyCustomMedium(id) {
@@ -1116,7 +1124,7 @@ function buildSetup() {
   types.append(...m.media.filter((md) => md.id !== 'custom' || m.custom)
     .map((md) => new Option(md.name, md.id, false, !roll && md.id === medium().id)));
   const custom = !m.custom && m.media.find((md) => md.id === 'custom');
-  if (custom) types.append(new Option('Custom size…', 'custom', false, !roll && medium().id === 'custom'));
+  if (custom) types.append(new Option('Custom size… (any size, round too)', 'custom', false, !roll && medium().id === 'custom'));
   mediumSel.replaceChildren(types);
   const mine = rolls.filter((r) => r.printer === design.printer && m.media.some((md) => md.id === r.medium));
   if (mine.length) {
@@ -1300,7 +1308,7 @@ function keepFitting(change) {
     x: Math.min(...boxes.map((b) => b.x)), y: Math.min(...boxes.map((b) => b.y)),
     r: Math.max(...boxes.map((b) => b.x + b.w)), b: Math.max(...boxes.map((b) => b.y + b.h)),
   };
-  const mg = itemMargins();
+  const mg = boxMargins();
   const page = pageSize();
   const room = {
     x: mg.left, y: mg.top,
@@ -1518,8 +1526,10 @@ function buildCustomMedia() {
   h.textContent = 'Custom size';
   const intro = document.createElement('p');
   intro.className = 'note';
-  intro.textContent = 'For labels not in the list, such as third-party ones: enter the size from the packaging or '
-    + 'measure one, print the Grid test, then request it so it joins the list for everyone.';
+  intro.textContent = 'For labels not in the list, such as third-party ones and round stickers: enter the size from '
+    + 'the packaging or measure one, print the Grid test, then request it so it joins the list for everyone.'
+    + (m.family === 'brother-ql' ? ' Experimental on the QL: it is sent the size, so enter the roll\'s own; where it '
+      + 'can print is an estimate to fine-tune with the Grid test (Test prints & position).' : '');
   const dieCut = c.kind === 'diecut';
   box.replaceChildren(h, intro,
     field('Name or part number (optional)', input('name', { type: 'text', placeholder: 'e.g. 30334, or the brand' })),
@@ -1530,7 +1540,7 @@ function buildCustomMedia() {
       field('Shape', select('shape', [['rect', 'Rectangle'], ['round', 'Round (circle or oval)']])),
       ...(c.shape === 'round' ? [] : [field('Corner radius (mm)', input('cornerMm', { type: 'number', step: 0.5, min: 0 }))]),
     ] : []),
-    field('Safe margin (mm)', input('marginMm', { type: 'number', step: 0.5, min: 0 }), 'Kept clear inside the edges.'),
+    ...(m.family === 'brother-ql' ? [] : [field('Safe margin (mm)', input('marginMm', { type: 'number', step: 0.5, min: 0 }), 'Kept clear inside the edges.')]),
     reportBlock({
       title: 'Generate report',
       note: 'The size as a record for the label list, to copy or save; the GitHub button opens a label request with '
@@ -1690,6 +1700,9 @@ function updateReportLinks() {
     ? 'Something not right with this printer? Report it'
     : 'Experimental printer: tried it? Report how it went';
   $('request-label').href = labelRequestUrl({ printer: model().name });
+  $('request-label').textContent = CUSTOM_MEDIA[model().family]
+    ? 'Missing a label size? Try Custom size (end of the list), or request it'
+    : 'Missing a label size? Request it';
 }
 
 function setStatus(text, ok = false) {
@@ -2303,17 +2316,26 @@ function nextX() {
 // keeps a set size. Returns the free rectangles (mm, label coordinates),
 // largest first: the whole safe area on an empty label, else the strips
 // beside, below, above and before what is there.
+// The safe area as insets from the label's edges; on a round label, the
+// largest box inside its safe circle (and clear of a wider margin on one
+// side, such as the LabelWriter's leading margin).
+function boxMargins(lane = currentLane()) {
+  const mg = itemMargins(lane);
+  if (medium().shape !== 'round') return mg;
+  const page = pageSize();
+  const even = evenMargins(mg);
+  const dx = ((page.w - even.left - even.right) * (1 - Math.SQRT1_2)) / 2;
+  const dy = ((page.h - even.top - even.bottom) * (1 - Math.SQRT1_2)) / 2;
+  return {
+    left: Math.max(mg.left, even.left + dx), right: Math.max(mg.right, even.right + dx),
+    top: Math.max(mg.top, even.top + dy), bottom: Math.max(mg.bottom, even.bottom + dy),
+  };
+}
+
 function freeAreas(lane = currentLane()) {
   if (!medium().lengthDots || !last) return [];
   const page = pageSize();
-  let mg = itemMargins(lane);
-  if (medium().shape === 'round') {
-    // The largest box inside the safe circle.
-    const even = evenMargins(mg);
-    const dx = ((page.w - even.left - even.right) * (1 - Math.SQRT1_2)) / 2;
-    const dy = ((page.h - even.top - even.bottom) * (1 - Math.SQRT1_2)) / 2;
-    mg = { left: Math.max(mg.left, even.left + dx), right: even.right + dx, top: even.top + dy, bottom: even.bottom + dy };
-  }
+  const mg = boxMargins(lane);
   const S = { x0: mg.left, y0: mg.top, x1: page.w - mg.right, y1: page.h - mg.bottom };
   const slot = last.slots.find((sl) => sl.lane === lane);
   if (!slot) return [];

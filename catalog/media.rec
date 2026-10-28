@@ -931,6 +931,43 @@ OffsetRightDots: 18
 CornerMm: 2
 Source: brother_ql labels.py "60x86": total 708 x 1024 dots
 
+Id: ql-d12
+Family: brother-ql
+Name: 12 mm round labels
+Kind: diecut
+WidthMm: 12
+LengthMm: 12
+PrintableDots: 94
+PrintableLengthDots: 94
+OffsetRightDots: 113
+FeedMarginDots: 35
+Shape: round
+Source: brother_ql labels.py "d12" (DK-11219): total 142 x 142 dots
+
+Id: ql-d24
+Family: brother-ql
+Name: 24 mm round labels
+Kind: diecut
+WidthMm: 24
+LengthMm: 24
+PrintableDots: 236
+PrintableLengthDots: 236
+OffsetRightDots: 42
+Shape: round
+Source: brother_ql labels.py "d24" (DK-11218): total 284 x 284 dots
+
+Id: ql-d58
+Family: brother-ql
+Name: 58 mm round labels
+Kind: diecut
+WidthMm: 58
+LengthMm: 58
+PrintableDots: 618
+PrintableLengthDots: 618
+OffsetRightDots: 51
+Shape: round
+Source: brother_ql labels.py "d58" (DK-11207 CD/DVD film): total 688 x 688 dots
+
 Id: ql-62x29
 Family: brother-ql
 Name: 62 × 29 mm labels

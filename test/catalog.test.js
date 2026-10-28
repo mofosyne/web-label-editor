@@ -137,3 +137,18 @@ test('custom size: a record that builds the medium the preview uses, round or re
     execFileSync('recfix', [file]);
   }
 });
+
+test('Brother QL: round DK labels, and a custom size built as a QL record', async () => {
+  const { customRecord, mediumFromRecord } = await import('../src/catalog.js');
+  const models = applyCatalog(catalogText, freshModels());
+  const ql = models['brother-ql-570'];
+  const d24 = ql.media.find((m) => m.id === 'ql-d24');
+  assert.deepEqual([d24.shape, d24.band.h, d24.band.w, d24.offsetRightDots], ['round', 236, 236, 42]);
+  const rec = customRecord('brother-ql', { kind: 'diecut', widthMm: 40, lengthMm: 40, shape: 'round', offsetRightDots: 12 });
+  assert.match(rec, /\nPrintableDots: 436\nPrintableLengthDots: 402\nOffsetRightDots: 12\nShape: round\n/);
+  const m = mediumFromRecord(rec, ql);
+  assert.deepEqual([m.shape, m.band.h, m.lengthDots, m.offsetRightDots], ['round', 436, 472, 12]);
+  const roll = mediumFromRecord(customRecord('brother-ql', { kind: 'continuous', widthMm: 50, offsetRightDots: 12 }), ql);
+  assert.deepEqual([roll.continuous, roll.feedMarginDots], [true, 35]);
+  assert.ok(Math.abs(roll.band.h - 554) <= 1, 'a 50 mm roll within a dot of brother_ql\'s "50" (554)');
+});

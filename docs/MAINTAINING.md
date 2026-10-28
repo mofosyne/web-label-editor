@@ -91,7 +91,7 @@ numbered line should be that many mm from its edge.
 ## 4. A label or tape size
 
 Label requests come in labelled `label request`. Those made from the
-app's **Custom size…** (LabelWriter) have a **Catalogue record** box with a
+app's **Custom size…** (LabelWriter or Brother QL) have a **Catalogue record** box with a
 record ready to paste, built the same way the app built the preview:
 
 1. Check the reporter says the Grid test lined up with those margins, and
@@ -102,6 +102,11 @@ record ready to paste, built the same way the app built the preview:
    or `brand-size`), a `Name` people will recognise, and the issue as
    `Source`. `Id`s are saved in designs: never rename or reuse one.
 3. Run `recfix catalog/media.rec` and the [checks](#checks-before-merging).
+
+A Brother QL record from Custom size… has estimated `PrintableDots`,
+`PrintableLengthDots` and `OffsetRightDots`: keep them only if the
+reporter's Grid test lined up, or use Brother's values where the size is one
+of theirs (brother_ql's `labels.py`).
 
 Otherwise, add the record by hand; the comment at the top of `media.rec`
 explains each field, and the README section "Adding a label or tape size"
