@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { MODELS, mediumMargins } from './printers/models.js';
 import { renderDesign, bitmapToCanvas, itemError, quarterTurns } from './render.js';
+import {
+  parseData, usedFields, hasFields, usesData, chosenRows, fieldValues, fillItems, labelRuns, counterText, COUNTER,
+} from './fields.js';
 import { SYMBOLOGIES } from './codes/barcode.js';
 import { UsbTransport, SerialTransport, support } from './transport.js';
 import { openHelp } from './help.js';
@@ -304,7 +307,7 @@ function pageSize() {
 // overprint border. Bounds and text layouts are per design item, in view
 // dots (null for an item not shown). `filled` leaves later labels of the row
 // blank, for printing one label at a time.
-function renderView(d = design, m = model(), med = medium(), { filled, adj, onAssetLoad } = {}) {
+function renderView(d = design, m = model(), med = medium(), { filled, adj, onAssetLoad, laneItems } = {}) {
   const dpmm = m.dpi / 25.4;
   const a = adj ?? { feedMm: 0, acrossMm: 0 };
   const md = rowMode(d, med);
@@ -318,7 +321,8 @@ function renderView(d = design, m = model(), med = medium(), { filled, adj, onAs
   const shown = d.items.filter((it) => itemVisible(it, md, count));
   let length;
   const slots = viewGeometry(m, med, { ...opts, length: 0 }).slots.map((s) => {
-    const items = md === 'separate' ? shown.filter((it) => itemLane(it, md, count) === s.lane) : shown;
+    const items = md === 'separate' ? shown.filter((it) => itemLane(it, md, count) === s.lane)
+      : (s.lane > 0 && laneItems?.(s.lane)) || shown;
     const r = renderDesign(d, m, med, onAssetLoad, { items, ext: s.ext, length, portrait: upright });
     length = r.length;
     return { ...s, items, r, copy: md !== 'separate' && s.lane > 0 };
@@ -420,7 +424,8 @@ function refresh({ props = false, setup = false } = {}) {
 function draw() {
   const m = model();
   const med = medium();
-  last = renderView(design, m, med, { adj: adjust(), onAssetLoad: () => refresh() });
+  last = renderView(viewDesign(), m, med, { adj: adjust(), onAssetLoad: () => refresh(), laneItems: batchLaneItems() });
+  updateDataBar();
   const { display, dpmm, geo, slots, toDisplay } = last;
 
   if (zoomFit && !editing && !drag) editZoom = fitZoom(display, dpmm, last.portrait);
@@ -518,7 +523,7 @@ function draw() {
     ctx.fillRect(l.x, l.y, l.w, l.h);
     ctx.fillStyle = 'rgba(90, 90, 90, .9)';
     ctx.font = '11px system-ui, sans-serif';
-    ctx.fillText(last.mode === 'each' ? 'next label' : 'copy', l.x + 4, l.y + 12);
+    ctx.fillText(last.mode === 'each' || batchLaneItems() ? 'next label' : 'copy', l.x + 4, l.y + 12);
   }
 
   // Hatch where the printer cannot print; a dashed line marks each label's
@@ -1407,29 +1412,283 @@ async function print() {
   btn.disabled = true;
   btn.textContent = 'Printing…';
   try {
-    const broken = design.items.find((it) => itemError(it));
-    if (broken) {
-      showBanner(`Can't print: ${itemError(broken)} (${broken.type === 'qr' ? 'QR code' : 'barcode'} "${broken.data}").`);
-      return;
+    const copies = Math.max(1, Math.min(99, parseInt($('copies').value, 10) || 1));
+    // With fields, each label of the batch is the design filled in.
+    const batch = hasFields(design) ? labelDesigns(copies) : null;
+    for (const [n, d] of (batch ?? [design]).entries()) {
+      const broken = d.items.find((it) => itemError(it));
+      if (broken) {
+        const which = batch && batch.length > 1 ? ` label ${n + 1}` : '';
+        showBanner(`Can't print${which}: ${itemError(broken)} (${broken.type === 'qr' ? 'QR code' : 'barcode'} "${broken.data}").`);
+        return;
+      }
     }
     if (!(await checkTapeBeforePrint())) return;
-    const copies = Math.max(1, Math.min(99, parseInt($('copies').value, 10) || 1));
-    await sendRows(rowsFor(copies));
+    await sendRows(batch ? batchRows(batch) : rowsFor(copies));
     recordPrint(copies);
+    const next = batch ? advanceCounter(batch.length) : '';
     if (model().status !== 'tested') {
-      showBanner(`Sent to the ${model().name}, which nobody has reported on yet. Did it print correctly?`,
+      showBanner(`Sent to the ${model().name}, which nobody has reported on yet. Did it print correctly?${next}`,
         { label: 'Report how it went', onClick: () => window.open(reportUrl(), '_blank', 'noopener') });
     } else {
-      showBanner(loaded?.warnings.join('; ') ?? '');
+      showBanner([...(loaded?.warnings ?? []), next.trim()].filter(Boolean).join('; '));
     }
   } catch (err) {
     if (err.usbProblem) showUsbProblem(err);
     else showBanner(`Print failed: ${err.message}`);
   } finally {
     await transport?.release();
-    btn.textContent = 'Print';
+    btn.textContent = printText();
     btn.disabled = !transport;
   }
+}
+
+// ---------- fields: data rows, counter, date ----------
+
+let previewAt = 0; // which label of a batch the editor shows
+
+// The design as one label of the batch: fields filled in for `run` (a data
+// row and the label's place in the batch). `keep` stays as typed (the text
+// being edited on the label).
+function filledDesign(d, run, now = new Date(), keep = null) {
+  if (!hasFields(d)) return d;
+  const filled = fillItems(d.items, fieldValues(d, run.row, run.k, now));
+  return { ...d, items: filled.map((it, i) => (d.items[i] === keep ? keep : it)) };
+}
+function previewRun() {
+  const runs = labelRuns(design, 1);
+  previewAt = Math.min(Math.max(0, previewAt), runs.length - 1);
+  return runs[previewAt];
+}
+const viewDesign = () => filledDesign(design, previewRun(), new Date(), editing?.item);
+// A QR code's or barcode's error as the shown label has it filled in.
+function shownError(item) {
+  const i = design.items.indexOf(item);
+  return itemError(hasFields(design) ? viewDesign().items[i] ?? item : item);
+}
+
+// On a row of several labels, the others in the preview show the labels
+// that follow in the batch (blank past its end), as they will print.
+function batchLaneItems() {
+  if (!hasFields(design) || laneCount() === 1 || mode() === 'separate') return null;
+  const runs = labelRuns(design, 1);
+  return (lane) => {
+    const run = usesData(design) ? runs[previewAt + lane] : { row: null, k: previewAt + lane };
+    return run ? filledDesign(design, run).items.filter((it) => itemVisible(it, mode(), laneCount())) : [];
+  };
+}
+
+// Every label a print makes, filled in.
+function labelDesigns(copies) {
+  const now = new Date();
+  return labelRuns(design, copies).map((run) => filledDesign(design, run, now));
+}
+
+// Labels to rows: on a row of several labels (2 up) the labels of the batch
+// fill the row in turn, unless each label of the row has its own design.
+function batchRows(designs) {
+  const adj = adjust();
+  const count = laneCount();
+  if (count === 1 || mode() === 'separate') return designs.map((d) => renderView(d, model(), medium(), { adj }));
+  const rows = [];
+  for (let i = 0; i < designs.length; i += count) {
+    const group = designs.slice(i, i + count);
+    const items = group.flatMap((d, lane) => d.items
+      .filter((it) => itemVisible(it, mode(), count))
+      .map((it) => ({ ...it, id: `${it.id}-${lane}`, lane })));
+    const row = { ...design, options: { ...design.options, rowMode: 'separate' }, items };
+    rows.push(renderView(row, model(), medium(), { adj, filled: group.length }));
+  }
+  return rows;
+}
+
+// After a print, the counter carries on from the next number.
+function advanceCounter(printed) {
+  if (!usedFields(design).has(COUNTER)) return '';
+  const c = design.counter ?? {};
+  design.counter = { ...c, start: (c.start ?? 1) + (c.step ?? 1) * printed };
+  refresh({ setup: true });
+  dataBarKey = '';
+  return ` Next number: ${counterText(design.counter, 0)}.`;
+}
+
+// How many labels Print makes, on its button.
+function printText() {
+  if (!hasFields(design)) return 'Print';
+  const copies = Math.max(1, Math.min(99, parseInt($('copies').value, 10) || 1));
+  const n = labelRuns(design, copies).length;
+  return n > 1 ? `Print ${n} labels` : 'Print';
+}
+
+function loadDataFile(file) {
+  file.text().then((text) => {
+    const { columns, rows } = parseData(text, file.name);
+    if (!columns.length) throw new Error('no column names found');
+    design.data = { name: file.name, columns, rows };
+    previewAt = 0;
+    undo.checkpoint();
+    refresh({ setup: true, props: true });
+    showBanner(`${file.name}: ${rows.length} row${rows.length === 1 ? '' : 's'}, columns ${columns.join(', ')}. `
+      + 'Put a column on the label with Insert field in a text\'s properties; Print makes one label per row.');
+  }).catch((err) => showBanner(`Could not read ${file.name}: ${err.message}`));
+}
+
+// The bar under the editor while the design has fields or data: the data,
+// stepping through its labels, the counter, and how many labels print.
+// Rebuilt only when what it shows changes, so its inputs keep focus.
+let dataBarKey = '';
+let rowsOpen = false;
+function updateDataBar() {
+  const bar = $('data-bar');
+  const show = hasFields(design) || !!design.data;
+  const runs = show ? labelRuns(design, 1) : [];
+  const key = JSON.stringify([show, design.data?.name, design.data?.rows.length, design.data?.skip, previewAt,
+    [...usedFields(design)], runs.length]);
+  $('btn-print').textContent = $('btn-print').textContent === 'Printing…' ? 'Printing…' : printText();
+  if (key === dataBarKey) return;
+  dataBarKey = key;
+  bar.hidden = !show;
+  if (!show) { bar.replaceChildren(); return; }
+  const el = (tag, props = {}, ...kids) => {
+    const e = document.createElement(tag);
+    Object.assign(e, props);
+    e.append(...kids.filter((k) => k != null));
+    return e;
+  };
+  const button = (text, onClick, props = {}) => {
+    const b = el('button', { type: 'button', textContent: text, ...props });
+    b.onclick = onClick;
+    return b;
+  };
+  const used = usedFields(design);
+  const lines = [];
+  const data = design.data;
+  if (data) {
+    const chosen = chosenRows(design);
+    const rows = el('details', { className: 'data-rows', open: rowsOpen, ontoggle: () => { rowsOpen = rows.open; } },
+      el('summary', { textContent: `Choose rows (${chosen.length} of ${data.rows.length})` }),
+      dataTable());
+    lines.push(el('div', { className: 'row' },
+      el('strong', { textContent: data.name ?? 'Data' }),
+      el('span', { className: 'muted', textContent: `${data.rows.length} rows · ${data.columns.join(', ')}` }),
+      button('Replace…', () => $('data-file').click()),
+      button('Remove', () => { delete design.data; previewAt = 0; undo.checkpoint(); refresh({ setup: true, props: true }); })));
+    if (!usesData(design)) {
+      lines.push(el('p', { className: 'note', textContent: 'No column is on the label yet: select a text, QR code or barcode and use Insert field.' }));
+    } else lines.push(rows);
+  }
+  if (usesData(design) || used.has(COUNTER)) {
+    const step = (d) => { previewAt += d; undo.checkpoint(); refresh(); };
+    const nav = el('div', { className: 'row' },
+      el('span', { textContent: 'Showing' }),
+      button('◀', () => step(-1), { className: 'icon', disabled: previewAt <= 0, ariaLabel: 'Previous label' }),
+      el('span', { textContent: `label ${previewAt + 1} of ${runs.length}` }),
+      button('▶', () => step(1), { className: 'icon', disabled: previewAt >= runs.length - 1, ariaLabel: 'Next label' }));
+    if (runs.length > 1) lines.push(nav);
+  }
+  if (used.has(COUNTER)) {
+    const c = design.counter ?? {};
+    const num = (label, k, def, min) => {
+      const input = el('input', { type: 'number', value: String(c[k] ?? def), step: '1', ...(min != null ? { min: String(min) } : {}) });
+      input.oninput = () => {
+        design.counter = { ...(design.counter ?? {}), [k]: Number.isFinite(parseInt(input.value, 10)) ? parseInt(input.value, 10) : def };
+        refresh();
+      };
+      return el('label', { className: 'inline' }, `${label} `, input);
+    };
+    lines.push(el('div', { className: 'row counter' },
+      el('span', { textContent: 'Counter {n}:' }), num('start', 'start', 1), num('step', 'step', 1), num('digits', 'digits', 0, 0)));
+  }
+  const copies = Math.max(1, parseInt($('copies').value, 10) || 1);
+  const total = labelRuns(design, copies).length;
+  lines.push(el('p', { className: 'note', textContent: usesData(design)
+    ? `Print makes ${total} label${total === 1 ? '' : 's'}: one per chosen row${copies > 1 ? `, ${copies} copies each` : ''}.`
+    : used.has(COUNTER) ? `Print makes ${total} label${total === 1 ? '' : 's'} (Copies), numbered in turn; the next print carries on from there.`
+      : '{date} and {time} are filled in when you print.' }));
+  bar.replaceChildren(...lines);
+}
+
+// The data's rows with a tick box each; clicking a row shows its label.
+function dataTable() {
+  const { columns, rows, skip = [] } = design.data;
+  const skipped = new Set(skip);
+  const LIMIT = 500;
+  const head = document.createElement('tr');
+  const all = document.createElement('input');
+  all.type = 'checkbox';
+  all.checked = !skipped.size;
+  all.ariaLabel = 'All rows';
+  all.onchange = () => { design.data.skip = all.checked ? [] : rows.map((_, i) => i); undo.checkpoint(); refresh(); };
+  const th0 = document.createElement('th');
+  th0.append(all);
+  head.append(th0, ...columns.map((c) => Object.assign(document.createElement('th'), { textContent: c })));
+  const body = rows.slice(0, LIMIT).map((r, i) => {
+    const tr = document.createElement('tr');
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = !skipped.has(i);
+    box.ariaLabel = `Print row ${i + 1}`;
+    box.onchange = () => {
+      const set = new Set(design.data.skip ?? []);
+      if (box.checked) set.delete(i); else set.add(i);
+      design.data.skip = [...set].sort((a, b) => a - b);
+      undo.checkpoint();
+      refresh();
+    };
+    const td0 = document.createElement('td');
+    td0.append(box);
+    tr.append(td0, ...r.map((v) => Object.assign(document.createElement('td'), { textContent: v })));
+    tr.onclick = (e) => {
+      if (e.target === box) return;
+      const at = chosenRows(design).indexOf(i);
+      if (at >= 0) { previewAt = at; refresh(); }
+    };
+    return tr;
+  });
+  const table = document.createElement('table');
+  table.append(head, ...body);
+  const wrap = document.createElement('div');
+  wrap.className = 'table-scroll';
+  wrap.append(table);
+  if (rows.length > LIMIT) wrap.append(Object.assign(document.createElement('p'), { className: 'note', textContent: `Showing the first ${LIMIT} rows; all chosen rows print.` }));
+  return wrap;
+}
+
+// Insert field: a column of the data, the counter, the date or the time,
+// put into a text's, QR code's or barcode's content at the cursor.
+function fieldPicker(item, key, holder) {
+  const input = holder.querySelector('textarea, input');
+  let caret = null;
+  const keep = () => { caret = [input.selectionStart, input.selectionEnd]; };
+  input.addEventListener('blur', keep);
+  const sel = document.createElement('select');
+  sel.className = 'field-picker';
+  sel.ariaLabel = 'Insert field';
+  sel.add(new Option('Insert field…', ''));
+  const cols = design.data?.columns ?? [];
+  if (cols.length) {
+    const g = document.createElement('optgroup');
+    g.label = design.data.name ?? 'Data';
+    cols.forEach((c) => g.append(new Option(c, `{${c}}`)));
+    sel.append(g);
+  }
+  const g = document.createElement('optgroup');
+  g.label = 'Built in';
+  g.append(new Option('Counter: 1, 2, 3…', '{n}'), new Option('Date of printing', '{date}'), new Option('Time of printing', '{time}'));
+  sel.append(g);
+  sel.add(new Option(cols.length ? 'Other data file…' : 'Data from a file (CSV, Markdown table, JSON, recfile)…', 'load'));
+  sel.onchange = () => {
+    const v = sel.value;
+    sel.value = '';
+    if (v === 'load') { $('data-file').click(); return; }
+    if (!v) return;
+    const text = String(item[key] ?? '');
+    const [a, b] = caret ?? [text.length, text.length];
+    item[key] = text.slice(0, a) + v + text.slice(b);
+    undo.checkpoint();
+    refresh({ props: true });
+  };
+  return sel;
 }
 
 // The rows to print for `copies`, as view bitmaps. On a multi-up label
@@ -1598,7 +1857,7 @@ function addBarcode() {
 }
 
 function describe(item) {
-  const warn = itemError(item) ? '⚠ ' : '';
+  const warn = shownError(item) ? '⚠ ' : '';
   if (item.type === 'text') return item.text.split('\n')[0] || '(empty)';
   if (item.type === 'image') return `${item.w} mm wide`;
   if (item.type === 'qr') return `${warn}${item.data.split('\n')[0] || '(empty)'}`;
@@ -1676,9 +1935,15 @@ function buildProps() {
     return d;
   };
 
+  const withPicker = (holder, key) => {
+    const d = document.createElement('div');
+    d.className = 'with-picker';
+    d.append(holder, fieldPicker(item, key, holder));
+    return d;
+  };
   if (item.type === 'text') {
     panel.append(
-      field('Text', 'text', { type: 'textarea' }),
+      withPicker(field('Text', 'text', { type: 'textarea' }), 'text'),
       field('Font', 'font', { type: 'select', choices: FONTS.map((f) => [f, f]) }),
       fitToggle(item),
       ...(item.fit
@@ -1698,7 +1963,7 @@ function buildProps() {
     );
   } else if (item.type === 'qr') {
     panel.append(
-      field('Content (text or URL)', 'data', { type: 'textarea' }),
+      withPicker(field('Content (text or URL)', 'data', { type: 'textarea' }), 'data'),
       pair(
         num('Size (mm)', 'size', 0.5, 1),
         field('Error correction', 'ecc', { type: 'select', choices: [['L', 'L (7%)'], ['M', 'M (15%)'], ['Q', 'Q (25%)'], ['H', 'H (30%)']] }),
@@ -1708,7 +1973,7 @@ function buildProps() {
   } else if (item.type === 'barcode') {
     panel.append(
       field('Type', 'symbology', { type: 'select', choices: Object.entries(SYMBOLOGIES).map(([id, s]) => [id, s.name]) }),
-      field('Content', 'data', { type: 'text' }),
+      withPicker(field('Content', 'data', { type: 'text' }), 'data'),
       pair(num('Bar width (mm)', 'module', 0.05, 0.1), num('Height (mm)', 'height', 0.5, 1)),
       field('Show digits/text', 'showText', { type: 'checkbox' }),
       num('Text size (mm)', 'textSize', 0.1, 0.5),
@@ -1882,7 +2147,7 @@ function updateCodeInfo() {
   const p = $('code-info');
   const item = selected();
   if (!p || !item) return;
-  const err = itemError(item);
+  const err = shownError(item);
   p.classList.toggle('error', !!err);
   if (err) {
     p.textContent = err;
@@ -2364,6 +2629,11 @@ function wire() {
     if (e.target.files[0]) addImage(e.target.files[0]);
     e.target.value = '';
   };
+  $('data-file').onchange = (e) => {
+    if (e.target.files[0]) loadDataFile(e.target.files[0]);
+    e.target.value = '';
+  };
+  $('copies').addEventListener('input', () => { dataBarKey = ''; refresh(); });
   $('add-box').onclick = addBox;
   $('add-qr').onclick = addQr;
   $('add-barcode').onclick = addBarcode;
@@ -2464,7 +2734,8 @@ function thumbnail(d) {
   try {
     const m = MODELS[d.printer] ?? model();
     const med = m.media.find((x) => x.id === d.medium) ?? m.media[0];
-    const { display } = renderView(migrateDesign(JSON.parse(JSON.stringify(d))), m, med);
+    const plain = migrateDesign(JSON.parse(JSON.stringify(d)));
+    const { display } = renderView(filledDesign(plain, labelRuns(plain, 1)[0]), m, med);
     const full = bitmapToCanvas(display);
     const scale = Math.min(1, 240 / full.width, 80 / full.height);
     const c = document.createElement('canvas');

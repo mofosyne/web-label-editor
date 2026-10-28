@@ -133,6 +133,19 @@ function tips() {
         + 'all, a different design on each (click a label to add to it, drag items between them), or one at a time. '
         + 'The 🔓 Edit separately button on the dimmed copy unlinks it, starting from a copy of label 1.'),
       li(b('Rulers'), ' measure from the label\'s starting edge and from each label\'s top, and mark the selected item.')),
+    el('h3', { textContent: 'Batches: data, numbers and dates' }),
+    el('ul', {},
+      li('Type a field in braces in any text, QR code or barcode, or pick it from ', b('Insert field'), ' under its '
+        + 'content: ', b('{n}'), ' is a counter, ', b('{date}'), ' and ', b('{time}'), ' are when you print.'),
+      li(b('Data from a file'), ' (Insert field → Data from a file): a CSV, the first Markdown table in a file, JSON (a '
+        + 'list of records) or a GNU recfile. Its column names become fields, e.g. ', b('{Name}'), '; Print makes one '
+        + 'label per row (times Copies).'),
+      li('The bar under the label steps through the labels (◀ ▶) so you can check each one fits, and ',
+        b('Choose rows'), ' picks which rows print; click a row to show it.'),
+      li('The counter has a start, a step and a number of digits (3 digits: 001, 002…). After a print it carries on '
+        + 'from the next number. Without data, Copies says how many numbered labels to print.'),
+      li('The data is saved with the label, so a label in ', b('My labels'), ' with fields is a template for the next '
+        + 'batch: open it, use Replace… for new data, print.')),
     el('h3', { textContent: 'Cable flags' }),
     el('ol', {},
       li('Set ', b('Length'), ' to ', b('Fixed'), ': twice the flag length plus once around the cable (e.g. 30 mm flags on '

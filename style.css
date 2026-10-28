@@ -346,3 +346,15 @@ dialog.library .empty { color: var(--muted); }
 @media (max-width: 520px) { dialog.library .card { grid-template-columns: 1fr; } dialog.library .thumb { grid-row: auto; } }
 a.small-link { display: block; font-size: 12px; color: var(--accent); margin: -4px 0 10px; }
 #report-printer { color: var(--accent); }
+
+/* Data rows, counter and date: under the editor while the design has fields. */
+.data-bar { margin: 8px 0 0; padding: 10px 12px; background: var(--stage); border-radius: 8px; font-size: 13px; display: grid; gap: 6px; }
+.data-bar .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.data-bar .muted { color: var(--muted); overflow-wrap: anywhere; }
+.data-bar .note { margin: 0; }
+.data-bar .counter input { width: 5em; }
+.data-bar .table-scroll { max-height: 240px; overflow: auto; margin-top: 6px; }
+.data-bar table { border-collapse: collapse; font-size: 12px; }
+.data-bar th, .data-bar td { border-bottom: 1px solid var(--line, rgba(0, 0, 0, .1)); padding: 3px 8px; text-align: left; white-space: pre-line; }
+.data-bar tr:hover td { background: rgba(36, 99, 235, .06); cursor: pointer; }
+.with-picker .field-picker { margin-top: 4px; font-size: 12px; }

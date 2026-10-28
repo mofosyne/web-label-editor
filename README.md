@@ -31,8 +31,8 @@ This editor is for you if:
 
 Another tool may suit you better if:
 
-- You mostly print batches from a spreadsheet, or onto A4 / Letter sticker sheets: try [burnmark](https://burnmark.app).
-- You only use a Brother P-touch and want templates, CSV data or P-touch Editor files: try [labelpeel](https://github.com/LookLeft/labelpeel).
+- You print onto A4 / Letter sticker sheets: try [burnmark](https://burnmark.app).
+- You only use a Brother P-touch and want to open P-touch Editor files: try [labelpeel](https://github.com/LookLeft/labelpeel).
 - You want a print server that phones or other computers print through: try [brother_ql_web](https://github.com/pklaus/brother_ql_web).
 - You have a DYMO LabelManager or LetraTag tape printer: try [Labelle](https://github.com/labelle-org/labelle).
 - You have a DYMO LabelWriter 550 / 5XL (not supported here; they need DYMO's chip-locked labels): try [burnmark](https://burnmark.app).
@@ -197,6 +197,13 @@ The app has its own welcome page and **Help** with the same information.
   text; Ctrl+C / Ctrl+X / Ctrl+V for items (and pasting text or images
   from other apps); Ctrl+D duplicates; arrow keys nudge; Ctrl+Z / Ctrl+Shift+Z
   (or Ctrl+Y) undo and redo, with a drag or a burst of typing as one step.
+- **Batches from data, numbering and dates:** put `{Name}` (a column),
+  `{n}` (a counter) or `{date}` / `{time}` in any text, QR code or barcode,
+  or pick one from *Insert field*. Data comes from a CSV, a Markdown table,
+  JSON or a GNU recfile; Print makes one label per chosen row, as one job
+  where the printer allows. Step through the labels before printing to check
+  each one fits; the counter carries on from where the last print stopped.
+  The data is saved with the label, so a saved label is a template.
 - **Changing the label keeps the design on it:** if it no longer fits the
   new label or tape, it is shrunk evenly to fit (undo brings it back).
 - **Continuous rolls:** *Fit to content* makes the label as long as what is on

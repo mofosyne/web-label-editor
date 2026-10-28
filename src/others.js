@@ -26,8 +26,8 @@ export const AIMS = [
 ];
 
 export const LOOK_ELSEWHERE = [
-  ['You mostly print batches from a spreadsheet, or onto A4 / Letter sticker sheets', 'burnmark', 'https://burnmark.app'],
-  ['You only use a Brother P-touch and want templates, CSV data or P-touch Editor files', 'labelpeel', gh('LookLeft/labelpeel')],
+  ['You print onto A4 / Letter sticker sheets', 'burnmark', 'https://burnmark.app'],
+  ['You only use a Brother P-touch and want to open P-touch Editor files', 'labelpeel', gh('LookLeft/labelpeel')],
   ['You want a print server that phones or other computers print through', 'brother_ql_web', gh('pklaus/brother_ql_web')],
   ['You have a DYMO LabelManager or LetraTag tape printer', 'Labelle', gh('labelle-org/labelle')],
   ['You have a DYMO LabelWriter 550 / 5XL (not supported here; they need DYMO\'s chip-locked labels)', 'burnmark', 'https://burnmark.app'],
