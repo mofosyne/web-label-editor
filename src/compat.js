@@ -12,7 +12,7 @@ export const PRINTER_REPORT_URL = `${REPO_URL}/issues/new?template=printer-repor
 export const LABEL_REQUEST_URL = `${REPO_URL}/issues/new?template=label-request.yml`;
 
 export const UNIMPLEMENTED = [
-  { brand: 'DYMO', name: 'DYMO LabelWriter SE450', why: 'Same protocol with a narrower 448-dot head; not wired up yet.' },
+  { brand: 'DYMO', name: 'DYMO LabelWriter SE450', why: 'LabelWriter for system integration (serial RS-232 and USB): 203 dpi with a 448-dot (57 mm) head, plus its own ASCII command set; its raster mode is close to the 450\'s, but not wired up yet.' },
   { brand: 'DYMO', name: 'DYMO LabelManager PnP / 280 / 420P / 500TS (D1 tape label makers)', why: 'DYMO\'s tape label makers, like P-touch. Different protocol, and some first appear as a USB drive; Labelle supports them.' },
   { brand: 'Brother P-touch', name: 'Brother PT-P900 / P900W / P950NW', why: '360 dpi with a 560-dot head; needs its own tape table.' },
   { brand: 'Brother P-touch', name: 'Brother PT-P300BT', why: 'Bluetooth Low Energy only.' },
