@@ -47,7 +47,7 @@ export function aimsMarkdown() {
   ].join('\n');
 }
 
-export const OTHER_TOOLS_INTRO = 'This is a focused, low-frills editor: fewer features than some of the tools below, '
+export const OTHER_TOOLS_INTRO = 'This editor does less on purpose: fewer features than some of the tools below, '
   + 'but the everyday label is quick to make and prints where you expect. Low-level libraries for these printers are plentiful; label editors are rarer, '
   + 'mostly cover one brand, and often print through CUPS or a small server. This one aims at DYMO LabelWriter and '
   + 'Brother printers together, continuous rolls, text edited in place that fits its box, and a true preview of the printable area, '
