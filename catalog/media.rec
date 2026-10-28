@@ -22,6 +22,9 @@
 #   OffsetRightDots, FeedMarginDots  Brother QL placement and feed values
 #   Margin*Mm      edges the printer cannot print on (default 0)
 #   CornerMm       corner radius drawn in the preview (die-cut only)
+#   BackingMm      width of the backing paper (liner) the labels sit on,
+#                  measured; drawn around die-cut labels in the preview
+#                  (LabelWriter labels without it show an estimate)
 #   Shape          rect (default) or round: a round label in its square,
 #                  e.g. round stickers; the safe area is the circle inset
 #                  by the margins
@@ -40,6 +43,7 @@
 %type: WidthMm,LengthMm,MarginLeftMm,MarginRightMm,MarginTopMm,MarginBottomMm,CornerMm real
 %type: PrintableDots,PrintableLengthDots,OffsetRightDots,FeedMarginDots,StatusMm,LabelsAcross int
 %type: Shape enum rect round
+%type: BackingMm real
 
 # ---------------------------------------------------------------------------
 # DYMO LabelWriter 400 / 450 / 4XL (300 dpi; 672-dot head, 1248 on the 4XL)
@@ -68,6 +72,8 @@ Name: 30252 Address 28 × 89 mm
 Kind: diecut
 WidthMm: 27.86
 LengthMm: 88.9
+# Measured on a roll: the backing is 32 mm wide.
+BackingMm: 32
 MarginLeftMm: 5.84
 MarginRightMm: 1.52
 MarginTopMm: 1.02

@@ -382,17 +382,11 @@ take a few seconds to send.
   label is shown at its real size, DYMO and Brother alike.
 - **Dashed line, the safe area:** the makers' own printable area (for DYMO,
   the driver's). The head can print past it, but the die-cut edge or a label
-  sitting slightly off may trim what is there. Going past it is allowed on
-  purpose, to **overprint** towards the edge (a black background, a border
-  that runs off the label): the preview notes it, and *Fill to edge* sizes a
-  fitted text box to the whole reachable label instead of the safe area.
-- **Overprint past the label edge** (DYMO die-cut labels, *Label* panel, up
-  to 2 mm): the preview grows a border around the label, tinted as the
-  liner, and anything there prints onto the liner, so a black background or
-  a border really reaches the die-cut edge even if the label sits a little
-  off. It works where the head reaches: past the label's far edge and its
-  end (at most 1.5 mm, into the gap before the next label), not before the
-  ~6 mm leading margin or past the edge against the printer's guide.
+  sitting slightly off may trim what is there, so it may not come out the
+  same every time; the preview notes it, and the actual-size panel leaves it
+  off. *Fill to edge* sizes a fitted text box to the whole reachable label
+  instead of the safe area. The head does not print on the backing past the
+  die cut (tested on a LabelWriter 450).
 - **Two labels per row** (e.g. DYMO 30333, 13 × 25 mm halves): the preview
   shows the whole row. *Labels in a row* chooses *Same design on all* (the
   other labels show a dimmed copy; Copies counts rows), *A different design

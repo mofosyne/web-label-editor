@@ -284,7 +284,9 @@ textarea.inplace {
 }
 
 .dims { color: var(--text); font-variant-numeric: tabular-nums; margin: 10px 0 2px; }
+/* Red: will be cut off. Amber: past the safe area, may not print. */
 .dims.warn { color: var(--danger); }
+.dims.caution { color: var(--warn-text); }
 .hint { color: var(--muted); font-size: 12px; margin: 0; }
 
 .item-list { list-style: none; padding: 0; margin: 0 0 12px; }

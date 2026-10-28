@@ -16,7 +16,7 @@ import {
 } from './catalog.js';
 import { testPatternDesign } from './calibration.js';
 import {
-  viewGeometry, jobBitmap, stretchGeometry, rowMode, itemLane, itemVisible, canOverprint, blit, blankBitmap, MAX_BLEED_MM,
+  viewGeometry, jobBitmap, stretchGeometry, rowMode, itemLane, itemVisible, blit, blankBitmap,
   stripToPage, stripRectToPage,
 } from './layout.js';
 import { newRollId, rollCode, parseRollCode } from './rolls.js';
@@ -247,16 +247,19 @@ function setAdjust(key, value) {
 // (printer starts 6 mm late) means nothing can print in the first 6 mm; the
 // LabelWriter also never prints its leading margin (see skipLeadingMargin).
 // A negative hard margin is reachable space past the label edge, which an
-// overprint border can use. Safe: the catalogue margins (DYMO's driver),
+// overprint border could use. Safe: the catalogue margins (DYMO's driver),
 // where the head can print but the die-cut edge or a slightly misplaced
-// label may trim it off. Printing past the safe area is allowed: that is
-// how to overprint (bleed) to the edge.
+// label may trim it off. Printing past the safe area is allowed, but may
+// not come out the same every time.
 const dpmmNow = () => model().dpi / 25.4;
 // The Feed X adjustment in strip dots. Feed X is measured from the end that
 // comes out first, so on printers that feed the strip's far end first
 // (Brother QL) it shifts the other way along the strip.
 const feedDots = (feedMm, m, dpmm) => Math.round((m.leadingEnd === 'end' ? -1 : 1) * feedMm * dpmm);
-const bleedMm = () => (canOverprint(model(), medium()) ? Math.min(MAX_BLEED_MM, design.bleedMm ?? 0) : 0);
+// No overprint border: tested on a LabelWriter 450, the head does not put
+// ink on the backing past a die-cut label's edge (layout.js still supports
+// one, should a printer turn out to).
+const bleedMm = () => 0;
 function geometry(length = medium().lengthDots ?? 0, adj = adjust()) {
   const dpmm = dpmmNow();
   return viewGeometry(model(), medium(), {
@@ -350,7 +353,7 @@ function renderView(d = design, m = model(), med = medium(), { filled, adj, onAs
   const count = med.lanes?.count ?? 1;
   const upright = isPortrait(d);
   const opts = {
-    bleed: canOverprint(m, med) ? Math.round(Math.min(MAX_BLEED_MM, d.bleedMm ?? 0) * dpmm) : 0,
+    bleed: 0,
     feed: feedDots(a.feedMm, m, dpmm),
     across: Math.round(a.acrossMm * dpmm),
   };
@@ -499,12 +502,18 @@ function draw() {
   const alongPx = last.portrait ? cssH : cssW;
   const stub = Math.round(Math.max(28, Math.min(alongPx / zoom / 4, 15) * zoom));
   const stubAtStart = feed.trail < 1;
+  // The backing paper die-cut labels sit on shows past their edges across
+  // (`pad` each side), so the canvas is that much wider there too.
+  const backing = backingInfo();
+  const pad = backing ? Math.round(backing.padMm * zoom) : 0;
+  const ax = last.portrait ? pad : 0;
+  const ay = last.portrait ? 0 : pad;
   viewOrigin = {
-    x: !last.portrait && stubAtStart ? stub : 0,
-    y: last.portrait && stubAtStart ? stub : 0,
+    x: ax + (!last.portrait && stubAtStart ? stub : 0),
+    y: ay + (last.portrait && stubAtStart ? stub : 0),
   };
-  const fullW = cssW + (last.portrait ? 0 : stub);
-  const fullH = cssH + (last.portrait ? stub : 0);
+  const fullW = cssW + (last.portrait ? 2 * pad : stub);
+  const fullH = cssH + (last.portrait ? stub : 2 * pad);
   const dpr = window.devicePixelRatio || 1;
   canvas.style.width = `${fullW}px`;
   canvas.style.height = `${fullH}px`;
@@ -517,11 +526,29 @@ function draw() {
   const colors = previewColors();
   const radius = (med.cornerMm ?? 0) * zoom;
   const round = med.shape === 'round';
+  ctx.translate(ax, ay);
   drawFeedStub(ctx, {
-    stub, stubAtStart, portrait: last.portrait, cssW, cssH, colors, radius, cuts, round,
+    stub, stubAtStart, portrait: last.portrait, cssW, cssH, colors, radius, cuts, round, pad,
     dieCut: !!med.lengthDots, gap: Math.min(3 * zoom, stub * 0.3),
   });
-  ctx.translate(viewOrigin.x, viewOrigin.y);
+  ctx.translate(viewOrigin.x - ax, viewOrigin.y - ay);
+  if (pad) {
+    // The backing alongside the label, with its edges marked.
+    const [bx, by, bw, bh] = last.portrait ? [-pad, 0, cssW + 2 * pad, cssH] : [0, -pad, cssW, cssH + 2 * pad];
+    ctx.fillStyle = 'rgba(230, 190, 110, .35)';
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = 'rgba(150, 120, 70, .7)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (last.portrait) {
+      ctx.moveTo(bx + 0.5, by); ctx.lineTo(bx + 0.5, by + bh);
+      ctx.moveTo(bx + bw - 0.5, by); ctx.lineTo(bx + bw - 0.5, by + bh);
+    } else {
+      ctx.moveTo(bx, by + 0.5); ctx.lineTo(bx + bw, by + 0.5);
+      ctx.moveTo(bx, by + bh - 0.5); ctx.lineTo(bx + bw, by + bh - 0.5);
+    }
+    ctx.stroke();
+  }
 
   // Label outlines: a single plain label is clipped to its shape (rounded
   // corners, or a circle); otherwise each label is outlined and the liner
@@ -632,7 +659,7 @@ function draw() {
   if (lanes) tape = `${lanes.count} labels per row, each ${tape}`;
   $('dims').title = 'Hatched: the printer cannot print there. Dashed line: the safe area (from the label maker\'s driver); '
     + 'items past it still print, overprinting towards the label edge, but the die cut may trim them.'
-    + (geo.top || geo.bottom || geo.right ? ' Tinted: the liner around the label, which an overprint border prints on.' : '');
+    + (backing ? ` Tan: the backing paper the labels sit on (${backing.measured ? 'measured' : 'about 2 mm each side, estimated'}); the head does not print on it.` : '');
   // Checked against where items put ink (text: its glyphs, not the font's
   // line box), with half a dot of slack for rounding.
   const slack = 0.5 * scale;
@@ -660,7 +687,9 @@ function draw() {
     return [[b.x, b.y], [b.x + b.w, b.y], [b.x, b.y + b.h], [b.x + b.w, b.y + b.h]]
       .some(([x, y]) => ((x * scale - cx) / rx) ** 2 + ((y * scale - cy) / ry) ** 2 > 1);
   };
-  const overprint = !offLabel && shownBounds.some(({ b, lane }) => outside(b, safe[lane]) || (round && outsideCircle(b, safe[lane])));
+  const pastSafe = (b, i) => b && outside(b, safe[last.lanes[i]]) || (b && round && outsideCircle(b, safe[last.lanes[i]]));
+  const unsafe = offLabel ? [] : last.inks.map((b, i) => (pastSafe(b, i) ? design.items[i] : null)).filter(Boolean);
+  const overprint = unsafe.length > 0;
   const dims = $('dims');
   // In words: the ends as seen in the preview.
   const end = (p) => (last.portrait ? (p ? 'bottom' : 'top') : (p ? 'right' : 'left'));
@@ -670,10 +699,12 @@ function draw() {
   dims.textContent = `${tape} × ${lenMm.toFixed(1)} mm long${last.portrait ? ', portrait' : ''}  ·  ${geo.width} × ${geo.height} dots @ ${m.dpi} dpi`
     + (highResJob() ? ' (prints at 300 × 600 dpi)' : '')
     + cutNote
-    + (overprint ? '  ·  Overprinting past the safe area (the die cut may trim it)' : '')
+    + (overprint ? `  ·  ⚠ The ${kinds[unsafe[0].type]}${short(unsafe[0])}${unsafe.length > 1 ? ` and ${unsafe.length - 1} more` : ''} `
+      + `${unsafe.length > 1 ? 'go' : 'goes'} past the safe area: it may be trimmed or not print` : '')
     + (last.hidden ? `  ·  ${last.hidden} item${last.hidden > 1 ? 's' : ''} on the other label${lanes?.count > 2 ? 's' : ''} hidden (choose "A different design on each")` : '')
     + `  ·  ${feedNote}`;
   dims.classList.toggle('warn', offLabel);
+  dims.classList.toggle('caution', !offLabel && overprint);
   $('zoom-label').textContent = takeOver ? '1:1' : `${Math.round((zoom / 6) * 100)}%`;
   updateActualButton();
   updateCodeInfo();
@@ -687,6 +718,17 @@ function draw() {
 function evenMargins(mg) {
   const m = Math.min(mg.left, mg.right, mg.top, mg.bottom);
   return { left: m, right: m, top: m, bottom: m };
+}
+
+// The backing paper around die-cut labels: how far it shows past the row
+// of labels each side (mm), and whether that is measured (BackingMm in the
+// catalogue) or the LabelWriter's usual 2 mm a side. null where none shows.
+function backingInfo() {
+  const med = medium();
+  if (!med.lengthDots || model().custom) return null;
+  const rowMm = (med.lanes?.pageDots ?? med.acrossDots) / dpmmNow();
+  if (med.backingMm) return { padMm: Math.max(0, (med.backingMm - rowMm) / 2), measured: true };
+  return model().family === 'dymo-lw' ? { padMm: 2, measured: false } : null;
 }
 
 // A label's outline on a canvas or Path2D: a rounded rectangle, or the
@@ -705,16 +747,19 @@ function labelOutline(p, x, y, w, h, radius, round) {
 // far edge, an arrow the way the label moves, and the cut (dashed) when
 // the printer cuts. Drawn before the canvas is shifted to the label.
 function drawFeedStub(ctx, o) {
-  const { stub, stubAtStart, portrait, cssW, cssH, colors, radius, dieCut, gap, cuts, round } = o;
-  // Work in "along / across" terms, then map to x / y.
+  const { stub, stubAtStart, portrait, cssW, cssH, colors, radius, dieCut, gap, cuts, round, pad = 0 } = o;
+  // Work in "along / across" terms, then map to x / y. The roll spans the
+  // backing (`pad` past the label each side) when there is one.
   const across = portrait ? cssW : cssH;
+  const c0 = -pad;
+  const c1 = across + pad;
   const near = stubAtStart ? stub : (portrait ? cssH : cssW); // the label's trailing edge
   const dir = stubAtStart ? -1 : 1; // from the label into the stub
   const P = (a, c) => (portrait ? [c, a] : [a, c]);
   const wave = (a0) => {
     // The torn far edge, as a path along the across axis.
     const pts = [];
-    for (let c = 0; c <= across; c += 4) pts.push(P(a0 + Math.sin(c / 5) * 2.5 * dir, c));
+    for (let c = c0; c <= c1; c += 4) pts.push(P(a0 + Math.sin(c / 5) * 2.5 * dir, c));
     return pts;
   };
   const far = near + dir * (stub - 4);
@@ -722,9 +767,9 @@ function drawFeedStub(ctx, o) {
   ctx.globalAlpha = 0.55;
   // Backing or tape body: from the label's edge to the torn edge.
   const region = new Path2D();
-  region.moveTo(...P(near, 0));
+  region.moveTo(...P(near, c0));
   for (const pt of wave(far)) region.lineTo(...pt);
-  region.lineTo(...P(near, across));
+  region.lineTo(...P(near, c1));
   region.closePath();
   ctx.fillStyle = dieCut ? 'rgba(230, 190, 110, .6)' : `rgb(${colors.paper.join(',')})`;
   ctx.fill(region);
@@ -1134,9 +1179,6 @@ function buildSetup() {
   }
   const orient = portrait() ? 'portrait' : 'landscape';
   for (const b of document.querySelectorAll('[data-orient]')) b.setAttribute('aria-pressed', String(b.dataset.orient === orient));
-  const overprintable = canOverprint(m, medium());
-  $('bleed-box').hidden = !overprintable;
-  if (overprintable) $('bleed').value = String(design.bleedMm ?? 0);
   updateReportLinks();
   const linked = design.labelId ? labels.get(design.labelId) : null;
   if (design.labelId && !linked) delete design.labelId;
@@ -3357,7 +3399,6 @@ function wire() {
     else setRowMode(e.target.value);
   };
   for (const b of document.querySelectorAll('[data-orient]')) b.onclick = () => setOrientation(b.dataset.orient);
-  $('bleed').onchange = (e) => { design.bleedMm = Number(e.target.value) || 0; refresh({ setup: true }); };
   $('btn-lib-open').onclick = () => showLibrary();
   $('btn-lib-save').onclick = () => saveToLibrary(false);
   $('btn-save').onclick = () => saveToLibrary(false);

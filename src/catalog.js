@@ -73,6 +73,8 @@ function toMedium(rec, model) {
   if (printableDots != null) medium.tapeMm = widthMm;
   const corner = num('CornerMm');
   if (corner) medium.cornerMm = corner;
+  const backing = num('BackingMm');
+  if (backing) medium.backingMm = backing;
   const shape = text('Shape');
   if (shape && shape !== 'rect' && shape !== 'round') throw new Error(`${where}: Shape must be rect or round`);
   if (shape === 'round') medium.shape = 'round';

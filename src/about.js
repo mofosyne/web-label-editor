@@ -115,8 +115,9 @@ function tips() {
     el('ul', {},
       li(b('Hatched border'), ': where the printer cannot put ink at all. Anything there is cut off and flagged; '
         + 'text counts where its letters are, not the blank space a font keeps above and below them.'),
-      li(b('Dashed line'), ': the safe area. Items past it still print (overprinting towards the label edge), but the '
-        + 'die cut may trim them.'),
+      li(b('Dashed line'), ': the safe area. Past it, a print may be trimmed by the die cut or not come out the same '
+        + 'every time: flagged in amber, and left off the actual-size panel. The tan band is the backing paper; the '
+        + 'head does not print on it.'),
       li(b('Portrait'), ' (▭ ▯ in the toolbar) lets you design the label standing upright; it is turned for printing. '
         + 'On tape it grows downwards with the content.'),
       li(b('Actual size'), ': the panel under the editor shows the label at its real size; until you calibrate your '
@@ -137,8 +138,6 @@ function tips() {
         + 'sizes its text to fit; on tape and rolls it has a set size, and the label grows with it.'),
       li(b('Fit text in a fixed box'), ' picks the largest size that fits; ', b('Fill safe area'), ' makes the box '
         + 'cover the safe area, ', b('Fill to edge'), ' the whole label. Drag the corner handle to resize.'),
-      li(b('Overprint past the label edge'), ' (DYMO die-cut labels): the tinted border around the label is the liner; '
-        + 'ink there makes a black background or border reach the edge even if the label sits a little off.'),
       li(b('Two labels per row'), ' (e.g. DYMO 30333): the preview shows the whole row. Choose the same design on '
         + 'all, a different design on each (click a label to add to it, drag items between them), or one at a time. '
         + 'The 🔓 Edit separately button on the dimmed copy unlinks it, starting from a copy of label 1.'),
