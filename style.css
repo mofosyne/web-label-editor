@@ -188,6 +188,13 @@ dialog.help .row { justify-content: flex-end; margin: 0; }
 .stage { padding: 16px; min-width: 0; }
 .toolbar { display: flex; gap: 4px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
 .toolbar > button { padding: 6px 10px; }
+/* Icons in buttons (Lucide, see lucide.js), before the name if there is one. */
+svg.ico { width: 16px; height: 16px; vertical-align: -3px; flex: none; }
+button:not(.icon) > svg.ico, summary > svg.ico { margin-right: 6px; }
+.icon > svg.ico { display: block; margin: 0 auto; }
+dialog.symbols .grid button > svg.ico { width: 22px; height: 22px; margin: 0 auto; display: block; }
+dialog.symbols input[type="search"] { width: 100%; box-sizing: border-box; margin: 4px 0 6px; }
+dialog.symbols .symbol-scroll { max-height: 60vh; overflow: auto; }
 .toolbar .spacer { flex: 1; }
 /* The view controls wrap as one group, never one button at a time. */
 .toolbar .tools { display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
@@ -296,7 +303,6 @@ details.menu .menu-list.left { left: 0; right: auto; }
 .toolbar details.menu > summary { padding: 6px 10px; }
 dialog.symbols .grid { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 12px; }
 dialog.symbols .grid button { min-width: 38px; height: 38px; font-size: 18px; padding: 0 6px; }
-dialog.symbols .grid button svg { width: 20px; height: 20px; fill: currentColor; display: block; margin: auto; }
 dialog.symbols h3 { margin: 8px 0 2px; font-size: 13px; }
 details.menu .menu-list button { border: none; background: none; text-align: left; padding: 7px 10px; border-radius: 5px; }
 details.menu .menu-list button:hover { background: var(--stage); }

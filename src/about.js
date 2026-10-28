@@ -33,7 +33,7 @@ function welcome(go) {
       + 'label printers. Nothing to install.'),
     el('ol', { className: 'start' },
       li(b('Pick your printer and label'), ' in the Printer panel. See ', linkTo('printers', 'which printers work'), '.'),
-      li(b('Click the text on the label and type.'), ' It sizes itself to fit. Use ', b('+ Text'), ', ', b('+ QR code'),
+      li(b('Click the text on the label and type.'), ' It sizes itself to fit. Use ', b('Text'), ', ', b('QR code'),
         ' and the rest above the label to add more.'),
       li(b('Connect'), ' in the Printer panel, then ', b('Print'), '. If the browser is refused access, the app explains the '
         + 'one-time fix for your system.')),
@@ -134,7 +134,7 @@ function tips() {
         + 'barcodes. QR codes don\'t gain from it.'),
       li(b('Rotate'), ' turns text in quarter turns, for cable flags and vertical text; a fitted box turns with it '
         + 'and its text refits.'),
-      li('On a die-cut label, new text (', b('+ Text'), ' or a double-click) is a box that fills the free space and '
+      li('On a die-cut label, new text (', b('Text'), ' or a double-click) is a box that fills the free space and '
         + 'sizes its text to fit; on tape and rolls it has a set size, and the label grows with it.'),
       li(b('Fit text in a fixed box'), ' picks the largest size that fits; ', b('Fill safe area'), ' makes the box '
         + 'cover the safe area, ', b('Fill to edge'), ' the whole label. Drag the corner handle to resize.'),

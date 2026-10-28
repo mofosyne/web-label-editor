@@ -3,7 +3,7 @@
 // Strip coordinates: x runs along the label length, y across the tape/head.
 // Design units are millimetres; (0,0) is the top-left of the printable area.
 
-import { ICONS } from './icons.js';
+import { ALL_ICONS } from './icons.js';
 import { encodeQr } from './codes/qr.js';
 import { SYMBOLOGIES } from './codes/barcode.js';
 import { pageToStrip } from './layout.js';
@@ -148,7 +148,7 @@ export function textLayout(ctx, item, dpmm) {
 // Brand icons (see icons.js) as Path2D, made once each.
 const iconPaths = new Map();
 function iconPath(name) {
-  if (!iconPaths.has(name)) iconPaths.set(name, ICONS[name] ? new Path2D(ICONS[name].path) : null);
+  if (!iconPaths.has(name)) iconPaths.set(name, ALL_ICONS[name] ? new Path2D(ALL_ICONS[name].path) : null);
   return iconPaths.get(name);
 }
 
@@ -307,7 +307,8 @@ function drawCode(ctx, item, dpmm, sx = 1) {
   }
 }
 
-// A brand icon, drawn from its 24-unit path at item.size mm square.
+// An icon, drawn from its 24-unit path at item.size mm square: brand icons
+// filled, Lucide-style symbols as 2-unit strokes with round ends.
 function drawIcon(ctx, item, dpmm) {
   const path = iconPath(item.icon);
   if (!path) return;
@@ -316,7 +317,13 @@ function drawIcon(ctx, item, dpmm) {
   ctx.translate(item.x * dpmm, item.y * dpmm);
   ctx.scale(s, s);
   ctx.fillStyle = '#000';
-  ctx.fill(path);
+  ctx.strokeStyle = '#000';
+  if (ALL_ICONS[item.icon].stroke) {
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke(path);
+  } else ctx.fill(path);
   ctx.restore();
 }
 

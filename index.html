@@ -15,23 +15,23 @@
       <span id="lib-current" class="pill muted" hidden></span>
     </div>
     <div class="actions">
-      <button id="btn-batch" title="Print a batch: one label per row of a spreadsheet or list, numbered or dated">Batch…</button>
+      <button id="btn-batch" data-icon="batch" title="Print a batch: one label per row of a spreadsheet or list, numbered or dated">Batch…</button>
       <label class="copies">Copies <input id="copies" type="number" min="1" max="99" value="1"></label>
-      <button id="btn-print" class="primary" disabled>Print</button>
-      <button id="btn-save">Save</button>
-      <button id="btn-labels">My labels</button>
+      <button id="btn-print" class="primary" data-icon="print" disabled>Print</button>
+      <button id="btn-save" data-icon="save">Save</button>
+      <button id="btn-labels" data-icon="labels">My labels</button>
       <details class="menu" id="file-menu">
-        <summary>File ▾</summary>
+        <summary data-icon="file">File ▾</summary>
         <div class="menu-list" role="menu">
-          <button id="btn-new" role="menuitem">New design</button>
-          <button id="btn-import" role="menuitem">Open file…</button>
-          <button id="btn-export" role="menuitem">Save file…</button>
-          <button id="btn-lib-saveas" role="menuitem">Save as new label…</button>
-          <button id="btn-png" role="menuitem">Download PNG</button>
+          <button id="btn-new" role="menuitem" data-icon="new">New design</button>
+          <button id="btn-import" role="menuitem" data-icon="openFile">Open file…</button>
+          <button id="btn-export" role="menuitem" data-icon="saveFile">Save file…</button>
+          <button id="btn-lib-saveas" role="menuitem" data-icon="labels">Save as new label…</button>
+          <button id="btn-png" role="menuitem" data-icon="png">Download PNG</button>
         </div>
       </details>
       <input id="import-file" type="file" accept="application/json,.json" hidden>
-      <button id="btn-help">Help</button>
+      <button id="btn-help" data-icon="help">Help</button>
     </div>
   </header>
 
@@ -84,10 +84,10 @@
 
     <section class="stage">
       <div class="toolbar">
-        <button id="add-text">+ Text</button>
-        <button id="add-image">+ Image</button>
+        <button id="add-text" data-icon="text" title="Add text">Text</button>
+        <button id="add-image" data-icon="image" title="Add an image">Image</button>
         <details class="menu" id="shape-menu">
-          <summary>+ Shape</summary>
+          <summary data-icon="shape" title="Add a shape">Shape ▾</summary>
           <div class="menu-list left" role="menu">
             <button data-shape="rect" role="menuitem">▭ Rectangle</button>
             <button data-shape="rounded" role="menuitem">▢ Rounded rectangle</button>
@@ -96,21 +96,21 @@
             <button data-shape="vline" role="menuitem">│ Line down</button>
           </div>
         </details>
-        <button id="add-symbol">+ Symbol</button>
-        <button id="add-qr">+ QR code</button>
-        <button id="add-barcode">+ Barcode</button>
+        <button id="add-symbol" data-icon="symbol" title="Add a symbol: safety, electrical, recycling, brands…">Symbol</button>
+        <button id="add-qr" data-icon="qr" title="Add a QR code">QR code</button>
+        <button id="add-barcode" data-icon="barcode" title="Add a barcode">Barcode</button>
         <input id="image-file" type="file" accept="image/*" hidden>
         <span class="spacer"></span>
         <span class="tools">
         <span class="seg" role="group" aria-label="Orientation">
-          <button class="icon" data-orient="landscape" title="Landscape: the label lying along the feed" aria-label="Landscape">▭</button>
-          <button class="icon" data-orient="portrait" title="Portrait: the label standing upright" aria-label="Portrait">▯</button>
+          <button class="icon" data-orient="landscape" title="Landscape: the label lying along the feed" aria-label="Landscape" data-icon="landscape"></button>
+          <button class="icon" data-orient="portrait" title="Portrait: the label standing upright" aria-label="Portrait" data-icon="portrait"></button>
         </span>
-        <button id="undo" class="icon" aria-label="Undo" title="Undo (Ctrl+Z)">↶</button>
-        <button id="redo" class="icon" aria-label="Redo" title="Redo (Ctrl+Shift+Z)">↷</button>
-        <button id="zoom-out" class="icon" aria-label="Zoom out">−</button>
+        <button id="undo" class="icon" aria-label="Undo" title="Undo (Ctrl+Z)" data-icon="undo"></button>
+        <button id="redo" class="icon" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" data-icon="redo"></button>
+        <button id="zoom-out" class="icon" aria-label="Zoom out" title="Zoom out" data-icon="zoomOut"></button>
         <span id="zoom-label">100%</span>
-        <button id="zoom-in" class="icon" aria-label="Zoom in">+</button>
+        <button id="zoom-in" class="icon" aria-label="Zoom in" title="Zoom in" data-icon="zoomIn"></button>
         <button id="zoom-actual" class="icon" aria-label="Actual size">1:1</button>
         </span>
       </div>

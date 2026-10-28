@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { MODELS, mediumMargins } from './printers/models.js';
 import { LANGUAGES, LANGUAGE_NAMES, printerRecord } from './printers/generic.js';
-import { ICONS, SYMBOLS } from './icons.js';
+import { ALL_ICONS, ICON_GROUPS, SYMBOLS } from './icons.js';
+import { UI_ICONS } from './lucide.js';
 import { renderDesign, bitmapToCanvas, itemError, quarterTurns } from './render.js';
 import {
   parseData, usedFields, hasFields, usesData, chosenRows, fieldValues, fillItems, labelRuns, counterText, COUNTER,
@@ -414,7 +415,13 @@ const newTextSize = () => Math.max(1.5, round1(usableMm() * (growsDown() ? 0.3 :
 // Where a new item of height h (mm) goes: after the last item along the
 // label, centred in the band; or, on a page growing downwards, below the
 // lowest item at the left margin.
-function placeNew(h) {
+function placeNew(h, w = h) {
+  // A die-cut label: into free space that fits, else beside fitted text
+  // that makes room (see roomFor).
+  if (medium().lengthDots) {
+    const spot = roomFor(w, h);
+    if (spot) return spot;
+  }
   if (!growsDown()) return { x: nextX(), y: round1(bandTop() + Math.max(0, (usableMm() - h) / 2)) };
   const lane = currentLane();
   const oy = last?.slots[lane]?.oy ?? 0;
@@ -1190,6 +1197,7 @@ function buildSetup() {
   btns.replaceChildren(...m.transports.map((t) => {
     const b = document.createElement('button');
     b.textContent = transport ? 'Disconnect' : connectLabels[t];
+    if (!transport) b.prepend(svgIcon(UI_ICONS[t === 'usb' ? 'usb' : 'bluetooth']));
     b.disabled = !transport && !support[t];
     b.title = support[t] ? '' : 'Not supported in this browser';
     b.onclick = () => (transport ? disconnect() : connect(t));
@@ -1800,7 +1808,7 @@ async function print() {
   if (!transport) return;
   const btn = $('btn-print');
   btn.disabled = true;
-  btn.textContent = 'Printing…';
+  setPrintLabel('Printing…');
   try {
     const copies = Math.max(1, Math.min(99, parseInt($('copies').value, 10) || 1));
     // With fields, each label of the batch is the design filled in.
@@ -1829,7 +1837,7 @@ async function print() {
     else showBanner(`Print failed: ${err.message}`);
   } finally {
     await transport?.release();
-    btn.textContent = printText();
+    setPrintLabel(printText());
     btn.disabled = !transport;
   }
 }
@@ -1904,6 +1912,13 @@ function advanceCounter(printed) {
   return ` Next number: ${counterText(design.counter, 0)}.`;
 }
 
+// The Print button's words, after its icon.
+function setPrintLabel(text) {
+  const b = $('btn-print');
+  if (b.lastChild?.nodeType === Node.TEXT_NODE) b.lastChild.textContent = text;
+  else b.append(text);
+}
+
 // How many labels Print makes, on its button.
 function printText() {
   if (!hasFields(design)) return 'Print';
@@ -1970,7 +1985,7 @@ function updateDataBar() {
   const runs = show ? labelRuns(design, 1) : [];
   const key = JSON.stringify([show, design.data?.name, design.data?.columns, design.data?.rows.length, design.data?.skip, previewAt,
     [...usedFields(design)], runs.length]);
-  $('btn-print').textContent = $('btn-print').textContent === 'Printing…' ? 'Printing…' : printText();
+  setPrintLabel($('btn-print').textContent === 'Printing…' ? 'Printing…' : printText());
   if (key === dataBarKey) return;
   dataBarKey = key;
   bar.hidden = !show;
@@ -2313,6 +2328,22 @@ function freeAreas(lane = currentLane()) {
     .map((a) => ({ x: round1(a.x0), y: round1(a.y0), w: round1(a.x1 - a.x0), h: round1(a.y1 - a.y0) }))
     .sort((a, b) => b.w * b.h - a.w * a.h);
 }
+// Where an item w × h mm goes on a die-cut label: centred in the largest
+// free area that holds it; or, on a full label, at the end of a fitted text
+// box that fills it, which narrows to make room (its text refits), as an
+// address label with a QR code beside it. null if neither works.
+function roomFor(w, h) {
+  const free = freeAreas().find((a) => a.w >= w && a.h >= h);
+  if (free) return { x: round1(free.x + (free.w - w) / 2), y: round1(free.y + (free.h - h) / 2) };
+  const lane = currentLane();
+  const big = design.items.filter((it) => it.type === 'text' && it.fit && !it.rotate && laneOf(it) === lane)
+    .sort((a, b) => b.w * b.h - a.w * a.h)[0];
+  if (!big || big.w < w + 10 || h > pageSize().h) return null;
+  big.w = round1(big.w - w - 1);
+  const y = Math.max(itemMargins().top, Math.min(big.y + (big.h - h) / 2, pageSize().h - itemMargins().bottom - h));
+  return { x: round1(big.x + big.w + 1), y: round1(y) };
+}
+
 const fittedText = (area, extra = {}) => ({
   type: 'text', text: 'Text', font: 'sans-serif', size: Math.max(1.5, round1(area.h * 0.7)), bold: false, italic: false,
   align: 'center', fit: true, ...area, ...extra,
@@ -2363,12 +2394,12 @@ function addText() {
 function addImage(file) {
   const reader = new FileReader();
   reader.onload = () => {
-    addItem({ type: 'image', src: reader.result, ...placeNew(usableMm()), w: round1(usableMm()), threshold: 128, dither: false, invert: false });
+    addItem({ type: 'image', src: reader.result, ...placeNew(usableMm(), usableMm()), w: round1(usableMm()), threshold: 128, dither: false, invert: false });
   };
   reader.readAsDataURL(file);
 }
 
-// "+ Shape": a rectangle as tall as the label (across), a rounded one, a
+// Shape ▾: a rectangle as tall as the label (across), a rounded one, a
 // circle, or a line across or down.
 function addShape(kind) {
   const across = Math.max(2, round1(usableMm() - 1));
@@ -2379,12 +2410,12 @@ function addShape(kind) {
     const len = down ? across : 20;
     const box = down ? { w: 1, h: len } : { w: len, h: 1 };
     if (vertical) [box.w, box.h] = [box.h, box.w];
-    addItem({ type: 'box', shape: 'line', ...placeNew(box.h), ...box, stroke: 0.4, fill: false });
+    addItem({ type: 'box', shape: 'line', ...placeNew(box.h, box.w), ...box, stroke: 0.4, fill: false });
     return;
   }
   const side = kind === 'ellipse' ? across : 20;
   const box = vertical ? { w: across, h: side } : { w: side, h: across };
-  addItem({ type: 'box', shape: kind, ...placeNew(box.h), ...box, stroke: 0.4, fill: false, ...(kind === 'rounded' ? { radius: 2 } : {}) });
+  addItem({ type: 'box', shape: kind, ...placeNew(box.h, box.w), ...box, stroke: 0.4, fill: false, ...(kind === 'rounded' ? { radius: 2 } : {}) });
 }
 
 function addIcon(name) {
@@ -2392,7 +2423,25 @@ function addIcon(name) {
   addItem({ type: 'icon', icon: name, size, ...placeNew(size) });
 }
 
-// "+ Symbol": characters go into the text (at the cursor while editing it
+// An inline SVG icon for a button or the picker: a 24-unit path, stroked
+// (Lucide) or filled (brand icons).
+function svgIcon(d, filled = false) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const s = document.createElementNS(ns, 'svg');
+  s.setAttribute('viewBox', '0 0 24 24');
+  s.setAttribute('aria-hidden', 'true');
+  s.classList.add('ico');
+  if (filled) s.setAttribute('fill', 'currentColor');
+  else {
+    for (const [k, v] of [['fill', 'none'], ['stroke', 'currentColor'], ['stroke-width', '2'], ['stroke-linecap', 'round'], ['stroke-linejoin', 'round']]) s.setAttribute(k, v);
+  }
+  const p = document.createElementNS(ns, 'path');
+  p.setAttribute('d', d);
+  s.append(p);
+  return s;
+}
+
+// Symbol: characters go into the text (at the cursor while editing it
 // on the label, else into the selected text, else as a new text); brand
 // icons are items of their own.
 function openSymbols() {
@@ -2414,29 +2463,41 @@ function openSymbols() {
       return b;
     })),
   ]).flat();
-  const svg = (path) => {
-    const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    s.setAttribute('viewBox', '0 0 24 24');
-    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    p.setAttribute('d', path);
-    s.append(p);
-    return s;
+  const iconSections = ICON_GROUPS.map(([group, ids]) => {
+    const grid = el('div', { className: 'grid' }, ...ids.map((id) => {
+      const ic = ALL_ICONS[id];
+      const b = el('button', { type: 'button', title: ic.title, ariaLabel: ic.title }, svgIcon(ic.path, !ic.stroke));
+      b.dataset.search = `${ic.title} ${id} ${group}`.toLowerCase();
+      b.onclick = pick(() => addIcon(id));
+      return b;
+    }));
+    return el('section', {}, el('h3', { textContent: group }), grid);
+  });
+  const charSection = el('section', {}, el('h3', { textContent: 'Characters (go into text)' }), ...symbolButtons);
+  // Typing narrows the icons down by name ("warn", "recycle", "earth"…).
+  const filter = el('input', { type: 'search', placeholder: 'Find a symbol: warning, recycle, earth, wifi…', ariaLabel: 'Find a symbol' });
+  filter.oninput = () => {
+    const q = filter.value.trim().toLowerCase();
+    for (const sec of iconSections) {
+      let shown = 0;
+      for (const b of sec.querySelectorAll('button')) {
+        b.hidden = !!q && !b.dataset.search.includes(q);
+        if (!b.hidden) shown++;
+      }
+      sec.hidden = !shown;
+    }
+    charSection.hidden = !!q;
   };
-  const icons = el('div', { className: 'grid' }, ...Object.entries(ICONS).map(([name, icon]) => {
-    const b = el('button', { type: 'button', title: icon.title, ariaLabel: icon.title }, svg(icon.path));
-    b.onclick = pick(() => addIcon(name));
-    return b;
-  }));
   dialog.replaceChildren(
-    el('header', {}, el('h2', { textContent: 'Symbols and icons' }), close),
-    el('p', { className: 'note', textContent: 'Symbols are characters: they go into the selected text, at the cursor if you are '
-      + 'editing it on the label, or into a new text. Brand icons are items of their own (Simple Icons, public domain; '
-      + 'the brands are trademarks of their owners).' }),
-    ...symbolButtons,
-    el('h3', { textContent: 'Brand icons' }),
-    icons,
+    el('header', {}, el('h2', { textContent: 'Symbols' }), close),
+    filter,
+    el('p', { className: 'note', textContent: 'Symbols are items of their own, sized like a QR code (Lucide icons, ISC licence; '
+      + 'brand icons from Simple Icons, public domain, the brands being trademarks of their owners). Characters go into the '
+      + 'selected text, at the cursor if you are editing it on the label, or into a new text.' }),
+    el('div', { className: 'symbol-scroll' }, ...iconSections, charSection),
   );
   if (!dialog.open) dialog.showModal();
+  filter.focus();
 }
 
 function addQr() {
@@ -2450,7 +2511,7 @@ function addBarcode() {
   const total = height + 0.4 + textSize;
   addItem({
     type: 'barcode', symbology: 'code128', data: 'ABC-12345', module: 0.3, height,
-    showText: true, textSize, ...placeNew(total),
+    showText: true, textSize, ...placeNew(total, 30),
   });
 }
 
@@ -2460,7 +2521,7 @@ function describe(item) {
   if (item.type === 'image') return `${item.w} mm wide`;
   if (item.type === 'qr') return `${warn}${item.data.split('\n')[0] || '(empty)'}`;
   if (item.type === 'barcode') return `${warn}${SYMBOLOGIES[item.symbology].name}: ${item.data}`;
-  if (item.type === 'icon') return `${ICONS[item.icon]?.title ?? item.icon} icon`;
+  if (item.type === 'icon') return `${ALL_ICONS[item.icon]?.title ?? item.icon}`;
   const shape = { rounded: 'rounded ', ellipse: 'ellipse ', line: 'line ' }[item.shape] ?? '';
   return `${shape}${item.w} × ${item.h} mm`;
 }
@@ -2497,8 +2558,10 @@ function buildFormatBar() {
   size.setAttribute('list', 'text-sizes');
   const sizes = el('datalist', { id: 'text-sizes' },
     ...['Auto', 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25].map((v) => new Option(String(v), String(v))));
+  // label: a letter (B, I) or an icon's path data.
   const button = (label, title, onClick, cls = '') => {
-    const b = el('button', { type: 'button', className: `icon ${cls}`, title, ariaLabel: title, textContent: label });
+    const b = el('button', { type: 'button', className: `icon ${cls}`, title, ariaLabel: title });
+    if (label.length > 2) b.append(svgIcon(label)); else b.textContent = label;
     b.onclick = change(onClick);
     return b;
   };
@@ -2518,19 +2581,19 @@ function buildFormatBar() {
   const turn = (it) => setRotation(it, ((quarterTurns(it) + 1) % 4) * 90);
   bar.replaceChildren(
     font, size, sizes, el('span', { className: 'unit', textContent: 'mm' }),
-    button('A−', 'Smaller', step(1 / 1.15)),
-    button('A+', 'Bigger', step(1.15)),
+    button(UI_ICONS.smaller, 'Smaller', step(1 / 1.15)),
+    button(UI_ICONS.bigger, 'Bigger', step(1.15)),
     el('span', { className: 'sep' }),
     button('B', 'Bold', (it) => { it.bold = !it.bold; }, 'b'),
     button('I', 'Italic', (it) => { it.italic = !it.italic; }, 'i'),
     el('span', { className: 'sep' }),
-    ...[['left', '⇤', 'Align left'], ['center', '↔', 'Centre'], ['right', '⇥', 'Align right']].map(([v, label, title]) => {
+    ...[['left', UI_ICONS.alignLeft, 'Align left'], ['center', UI_ICONS.alignCenter, 'Centre'], ['right', UI_ICONS.alignRight, 'Align right']].map(([v, label, title]) => {
       const b = button(label, title, (it) => { it.align = v; });
       b.dataset.align = v;
       return b;
     }),
     el('span', { className: 'sep' }),
-    button('⟳', 'Turn a quarter (for vertical text and cable flags)', turn),
+    button(UI_ICONS.turn, 'Turn a quarter (for vertical text and cable flags)', turn),
   );
   syncFormatBar();
 }
@@ -2720,7 +2783,7 @@ function buildProps() {
     );
   } else if (item.type === 'icon') {
     panel.append(
-      field('Icon', 'icon', { type: 'select', choices: Object.entries(ICONS).map(([id, ic]) => [id, ic.title]) }),
+      field('Symbol', 'icon', { type: 'select', choices: Object.entries(ALL_ICONS).map(([id, ic]) => [id, `${ic.group}: ${ic.title}`]) }),
       num('Size (mm)', 'size', 0.5, 2),
     );
   }
@@ -3407,6 +3470,8 @@ function wire() {
   $('pad-mm').oninput = (e) => { design.length.padMm = parseFloat(e.target.value) || 0; refresh(); };
   $('invert').onchange = (e) => { design.invert = e.target.checked; refresh(); };
   $('btn-detect').onclick = detect;
+  // Icons on the buttons that name one (data-icon).
+  for (const e of document.querySelectorAll('[data-icon]')) e.prepend(svgIcon(UI_ICONS[e.dataset.icon]));
   $('btn-usb-help').onclick = () => showUsbHelp();
   // The File menu closes after a choice, or a click anywhere else.
   const fileMenu = $('file-menu');
