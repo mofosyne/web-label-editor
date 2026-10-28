@@ -222,7 +222,8 @@ The app has its own welcome page and **Help** with the same information.
   to 1/600 inch, so a 0.30 mm bar prints 0.30 mm rather than 0.34 mm, and
   text is smoother. *Auto* uses it only when a barcode needs it; QR codes
   gain nothing (their square modules are set by the 300 dpi across the
-  head). The preview stays at 300 dpi.
+  head). The preview stays at 300 dpi. Tested on a LabelWriter 450 (die-cut
+  address labels); the QL side is experimental.
 - **Tape detection** (P-touch, QL): the printer reports the loaded tape; the
   app switches to it, previews in the tape's colours (P-touch), and stops a
   print if the tape changed or the printer reports a problem.

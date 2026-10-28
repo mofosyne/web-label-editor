@@ -39,7 +39,9 @@ export function encodeLabelWriter(bitmap, opts = {}) {
   w.push(ESC, 0x42, 0); // ESC B: dot tab 0
   // ESC h: text quality, 300 x 300 dpi; ESC i: barcode and graphics
   // quality, 300 x 600 dpi (raster lines at 600 per inch along the feed), as
-  // DYMO's CUPS driver sends for its "Barcodes and Graphics" setting.
+  // DYMO's CUPS driver sends for its "Barcodes and Graphics" setting. ESC L
+  // then counts 600 dpi lines: tested on a LabelWriter 450 with a 30252
+  // die-cut label (one label fed, barcode correct; slower than ESC h).
   if (!se450) w.push(ESC, highRes ? 0x69 : 0x68);
   w.push(ESC, density); // ESC c/d/e/g: print density
   // ESC q: roll select on the Twin Turbo ('0' auto, '1' left, '2' right).
