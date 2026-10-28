@@ -275,6 +275,467 @@ CornerMm: 3
 Source: lw4xl.ppd 99019: 166.56 x 538.56 pt, imageable 4.08 4.32 163.68 522.72
 
 # ---------------------------------------------------------------------------
+# More LabelWriter labels, generated from DYMO's lw4xl.ppd (dymo-cups-drivers):
+# size from PaperDimension, margins from ImageableArea (the leading margin is
+# the length past its top). CornerMm here is an estimate for the preview only.
+
+Id: 11351
+Family: dymo-lw
+Name: 11351 Jewelry Label 54 × 22 mm
+Kind: diecut
+WidthMm: 54.19
+LengthMm: 22.27
+MarginLeftMm: 1.52
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 0
+CornerMm: 2
+Source: lw4xl.ppd 11351: 153.6 x 63.12 pt, imageable 0.00 4.32 150.72 58.80
+
+Id: 11352
+Family: dymo-lw
+Name: 11352 Return Address 25 × 54 mm
+Kind: diecut
+WidthMm: 25.4
+LengthMm: 54.02
+MarginLeftMm: 2.29
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 3
+Source: lw4xl.ppd 11352: 72 x 153.12 pt, imageable 4.08 4.32 69.12 146.64
+
+Id: 11353
+Family: dymo-lw
+Name: 11353 Multi-purpose 25 × 25 mm
+Kind: diecut
+WidthMm: 25.4
+LengthMm: 25.4
+MarginLeftMm: 2.37
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 3
+Source: lw4xl.ppd 11353: 72 x 72 pt, imageable 4.08 4.32 69.12 65.28
+
+Id: 11356
+Family: dymo-lw
+Name: 11356 White Name badge 41 × 89 mm
+Kind: diecut
+WidthMm: 41.32
+LengthMm: 88.9
+MarginLeftMm: 5.84
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 3
+Source: lw4xl.ppd 11356: 117.12 x 252 pt, imageable 4.08 4.32 114.24 235.44
+
+Id: 30258
+Family: dymo-lw
+Name: 30258 Diskette 54 × 70 mm
+Kind: diecut
+WidthMm: 54.02
+LengthMm: 69.85
+MarginLeftMm: 5.59
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 3
+Source: lw4xl.ppd 30258: 153.12 x 198 pt, imageable 4.08 4.32 150.24 182.16
+
+Id: 30320
+Family: dymo-lw
+Name: 30320 Address 28 × 89 mm
+Kind: diecut
+WidthMm: 27.86
+LengthMm: 88.9
+MarginLeftMm: 5.84
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.52
+CornerMm: 3
+Source: lw4xl.ppd 30320: 78.96 x 252 pt, imageable 4.32 4.32 76.08 235.44
+
+Id: 30321
+Family: dymo-lw
+Name: 30321 Large Address 36 × 89 mm
+Kind: diecut
+WidthMm: 35.73
+LengthMm: 88.56
+MarginLeftMm: 5.67
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.52
+CornerMm: 3
+Source: lw4xl.ppd 30321: 101.28 x 251.04 pt, imageable 4.32 4.32 98.40 234.96
+
+Id: 30323
+Family: dymo-lw
+Name: 30323 Shipping 54 × 101 mm
+Kind: diecut
+WidthMm: 54.02
+LengthMm: 100.84
+MarginLeftMm: 5.42
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.52
+CornerMm: 3
+Source: lw4xl.ppd 30323: 153.12 x 285.84 pt, imageable 4.32 4.32 150.24 270.48
+
+Id: 30324
+Family: dymo-lw
+Name: 30324 Diskette 54 × 70 mm
+Kind: diecut
+WidthMm: 54.02
+LengthMm: 69.85
+MarginLeftMm: 5.59
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.02
+CornerMm: 3
+Source: lw4xl.ppd 30324: 153.12 x 198 pt, imageable 2.88 4.32 150.24 182.16
+
+Id: 30325
+Family: dymo-lw
+Name: 30325 Video Spine 19 × 149 mm
+Kind: diecut
+WidthMm: 19.05
+LengthMm: 149.27
+MarginLeftMm: 5.59
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.02
+CornerMm: 2
+Source: lw4xl.ppd 30325: 54 x 423.12 pt, imageable 2.88 4.32 51.12 407.28
+
+Id: 30326
+Family: dymo-lw
+Name: 30326 Video Top 46 × 78 mm
+Kind: diecut
+WidthMm: 46.06
+LengthMm: 77.81
+MarginLeftMm: 5.59
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 3
+Source: lw4xl.ppd 30326: 130.56 x 220.56 pt, imageable 4.08 4.32 127.68 204.72
+
+Id: 30327
+Family: dymo-lw
+Name: 30327 File Folder 20 × 87 mm
+Kind: diecut
+WidthMm: 19.9
+LengthMm: 87.29
+MarginLeftMm: 5.59
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 0
+CornerMm: 2
+Source: lw4xl.ppd 30327: 56.4 x 247.44 pt, imageable 0.00 4.32 53.52 231.60
+
+Id: 30330
+Family: dymo-lw
+Name: 30330 Return Address 19 × 51 mm
+Kind: diecut
+WidthMm: 19.05
+LengthMm: 50.8
+MarginLeftMm: 5.76
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 2
+Source: lw4xl.ppd 30330: 54 x 144 pt, imageable 4.08 4.32 51.12 127.68
+
+Id: 30332
+Family: dymo-lw
+Name: 30332 Multi-purpose 25 × 25 mm
+Kind: diecut
+WidthMm: 25.4
+LengthMm: 25.4
+MarginLeftMm: 2.54
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 3
+Source: lw4xl.ppd 30332: 72 x 72 pt, imageable 4.08 4.32 69.12 64.80
+
+Id: 30334
+Family: dymo-lw
+Name: 30334 Multi-purpose 57 × 32 mm
+Kind: diecut
+WidthMm: 57.15
+LengthMm: 31.75
+MarginLeftMm: 1.52
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.02
+CornerMm: 3
+Source: lw4xl.ppd 30334: 162 x 90 pt, imageable 2.88 4.32 159.12 85.68
+
+Id: 30336
+Family: dymo-lw
+Name: 30336 Multi-purpose 25 × 54 mm
+Kind: diecut
+WidthMm: 25.4
+LengthMm: 54.02
+MarginLeftMm: 2.29
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 3
+Source: lw4xl.ppd 30336: 72 x 153.12 pt, imageable 4.08 4.32 69.12 146.64
+
+Id: 30337
+Family: dymo-lw
+Name: 30337 Audio Cassette 41 × 89 mm
+Kind: diecut
+WidthMm: 41.32
+LengthMm: 88.9
+MarginLeftMm: 5.84
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 3
+Source: lw4xl.ppd 30337: 117.12 x 252 pt, imageable 4.08 4.32 114.24 235.44
+
+Id: 30345
+Family: dymo-lw
+Name: 30345 Multi-purpose 19 × 64 mm
+Kind: diecut
+WidthMm: 19.05
+LengthMm: 63.5
+MarginLeftMm: 5.76
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 2
+Source: lw4xl.ppd 30345: 54 x 180 pt, imageable 4.08 4.32 51.12 163.68
+
+Id: 30346
+Family: dymo-lw
+Name: 30346 Multi-purpose 13 × 48 mm
+Kind: diecut
+WidthMm: 12.7
+LengthMm: 47.67
+MarginLeftMm: 5.76
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 1
+Source: lw4xl.ppd 30346: 36 x 135.12 pt, imageable 4.08 4.32 33.12 118.80
+
+Id: 30347
+Family: dymo-lw
+Name: 30347 Multi-purpose 25 × 38 mm
+Kind: diecut
+WidthMm: 25.4
+LengthMm: 38.1
+MarginLeftMm: 5.76
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 3
+Source: lw4xl.ppd 30347: 72 x 108 pt, imageable 4.08 4.32 69.12 91.68
+
+Id: 30348
+Family: dymo-lw
+Name: 30348 Multi-purpose 23 × 32 mm
+Kind: diecut
+WidthMm: 22.86
+LengthMm: 31.75
+MarginLeftMm: 5.76
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.78
+CornerMm: 2
+Source: lw4xl.ppd 30348: 64.8 x 90 pt, imageable 5.04 4.32 61.92 73.68
+
+Id: 30364
+Family: dymo-lw
+Name: 30364 Name Badge Label 59 × 102 mm
+Kind: diecut
+WidthMm: 58.76
+LengthMm: 101.6
+MarginLeftMm: 5.93
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 3
+Source: lw4xl.ppd 30364: 166.56 x 288 pt, imageable 4.08 4.32 163.68 271.20
+
+Id: 30365
+Family: dymo-lw
+Name: 30365 Name Badge Card 59 × 89 mm
+Kind: diecut
+WidthMm: 58.93
+LengthMm: 88.9
+MarginLeftMm: 9.48
+MarginRightMm: 1.52
+MarginTopMm: 2.03
+MarginBottomMm: 0
+CornerMm: 3
+Source: lw4xl.ppd 30365: 167.04 x 252 pt, imageable 0.00 4.32 161.28 225.12
+
+Id: 30370
+Family: dymo-lw
+Name: 30370 Zip Disk 51 × 60 mm
+Kind: diecut
+WidthMm: 50.8
+LengthMm: 59.52
+MarginLeftMm: 5.59
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.52
+CornerMm: 3
+Source: lw4xl.ppd 30370: 144 x 168.72 pt, imageable 4.32 4.32 141.12 152.88
+
+Id: 30373
+Family: dymo-lw
+Name: 30373 Price Tag Label 25 × 51 mm
+Kind: diecut
+WidthMm: 24.81
+LengthMm: 50.8
+MarginLeftMm: 1.52
+MarginRightMm: 30.14
+MarginTopMm: 1.02
+MarginBottomMm: 0
+CornerMm: 2
+Source: lw4xl.ppd 30373: 70.32 x 144 pt, imageable 0.00 85.44 67.44 139.68
+
+Id: 30374
+Family: dymo-lw
+Name: 30374 Appointment Card 51 × 89 mm
+Kind: diecut
+WidthMm: 50.8
+LengthMm: 88.9
+MarginLeftMm: 9.48
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 3.05
+CornerMm: 3
+Source: lw4xl.ppd 30374: 144 x 252 pt, imageable 8.64 4.32 141.12 225.12
+
+Id: 30376
+Family: dymo-lw
+Name: 30376 Hanging File Insert 28 × 51 mm
+Kind: diecut
+WidthMm: 27.94
+LengthMm: 50.8
+MarginLeftMm: 7.96
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 3.05
+CornerMm: 3
+Source: lw4xl.ppd 30376: 79.2 x 144 pt, imageable 8.64 4.32 76.32 121.44
+
+Id: 30856
+Family: dymo-lw
+Name: 30856 Badge Card Label 62 × 103 mm
+Kind: diecut
+WidthMm: 61.89
+LengthMm: 102.87
+MarginLeftMm: 9.48
+MarginRightMm: 1.52
+MarginTopMm: 5
+MarginBottomMm: 0
+CornerMm: 3
+Source: lw4xl.ppd 30856: 175.44 x 291.6 pt, imageable 0.00 4.32 161.28 264.72
+
+Id: 30857
+Family: dymo-lw
+Name: 30857 Badge Label 59 × 102 mm
+Kind: diecut
+WidthMm: 58.76
+LengthMm: 101.6
+MarginLeftMm: 5.93
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 3
+Source: lw4xl.ppd 30857: 166.56 x 288 pt, imageable 4.08 4.32 163.68 271.20
+
+Id: 99010
+Family: dymo-lw
+Name: 99010 Standard Address 28 × 89 mm
+Kind: diecut
+WidthMm: 27.86
+LengthMm: 88.9
+MarginLeftMm: 5.84
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.52
+CornerMm: 3
+Source: lw4xl.ppd 99010: 78.96 x 252 pt, imageable 4.32 4.32 76.08 235.44
+
+Id: 99014
+Family: dymo-lw
+Name: 99014 Name Badge Label 54 × 101 mm
+Kind: diecut
+WidthMm: 54.02
+LengthMm: 100.84
+MarginLeftMm: 5.42
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.52
+CornerMm: 3
+Source: lw4xl.ppd 99014: 153.12 x 285.84 pt, imageable 4.32 4.32 150.24 270.48
+
+Id: 99015
+Family: dymo-lw
+Name: 99015 Diskette 54 × 70 mm
+Kind: diecut
+WidthMm: 54.02
+LengthMm: 69.85
+MarginLeftMm: 5.59
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.02
+CornerMm: 3
+Source: lw4xl.ppd 99015: 153.12 x 198 pt, imageable 2.88 4.32 150.24 182.16
+
+Id: 99016
+Family: dymo-lw
+Name: 99016 Video Spine 22 × 148 mm
+Kind: diecut
+WidthMm: 22.01
+LengthMm: 147.66
+MarginLeftMm: 5.76
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 0
+CornerMm: 2
+Source: lw4xl.ppd 99016: 62.4 x 418.56 pt, imageable 0.00 4.32 59.52 402.24
+
+Id: 99017
+Family: dymo-lw
+Name: 99017 Suspension File 13 × 51 mm
+Kind: diecut
+WidthMm: 12.7
+LengthMm: 50.8
+MarginLeftMm: 5.67
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.02
+CornerMm: 1
+Source: lw4xl.ppd 99017: 36 x 144 pt, imageable 2.88 4.32 33.12 127.92
+
+Id: 99018
+Family: dymo-lw
+Name: 99018 Small Lever Arch 38 × 190 mm
+Kind: diecut
+WidthMm: 38.02
+LengthMm: 189.99
+MarginLeftMm: 5.59
+MarginRightMm: 1.52
+MarginTopMm: 1.02
+MarginBottomMm: 1.44
+CornerMm: 3
+Source: lw4xl.ppd 99018: 107.76 x 538.56 pt, imageable 4.08 4.32 104.88 522.72
+
+
+# ---------------------------------------------------------------------------
 # Brother QL (300 dpi), DK rolls
 #
 # From brother_ql's labels.py (ALL_LABELS): tape size in mm, printable dots

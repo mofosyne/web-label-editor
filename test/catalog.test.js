@@ -53,7 +53,9 @@ test('recfile parser handles comments, descriptors, continuations and blanks', (
 test('catalogue builds the expected media', () => {
   const models = applyCatalog(catalogText, freshModels());
   const dymo = Object.fromEntries(models['dymo-lw450'].media.map((m) => [m.id, m]));
-  assert.deepEqual(models['dymo-lw450'].media.map((m) => m.id), ['cont-54', '30252', '99012', '11354', '11355', '30333', '30253', '30277', '30256', '99019']);
+  assert.deepEqual(models['dymo-lw450'].media.map((m) => m.id).slice(0, 10), ['cont-54', '30252', '99012', '11354', '11355', '30333', '30253', '30277', '30256', '99019']);
+  // The rest of DYMO's LabelWriter labels, from its PPD.
+  assert.ok(dymo['30332'] && dymo['30332'].lengthDots === 300, '30332, 1 in square');
   assert.equal(dymo['30252'].acrossDots, 329);
   assert.equal(dymo['30252'].lengthDots, 1050);
   assert.deepEqual(dymo['30252'].margins, { left: 5.84, right: 1.52, top: 1.02, bottom: 1.52 });
