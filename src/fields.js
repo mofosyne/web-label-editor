@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Fields in labels: {Name} in a text, QR code or barcode is filled in from
-// a column of the data (CSV, a Markdown table, JSON or a recfile), one
-// label per row; {n} is a counter, {date} and
-// {time} the date and time of printing. Braces around anything else are
-// left as typed. Pure functions, so they can be tested in Node.
+// Fields in labels: {{Name}} in a text, QR code or barcode is filled in
+// from a column of the data (CSV, a Markdown table, JSON or a recfile), one
+// label per row; {{n}} is a counter, {{date}} and {{time}} the date and
+// time of printing. Double braces, as in Mustache and most mail merges, so
+// a single {brace} in a label stays text; and braces around anything that
+// isn't a field are left as typed too. Pure functions, tested in Node.
 
 import { parseRec } from './recfile.js';
 
@@ -119,8 +120,24 @@ export function parseData(text, name = '') {
   return parseCsv(t);
 }
 
-const FIELD = /\{([^{}\n]+)\}/g;
+const FIELD = /\{\{([^{}\n]+)\}\}/g;
 const key = (name) => name.trim().toLowerCase();
+
+// The field as it is typed in a label.
+export const fieldTag = (name) => `{{${name}}}`;
+
+// Designs from before double braces wrote {name}: those that name a field
+// (a built-in, or a column of the design's data) become {{name}}. Others
+// stay, as they were text then too.
+export function upgradeFieldBraces(design) {
+  const known = new Set([...BUILT_IN, ...(design.data?.columns ?? []).map(key)]);
+  for (const it of design.items ?? []) {
+    const prop = FIELD_PROPS[it.type];
+    if (!prop || typeof it[prop] !== 'string') continue;
+    it[prop] = it[prop].replace(/(?<!\{)\{([^{}\n]+)\}(?!\})/g, (all, name) => (known.has(key(name)) ? fieldTag(name) : all));
+  }
+  return design;
+}
 
 // The field names a design uses that something can fill: built-ins, and
 // the data's columns. Lower case.

@@ -147,9 +147,9 @@ function tips() {
       li(b('Batch…'), ' (top bar, next to Copies) opens the Batch panel under the label, in three steps: open a data file '
         + '(optional), click the fields to put on the label, then check each label and print.'),
       li(b('Data files'), ': a CSV, the first Markdown table in a file, JSON (a list of records) or a GNU recfile. '
-        + 'Its column names become fields, e.g. ', b('{Name}'), '; Print makes one label per row (times Copies).'),
+        + 'Its column names become fields, e.g. ', b('{{Name}}'), '; Print makes one label per row (times Copies).'),
       li('Fields are just text in braces, so you can also type them in any text, QR code or barcode (or use ',
-        b('Insert field'), ' under its content): ', b('{n}'), ' is a counter, ', b('{date}'), ' and ', b('{time}'),
+        b('Insert field'), ' under its content): ', b('{{n}}'), ' is a counter, ', b('{{date}}'), ' and ', b('{{time}}'),
         ' are when you print.'),
       li('The bar under the label steps through the labels (◀ ▶) so you can check each one fits, and ',
         b('Choose rows'), ' picks which rows print; click a row to show it.'),

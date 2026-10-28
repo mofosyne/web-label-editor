@@ -5,6 +5,7 @@ import { ICONS, SYMBOLS } from './icons.js';
 import { renderDesign, bitmapToCanvas, itemError, quarterTurns } from './render.js';
 import {
   parseData, usedFields, hasFields, usesData, chosenRows, fieldValues, fillItems, labelRuns, counterText, COUNTER,
+  fieldTag, upgradeFieldBraces,
 } from './fields.js';
 import { SYMBOLOGIES } from './codes/barcode.js';
 import { UsbTransport, SerialTransport, support } from './transport.js';
@@ -55,6 +56,10 @@ function uid() {
 // the printable band; they are now relative to the whole tape or label, so
 // such items move by the band's offset to stay where they print.
 function migrateDesign(d) {
+  if ((d.fieldsVersion ?? 1) < 2) {
+    upgradeFieldBraces(d);
+    d.fieldsVersion = 2;
+  }
   if (d.border) {
     // The Border option drew on the die cut, where the printer can't print
     // reliably: it is now a box inside the safe area (die-cut labels), or
@@ -2060,13 +2065,13 @@ function updateDataBar() {
   }
   const two = step('2', 'Put fields on the label',
     el('div', { className: 'row' },
-      ...(data?.columns ?? []).map((c) => chip(c, `{${c}}`, `Each label shows its row's ${c}`)),
-      chip('Counter', '{n}', 'A number that goes up on each label: 1, 2, 3…'),
-      chip('Date', '{date}', 'The date of printing'),
-      chip('Time', '{time}', 'The time of printing')),
+      ...(data?.columns ?? []).map((c) => chip(c, fieldTag(c), `Each label shows its row's ${c}`)),
+      chip('Counter', fieldTag('n'), 'A number that goes up on each label: 1, 2, 3…'),
+      chip('Date', fieldTag('date'), 'The date of printing'),
+      chip('Time', fieldTag('time'), 'The time of printing')),
     el('p', { className: 'note', textContent: 'Click one to add it to the selected text (at the cursor while you edit '
       + 'it on the label), or as a new text. You can also type it in braces, e.g. '
-      + `${data?.columns[0] ? `{${data.columns[0]}}` : '{n}'}, in any text, QR code or barcode.` }),
+      + `${fieldTag(data?.columns[0] ?? 'n')}, in any text, QR code or barcode.` }),
     ...counter);
 
   // 3. Check each label, choose rows, print.
@@ -2164,12 +2169,12 @@ function fieldPicker(item, key, holder) {
   if (cols.length) {
     const g = document.createElement('optgroup');
     g.label = design.data.name ?? 'Data';
-    cols.forEach((c) => g.append(new Option(c, `{${c}}`)));
+    cols.forEach((c) => g.append(new Option(c, fieldTag(c))));
     sel.append(g);
   }
   const g = document.createElement('optgroup');
   g.label = 'Built in';
-  g.append(new Option('Counter: 1, 2, 3…', '{n}'), new Option('Date of printing', '{date}'), new Option('Time of printing', '{time}'));
+  g.append(new Option('Counter: 1, 2, 3…', fieldTag('n')), new Option('Date of printing', fieldTag('date')), new Option('Time of printing', fieldTag('time')));
   sel.append(g);
   sel.add(new Option(cols.length ? 'Other data file…' : 'Data from a file (CSV, Markdown table, JSON, recfile)…', 'load'));
   sel.onchange = () => {

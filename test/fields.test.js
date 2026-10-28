@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  parseCsv, parseData, usedFields, fieldValues, fillItems, fillText, labelRuns, counterText, chosenRows,
+  parseCsv, parseData, usedFields, upgradeFieldBraces, fieldValues, fillItems, fillText, labelRuns, counterText, chosenRows,
 } from '../src/fields.js';
 
 test('CSV: quotes, doubled quotes, line breaks in quotes, CRLF, blank lines', () => {
@@ -22,18 +22,18 @@ test('fields: columns (any case) and built-ins fill; unknown braces stay', () =>
     data: { columns: ['Name', 'Part No'], rows: [['Ann', 'P-1'], ['Bo', 'P-2']] },
     counter: { start: 7, digits: 3 },
     items: [
-      { type: 'text', text: 'To {name} #{n} {other}' },
-      { type: 'barcode', data: '{Part No}' },
+      { type: 'text', text: 'To {{name}} #{{n}} {{other}} {n}' },
+      { type: 'barcode', data: '{{Part No}}' },
       { type: 'box' },
     ],
   };
   assert.deepEqual([...usedFields(design)].sort(), ['n', 'name', 'part no']);
   const v = fieldValues(design, 1, 2);
   const [t, bc, box] = fillItems(design.items, v);
-  assert.equal(t.text, 'To Bo #009 {other}');
+  assert.equal(t.text, 'To Bo #009 {{other}} {n}');
   assert.equal(bc.data, 'P-2');
   assert.equal(box, design.items[2]);
-  assert.equal(fillText('{date}', fieldValues(design, 0, 0, new Date(2026, 0, 2))), new Date(2026, 0, 2).toLocaleDateString());
+  assert.equal(fillText('{{date}}', fieldValues(design, 0, 0, new Date(2026, 0, 2))), new Date(2026, 0, 2).toLocaleDateString());
 });
 
 test('counter: start, step, zero padding, negatives', () => {
@@ -43,10 +43,10 @@ test('counter: start, step, zero padding, negatives', () => {
 });
 
 test('runs: each chosen row times copies, or copies alone without data fields', () => {
-  const design = { data: { columns: ['A'], rows: [['x'], ['y'], ['z']], skip: [1] }, items: [{ type: 'text', text: '{A}' }] };
+  const design = { data: { columns: ['A'], rows: [['x'], ['y'], ['z']], skip: [1] }, items: [{ type: 'text', text: '{{A}}' }] };
   assert.deepEqual(chosenRows(design), [0, 2]);
   assert.deepEqual(labelRuns(design, 2).map((r) => [r.row, r.k]), [[0, 0], [0, 1], [2, 2], [2, 3]]);
-  const plain = { ...design, items: [{ type: 'text', text: 'Box {n}' }] };
+  const plain = { ...design, items: [{ type: 'text', text: 'Box {{n}}' }] };
   assert.deepEqual(labelRuns(plain, 3).map((r) => [r.row, r.k]), [[null, 0], [null, 1], [null, 2]]);
 });
 
@@ -68,4 +68,18 @@ test('data: recfiles, first record type, repeated fields joined', () => {
   assert.deepEqual(parseData(rec, 'p.rec'), { columns: ['Name', 'Bin', 'Tag'], rows: [['Bolt', 'A1', ''], ['Nut', '', 'x\ny']] });
   assert.deepEqual(parseData('Name: Ann\n\nName: Bo\n').rows, [['Ann'], ['Bo']]);
   assert.deepEqual(parseData('Name,Bin\nAnn,1').rows, [['Ann', '1']]);
+});
+
+test('single-brace fields from older designs become double braces; other braces stay', () => {
+  const d = {
+    data: { columns: ['Name'], rows: [] },
+    items: [
+      { type: 'text', text: 'Hi {Name} #{n} on {date} {code} {{n}}' },
+      { type: 'qr', data: '{"to": "{name}"}' },
+      { type: 'box' },
+    ],
+  };
+  upgradeFieldBraces(d);
+  assert.equal(d.items[0].text, 'Hi {{Name}} #{{n}} on {{date}} {code} {{n}}');
+  assert.equal(d.items[1].data, '{"to": "{{name}}"}');
 });

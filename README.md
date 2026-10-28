@@ -203,8 +203,10 @@ The app has its own welcome page and **Help** with the same information.
   text; Ctrl+C / Ctrl+X / Ctrl+V for items (and pasting text or images
   from other apps); Ctrl+D duplicates; arrow keys nudge; Ctrl+Z / Ctrl+Shift+Z
   (or Ctrl+Y) undo and redo, with a drag or a burst of typing as one step.
-- **Batches from data, numbering and dates:** put `{Name}` (a column),
-  `{n}` (a counter) or `{date}` / `{time}` in any text, QR code or barcode.
+- **Batches from data, numbering and dates:** put `{{Name}}` (a column),
+  `{{n}}` (a counter) or `{{date}}` / `{{time}}` in any text, QR code or
+  barcode (double braces, as in most mail merges, so a single `{brace}` in
+  a label stays text).
   The *Batch…* button, next to Copies, walks through it: open a data file, click the fields
   to put on the label, check each label, print. Data comes from a CSV, a Markdown table,
   JSON or a GNU recfile; Print makes one label per chosen row, as one job
