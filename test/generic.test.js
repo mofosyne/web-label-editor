@@ -84,3 +84,12 @@ test('a report\'s record goes into catalog/printers.rec and comes back as that p
   assert.equal(genericPrinter().configure({}).config.widthMm, 101.6);
   assert.equal(models['zebra-gk420d'].configure({}).config.widthMm, 57, 'starts from the recorded label');
 });
+
+test('Kind chooses die-cut or continuous; the length is kept for switching back', () => {
+  const m = genericPrinter();
+  assert.equal(m.config.kind, 'diecut');
+  m.configure({ kind: 'continuous', lengthMm: 40 });
+  assert.deepEqual([m.media[0].continuous, m.media[0].lengthDots, m.config.lengthMm], [true, undefined, 40]);
+  m.configure({ kind: 'diecut', lengthMm: 40 });
+  assert.deepEqual([m.media[0].continuous, m.media[0].lengthMm], [false, 40]);
+});

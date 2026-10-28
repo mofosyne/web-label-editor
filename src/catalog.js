@@ -146,7 +146,10 @@ export function applyPrinters(text, models) {
       source: field(rec, 'Source'),
       printer: { language, dpi: num('Dpi', 203), headMm: num('HeadMm', 104), rotate: /^(yes|true|1)$/i.test(field(rec, 'Rotate') ?? '') },
       defaults: {
-        widthMm: num('DefaultWidthMm', 101.6), lengthMm: num('DefaultLengthMm', 152.4), gapMm: num('GapMm', 3),
+        kind: num('DefaultLengthMm', 152.4) ? 'diecut' : 'continuous',
+        widthMm: num('DefaultWidthMm', 101.6),
+        lengthMm: num('DefaultLengthMm', 152.4) || 152.4,
+        gapMm: num('GapMm', 3),
       },
       adjust: { feedMm: num('FeedMm', 0), acrossMm: num('AcrossMm', 0) },
     });

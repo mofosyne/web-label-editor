@@ -1576,13 +1576,14 @@ function buildGeneric() {
   ];
   box.replaceChildren(h, intro,
     ...printerFields,
-    field('Label width (mm)', 'widthMm', number('widthMm', 0.5, 5)),
-    field('Label length (mm, 0 for a continuous roll)', 'lengthMm', number('lengthMm', 0.5, 0)),
-    ...(Number(c.lengthMm) ? [
+    field('Kind', 'kind', select('kind', [['diecut', 'Die-cut labels'], ['continuous', 'Continuous roll']])),
+    field(c.kind === 'continuous' ? 'Roll width (mm)' : 'Label width (mm)', 'widthMm', number('widthMm', 0.5, 5)),
+    ...(c.kind !== 'continuous' ? [
+      field('Label length (mm)', 'lengthMm', number('lengthMm', 0.5, 1)),
       field('Shape', 'shape', select('shape', [['rect', 'Rectangle'], ['round', 'Round (circle or oval)']])),
       ...(c.shape === 'round' ? [] : [field('Corner radius (mm)', 'cornerMm', number('cornerMm', 0.5, 0))]),
+      ...(c.language === 'tspl' ? [field('Gap between labels (mm)', 'gapMm', number('gapMm', 0.5, 0))] : []),
     ] : []),
-    ...(c.language === 'tspl' ? [field('Gap between labels (mm)', 'gapMm', number('gapMm', 0.5, 0))] : []),
     field('Margin (mm)', 'marginMm', number('marginMm', 0.5, 0), 'The safe area inset from each edge.'),
     field(c.language === 'zpl' ? 'Darkness (0–30, blank: the printer\'s own)' : c.language === 'tspl' ? 'Darkness (0–15, blank: the printer\'s own)' : 'Darkness (not used)', 'darkness', number('darkness', 1, 0)),
     ...(preset ? [] : [rotateLabel]),

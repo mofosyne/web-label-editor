@@ -34,6 +34,7 @@ export const GENERIC_DEFAULTS = {
   language: 'zpl',
   dpi: 203,
   headMm: 104,
+  kind: 'diecut',
   widthMm: 101.6,
   lengthMm: 152.4,
   gapMm: 3,
@@ -121,7 +122,8 @@ const ENCODERS = { zpl: encodeZpl, tspl: encodeTspl, escpos: encodeEscPos };
 export function customMedium(cfg, dpi, headDots) {
   const dpmm = dpi / 25.4;
   const width = Number(cfg.widthMm) || 50;
-  const length = Number(cfg.lengthMm) || 0;
+  // Older settings had no kind: a length of 0 meant a continuous roll.
+  const length = cfg.kind === 'continuous' ? 0 : Number(cfg.lengthMm) || 0;
   const margin = Number(cfg.marginMm) || 0;
   const medium = {
     id: 'custom',
@@ -171,6 +173,7 @@ export function genericPrinter(preset = null) {
     config: { ...GENERIC_DEFAULTS },
     configure(cfg) {
       this.config = { ...GENERIC_DEFAULTS, ...preset?.defaults, ...cfg, ...fixed };
+      if (!cfg.kind && cfg.lengthMm === 0) this.config.kind = 'continuous';
       if (preset) this.config.name = preset.name;
       this.dpi = Number(this.config.dpi) || 203;
       this.headDots = Math.max(8, Math.round(((Number(this.config.headMm) || 104) * this.dpi) / 25.4));
@@ -199,7 +202,7 @@ export function printerRecord(cfg, adjust = {}, source = '(link to this issue)')
     `HeadMm: ${cfg.headMm}`,
     `Rotate: ${cfg.rotate ? 'yes' : 'no'}`,
     `DefaultWidthMm: ${cfg.widthMm}`,
-    `DefaultLengthMm: ${cfg.lengthMm || 0}`,
+    `DefaultLengthMm: ${cfg.kind === 'continuous' ? 0 : cfg.lengthMm || 0}`,
   ];
   if (cfg.language === 'tspl') lines.push(`GapMm: ${cfg.gapMm}`);
   if (adjust.feedMm) lines.push(`FeedMm: ${adjust.feedMm}`);
