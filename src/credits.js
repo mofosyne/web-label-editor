@@ -23,7 +23,7 @@ export const CREDITS = [
     group: 'Ported code (which of our files comes from where)',
     items: [
       ['src/printers/brother-ptouch.js, the P-touch models and tape table', 'https://git.familie-radermacher.ch/linux/ptouch-print.git', 'ported from ptouch-print\'s libptouch.c and device table; Copyright (C) 2013-2026 Dominic Radermacher, GPL-3.0.'],
-      ['src/printers/brother-ql.js, the QL models and DK label table', gh('pklaus/brother_ql'), 'ported from brother_ql\'s conversion.py, raster.py, models.py and labels.py; by Philipp Klaus, GPL-3.0.'],
+      ['src/printers/brother-ql.js, the QL models and DK label table', gh('pklaus/brother_ql'), 'ported from brother_ql\'s conversion.py, raster.py, models.py and labels.py; by Philipp Klaus, GPL-3.0-or-later.'],
       ['src/printers/dymo-labelwriter.js, the DYMO label sizes and margins', gh('matthiasbock/dymo-cups-drivers'), 'ported from DYMO\'s LabelWriterDriver.cpp and taken from its lw450.ppd and lw4xl.ppd; Copyright (C) 2008 Sanford L.P., GPL-2.0-or-later.'],
       ['src/codes/qr.js', 'https://www.nayuki.io/page/qr-code-generator-library', 'follows Project Nayuki\'s QR Code generator library (tables, Reed–Solomon, placement, masking); Copyright (c) Project Nayuki, MIT License, whose notice is in the file.'],
     ],

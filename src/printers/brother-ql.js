@@ -2,7 +2,7 @@
 // Ported from brother_ql (conversion.py, raster.py, models.py, labels.py),
 // which documents Brother's "QL Series Raster Command Reference".
 // brother_ql: https://github.com/pklaus/brother_ql, by Philipp Klaus,
-// GPL-3.0.
+// GPL-3.0-or-later.
 //
 // The bitmap passed in is a "strip": width = length along the feed, height =
 // printable dots across the roll. As brother_ql does for a landscape image
