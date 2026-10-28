@@ -223,21 +223,26 @@ function edgeArea(lane = currentLane()) {
   };
 }
 
-// Portrait: die-cut labels designed standing upright (as in DYMO Label) and
-// turned for printing. Items then live on the upright page.
-const isPortrait = (d, med) => d.orientation === 'portrait' && !!med.lengthDots;
-const portrait = () => isPortrait(design, medium());
+// Portrait: labels designed standing upright (as in DYMO Label) and turned
+// for printing. Items then live on the upright page; on a continuous roll
+// the page grows downwards.
+const isPortrait = (d) => d.orientation === 'portrait';
+const portrait = () => isPortrait(design);
 // Strip-oriented insets turned onto the upright page: the page's bottom is
 // the label's leading edge and its left is the strip's top.
 const toPage = (m) => (portrait() ? { left: m.top, right: m.bottom, top: m.right, bottom: m.left } : m);
 // Margins and edge area as the items see them.
 const itemMargins = (lane) => toPage(margins(lane));
 const itemEdge = (lane) => toPage(edgeArea(lane));
-// The label's size as the items see it, mm (w is null on a continuous roll,
-// whose length follows the content).
+// The label's size as the items see it, mm. On a continuous roll the
+// length is the current one (it follows the content), and `wFixed` /
+// `hFixed` say which sides are fixed by the label.
 function pageSize() {
-  const len = medium().lengthDots ? medium().lengthDots / dpmmNow() : null;
-  return portrait() ? { w: acrossMm(), h: len } : { w: len, h: acrossMm() };
+  const fixed = !!medium().lengthDots;
+  const len = fixed ? medium().lengthDots / dpmmNow() : (last?.geo.length ?? 30 * dpmmNow()) / dpmmNow();
+  return portrait()
+    ? { w: acrossMm(), h: len, wFixed: true, hFixed: fixed }
+    : { w: len, h: acrossMm(), wFixed: fixed, hFixed: true };
 }
 
 // Renders a design as the editor shows it: every label of the row (with
@@ -250,7 +255,7 @@ function renderView(d = design, m = model(), med = medium(), { filled, adj, onAs
   const a = adj ?? { feedMm: 0, acrossMm: 0 };
   const md = rowMode(d, med);
   const count = med.lanes?.count ?? 1;
-  const upright = isPortrait(d, med);
+  const upright = isPortrait(d);
   const opts = {
     bleed: canOverprint(m, med) ? Math.round(Math.min(MAX_BLEED_MM, d.bleedMm ?? 0) * dpmm) : 0,
     feed: Math.round(a.feedMm * dpmm),
@@ -304,9 +309,29 @@ function renderView(d = design, m = model(), med = medium(), { filled, adj, onAs
   };
 }
 
-// The printable band down the page (across the strip in landscape), in mm.
+// Portrait on a continuous roll: the page is the tape's width and grows
+// downwards with the content.
+const growsDown = () => portrait() && !medium().lengthDots;
+// The printable band down the page (across the strip in landscape), in mm;
+// when the page grows downwards, the band across it instead, which is what
+// sizes new items.
 const bandTop = () => itemMargins().top;
-const usableMm = () => (pageSize().h ?? 0) - itemMargins().top - itemMargins().bottom;
+const usableMm = () => (growsDown()
+  ? pageSize().w - itemMargins().left - itemMargins().right
+  : pageSize().h - itemMargins().top - itemMargins().bottom);
+// Text size for a new text item.
+const newTextSize = () => Math.max(1.5, round1(usableMm() * (growsDown() ? 0.3 : 0.6)));
+// Where a new item of height h (mm) goes: after the last item along the
+// label, centred in the band; or, on a page growing downwards, below the
+// lowest item at the left margin.
+function placeNew(h) {
+  if (!growsDown()) return { x: nextX(), y: round1(bandTop() + Math.max(0, (usableMm() - h) / 2)) };
+  const lane = currentLane();
+  const oy = last?.slots[lane]?.oy ?? 0;
+  const mine = last ? last.bounds.filter((b, i) => b && last.lanes[i] === lane) : [];
+  const bottom = Math.max(0, ...mine.map((b) => (b.y - oy + b.h) / last.dpmm));
+  return { x: round1(itemMargins().left + 0.5), y: round1(bottom ? bottom + 3 : bandTop() + 1) };
+}
 const round1 = (v) => Math.round(v * 10) / 10;
 
 // Items that show a corner handle for resizing, and how a drag sets the size.
@@ -503,14 +528,28 @@ function placeLaneButtons(scale) {
   }
 }
 
-// Landscape or portrait (die-cut labels). Items keep their place relative
+// Landscape or portrait. Items keep their place relative
 // to each label's safe area, scaled to the turned page; fitted boxes resize
 // with it, so one that filled the safe area still does.
 function setOrientation(value) {
+  if (value === (portrait() ? 'portrait' : 'landscape')) return;
+  if (!medium().lengthDots) {
+    // A continuous roll has no fixed length to scale against: turn the
+    // layout instead. Across the tape stays across (landscape y = portrait
+    // x, both from the same edge) and along stays along.
+    design.orientation = value;
+    for (const it of design.items) {
+      [it.x, it.y] = [it.y, it.x];
+      if (it.type === 'text' && it.fit) [it.w, it.h] = [it.h, it.w];
+      if (it.type === 'box') [it.w, it.h] = [it.h, it.w];
+    }
+    refresh({ setup: true, props: true });
+    return;
+  }
   const area = (lane) => {
     const page = pageSize();
     const mg = itemMargins(lane);
-    return { x: mg.left, y: mg.top, w: (page.w ?? 0) - mg.left - mg.right, h: page.h - mg.top - mg.bottom };
+    return { x: mg.left, y: mg.top, w: page.w - mg.left - mg.right, h: page.h - mg.top - mg.bottom };
   };
   const lanes = [...Array(laneCount()).keys()];
   const before = lanes.map(area);
@@ -748,8 +787,8 @@ function buildSetup() {
       each: `${n} labels per row: Copies counts labels, filling each row from the top.`,
     }[mode()];
   }
-  $('orientation-box').hidden = !medium().lengthDots;
   $('orientation').value = portrait() ? 'portrait' : 'landscape';
+  for (const b of document.querySelectorAll('[data-orient]')) b.setAttribute('aria-pressed', String(b.dataset.orient === $('orientation').value));
   const overprintable = canOverprint(m, medium());
   $('bleed-box').hidden = !overprintable;
   if (overprintable) $('bleed').value = String(design.bleedMm ?? 0);
@@ -1167,33 +1206,35 @@ function nextX() {
   const start = Math.max(2, itemMargins().left + 1);
   // On a label narrower than that (e.g. portrait), start at the left again.
   const page = pageSize();
-  if (right && page.w != null && right + 3 + 5 > page.w - itemMargins().right) return round1(start);
+  if (right && page.wFixed && right + 3 + 5 > page.w - itemMargins().right) return round1(start);
   return round1(right ? right + 3 : start);
 }
 
 function addText() {
-  const size = Math.max(1.5, round1(usableMm() * 0.6));
+  const size = newTextSize();
   addItem({
     type: 'text', text: 'Text', font: 'sans-serif', size, bold: false, italic: false, align: 'left',
-    x: nextX(), y: round1(bandTop() + (usableMm() - size * 1.15) / 2),
+    ...placeNew(size * 1.15),
   });
 }
 
 function addImage(file) {
   const reader = new FileReader();
   reader.onload = () => {
-    addItem({ type: 'image', src: reader.result, x: nextX(), y: bandTop(), w: round1(usableMm()), threshold: 128, dither: false, invert: false });
+    addItem({ type: 'image', src: reader.result, ...placeNew(usableMm()), w: round1(usableMm()), threshold: 128, dither: false, invert: false });
   };
   reader.readAsDataURL(file);
 }
 
 function addBox() {
-  addItem({ type: 'box', x: nextX(), y: round1(bandTop() + 0.5), w: 20, h: Math.max(2, round1(usableMm() - 1)), stroke: 0.4, fill: false });
+  const across = Math.max(2, round1(usableMm() - 1));
+  const box = growsDown() ? { w: across, h: 20 } : { w: 20, h: across };
+  addItem({ type: 'box', ...placeNew(box.h), ...box, stroke: 0.4, fill: false });
 }
 
 function addQr() {
   const size = round1(Math.min(25, usableMm() * 0.9));
-  addItem({ type: 'qr', data: 'https://example.com', ecc: 'M', size, x: nextX(), y: round1(bandTop() + (usableMm() - size) / 2) });
+  addItem({ type: 'qr', data: 'https://example.com', ecc: 'M', size, ...placeNew(size) });
 }
 
 function addBarcode() {
@@ -1202,7 +1243,7 @@ function addBarcode() {
   const total = height + 0.4 + textSize;
   addItem({
     type: 'barcode', symbology: 'code128', data: 'ABC-12345', module: 0.3, height,
-    showText: true, textSize, x: nextX(), y: round1(bandTop() + Math.max(0, (usableMm() - total) / 2)),
+    showText: true, textSize, ...placeNew(total),
   });
 }
 
@@ -1344,19 +1385,27 @@ function buildProps() {
     btn('Centre across', () => {
       const b = last.bounds[design.items.indexOf(item)];
       if (!b) return;
-      const h = b.h / last.dpmm;
-      item.y = +(bandTop() + (usableMm() - h) / 2).toFixed(2);
+      // Across the tape/head: horizontal on a portrait page.
+      const mg = itemMargins(laneOf(item));
+      if (portrait()) {
+        const room = pageSize().w - mg.left - mg.right;
+        item.x = +(mg.left + (room - b.w / last.dpmm) / 2).toFixed(2);
+      } else {
+        item.y = +(bandTop() + (usableMm() - b.h / last.dpmm) / 2).toFixed(2);
+      }
       refresh({ props: true });
     }),
   );
   if (item.type === 'text' && item.fit) {
-    // Size the box to an area given as insets from the label's edges; the
-    // width only when the label has one (not a continuous roll).
+    // Size the box to an area given as insets from the label's edges; along
+    // a continuous roll only when the label has a set length.
     const fill = (mg) => {
       const page = pageSize();
-      item.y = round1(mg.top);
-      item.h = round1(page.h - mg.top - mg.bottom);
-      if (page.w != null) {
+      if (page.hFixed) {
+        item.y = round1(mg.top);
+        item.h = round1(page.h - mg.top - mg.bottom);
+      }
+      if (page.wFixed) {
         item.x = round1(mg.left);
         item.w = round1(page.w - mg.left - mg.right);
       }
@@ -1366,12 +1415,20 @@ function buildProps() {
     // Overprint: the whole label the printer can reach, ignoring the safe area.
     row.append(btn('Fill to edge', () => fill(itemEdge(laneOf(item)))));
   } else if (item.type === 'text') {
-    row.append(btn('Fill height', () => {
+    // Size the text to fill the label across the tape/head (its width on a
+    // portrait page).
+    row.append(btn(portrait() ? 'Fill width' : 'Fill height', () => {
       const b = last.bounds[design.items.indexOf(item)];
       if (!b) return;
-      const ratio = b.h / last.dpmm / item.size;
-      item.size = +((usableMm() * 0.95) / ratio).toFixed(2);
-      item.y = +(bandTop() + usableMm() * 0.025).toFixed(2);
+      const mg = itemMargins(laneOf(item));
+      if (portrait()) {
+        const room = pageSize().w - mg.left - mg.right;
+        item.size = +((room * 0.95) / (b.w / last.dpmm / item.size)).toFixed(2);
+        item.x = +(mg.left + room * 0.025).toFixed(2);
+      } else {
+        item.size = +((usableMm() * 0.95) / (b.h / last.dpmm / item.size)).toFixed(2);
+        item.y = +(bandTop() + usableMm() * 0.025).toFixed(2);
+      }
       refresh({ props: true });
     }));
   }
@@ -1411,7 +1468,9 @@ function setRotation(item, degrees) {
     // Turned about its centre, then kept on the label: inside the printable
     // band across, or centred on it when it is longer than the band.
     const mg = itemMargins(laneOf(item));
-    const room = pageSize().h - mg.top - mg.bottom;
+    const page = pageSize();
+    // Down a continuous roll (portrait) there is no bottom to keep inside.
+    const room = page.hFixed ? page.h - mg.top - mg.bottom : Infinity;
     const y = cy - w / 2;
     if (item.fit && w > room) {
       // A fitted box shrinks to the band; the text refits.
@@ -1721,7 +1780,7 @@ function onDoubleClick(e) {
     const slot = slotAt(pt);
     if (!slot || slot.copy) return;
     if (mode() === 'separate') activeLane = slot.lane;
-    const size = Math.max(1.5, round1(usableMm() * 0.6));
+    const size = newTextSize();
     const x = pt.x - slot.ox / last.dpmm;
     const y = pt.y - slot.oy / last.dpmm;
     design.items.push({
@@ -1802,10 +1861,10 @@ function onPaste(e) {
     return;
   }
   if (text.trim()) {
-    const size = Math.max(1.5, round1(usableMm() * 0.6));
+    const size = newTextSize();
     addItem({
       type: 'text', text: text.replace(/\s+$/, ''), font: 'sans-serif', size, bold: false, italic: false, align: 'left',
-      x: nextX(), y: round1(bandTop() + (usableMm() - size * 1.15) / 2),
+      ...placeNew(size * 1.15),
     });
   }
 }
@@ -1916,6 +1975,7 @@ function wire() {
     else setRowMode(e.target.value);
   };
   $('orientation').onchange = (e) => setOrientation(e.target.value);
+  for (const b of document.querySelectorAll('[data-orient]')) b.onclick = () => setOrientation(b.dataset.orient);
   $('bleed').onchange = (e) => { design.bleedMm = Number(e.target.value) || 0; refresh({ setup: true }); };
   $('btn-lib-open').onclick = () => showLibrary();
   $('btn-lib-save').onclick = () => saveToLibrary(false);

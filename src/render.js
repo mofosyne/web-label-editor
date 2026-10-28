@@ -269,14 +269,16 @@ function drawBox(ctx, item, dpmm) {
 
 // Length of the strip in dots: fixed for die-cut media, otherwise either the
 // user's fixed length or the furthest item edge plus padding.
-export function stripLength(design, medium, dpi, ctx, items = design.items) {
+// The label's length along the feed, in dots: fixed, or (fit to content)
+// up to the furthest item: its right edge, or its bottom edge in portrait.
+export function stripLength(design, medium, dpi, ctx, items = design.items, portrait = false) {
   const dpmm = dpi / 25.4;
   if (medium.lengthDots) return medium.lengthDots;
   if (design.length.mode === 'fixed') return Math.max(1, Math.round(design.length.mm * dpmm));
   let right = 0;
   for (const item of items) {
     const b = itemBounds(ctx, item, dpmm);
-    right = Math.max(right, b.x + b.w);
+    right = Math.max(right, portrait ? b.y + b.h : b.x + b.w);
   }
   return Math.max(Math.round(5 * dpmm), Math.round(right + design.length.padMm * dpmm));
 }
@@ -299,7 +301,7 @@ export function renderDesign(design, model, medium, onAssetLoad, opts = {}) {
   const portrait = !!opts.portrait;
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  const length = opts.length ?? stripLength(design, medium, dpi, ctx, items);
+  const length = opts.length ?? stripLength(design, medium, dpi, ctx, items, portrait);
   const across = medium.acrossDots;
   // The surface drawn on: the strip, or the upright page with the
   // overprint border turned with it (strip top = page left, strip bottom =

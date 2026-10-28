@@ -99,6 +99,11 @@ label.inline { display: flex; align-items: center; gap: 6px; color: var(--text);
 }
 .topbar .conn { flex: 1; }
 .actions { display: flex; gap: 8px; align-items: center; }
+/* Narrow screens: the header buttons wrap under the title. */
+@media (max-width: 640px) {
+  .topbar { flex-wrap: wrap; row-gap: 8px; }
+  .actions { flex-wrap: wrap; }
+}
 .copies { display: flex; align-items: center; gap: 6px; margin: 0; }
 .copies input { width: 56px; }
 
@@ -181,8 +186,10 @@ dialog.help .row { justify-content: flex-end; margin: 0; }
 .note.error { color: var(--danger); }
 
 .stage { padding: 16px; min-width: 0; }
-.toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.toolbar { display: flex; gap: 6px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
 .toolbar .spacer { flex: 1; }
+.toolbar .icon { padding: 6px 9px; min-width: 32px; }
+.toolbar .seg + .icon { margin-left: 4px; }
 #zoom-label { min-width: 48px; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .canvas-wrap {
@@ -192,6 +199,13 @@ dialog.help .row { justify-content: flex-end; margin: 0; }
   padding: 24px;
   overflow: auto;
 }
+/* Segmented toggle (orientation). */
+.seg { display: inline-flex; }
+.seg button { border-radius: 0; }
+.seg button:first-child { border-radius: 6px 0 0 6px; }
+.seg button:last-child { border-radius: 0 6px 6px 0; margin-left: -1px; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
 /* Rulers above and left of the label. */
 .ruled {
   display: grid;

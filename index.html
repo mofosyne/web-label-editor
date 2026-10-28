@@ -60,7 +60,7 @@
       <p id="length-fixed-note" class="note" hidden>Die-cut labels have a fixed length.</p>
 
       <h2>Label</h2>
-      <label id="orientation-box" hidden>Orientation
+      <label id="orientation-box">Orientation
         <select id="orientation">
           <option value="landscape">Landscape</option>
           <option value="portrait">Portrait (upright)</option>
@@ -102,11 +102,15 @@
         <button id="add-barcode">+ Barcode</button>
         <input id="image-file" type="file" accept="image/*" hidden>
         <span class="spacer"></span>
-        <button id="undo" aria-label="Undo" title="Undo (Ctrl+Z)">↶</button>
-        <button id="redo" aria-label="Redo" title="Redo (Ctrl+Shift+Z)">↷</button>
-        <button id="zoom-out" aria-label="Zoom out">−</button>
+        <span class="seg" role="group" aria-label="Orientation">
+          <button class="icon" data-orient="landscape" title="Landscape: the label lying along the feed" aria-label="Landscape">▭</button>
+          <button class="icon" data-orient="portrait" title="Portrait: the label standing upright" aria-label="Portrait">▯</button>
+        </span>
+        <button id="undo" class="icon" aria-label="Undo" title="Undo (Ctrl+Z)">↶</button>
+        <button id="redo" class="icon" aria-label="Redo" title="Redo (Ctrl+Shift+Z)">↷</button>
+        <button id="zoom-out" class="icon" aria-label="Zoom out">−</button>
         <span id="zoom-label">100%</span>
-        <button id="zoom-in" aria-label="Zoom in">+</button>
+        <button id="zoom-in" class="icon" aria-label="Zoom in">+</button>
       </div>
       <div class="canvas-wrap" id="canvas-wrap">
         <div class="ruled">

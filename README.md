@@ -191,9 +191,11 @@ The app has its own welcome page and **Help** with the same information.
   (or Ctrl+Y) undo and redo, with a drag or a burst of typing as one step.
 - **Continuous rolls:** *Fit to content* makes the label as long as what is on
   it; *Fixed* sets a length. Die-cut labels use their own size.
-- **Portrait** (die-cut labels, *Orientation* in the *Label* panel): design
-  the label standing upright, as in DYMO Label; it is turned for printing.
-  On a 2-up row the labels stand side by side, label 1 on the left.
+- **Portrait** (▭ ▯ in the toolbar, or *Orientation* in the *Label* panel):
+  design the label standing upright, as in DYMO Label; it is turned for
+  printing. On tape and continuous rolls the label grows downwards with the
+  content; on a 2-up row the labels stand side by side, label 1 on the
+  left.
 - **QR codes and barcodes** are drawn on whole printer dots, so edges stay
   sharp and they scan. Leave a few mm of blank space around QR codes.
 - **Tape detection** (P-touch, QL): the printer reports the loaded tape; the
