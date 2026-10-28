@@ -192,7 +192,10 @@ The app has its own welcome page and **Help** with the same information.
 
 - **Items:** text (multi-line, any installed font, fixed size or fitted to a
   box, turned 90°, 180° or 270° for cable flags and vertical text), QR codes, barcodes (Code 128, EAN-13, UPC-A), images (threshold or
-  dithering) and boxes. Drag to move, corner handle to resize.
+  dithering), shapes (rectangle, rounded rectangle, circle or ellipse,
+  line) and, from *+ Symbol*, symbols that go into text (®, ™, °, arrows,
+  ⚠, ♻, €…) and brand icons (Instagram, YouTube, WhatsApp, GitHub and
+  more). Drag to move, corner handle to resize.
 - **Editing:** click selected text (or double-click it, or press Enter / F2)
   to edit it in place, right on the label; the bar above the label sets its
   font, size (Auto fits it to its box; A− / A+), bold, italic, alignment
@@ -714,6 +717,7 @@ This editor stands on work others did first. No third-party files are bundled, b
 - [src/printers/brother-ptouch.js, the P-touch models and tape table](https://git.familie-radermacher.ch/linux/ptouch-print.git): ported from ptouch-print's libptouch.c and device table; Copyright (C) 2013-2026 Dominic Radermacher, GPL-3.0.
 - [src/printers/brother-ql.js, the QL models and DK label table](https://github.com/pklaus/brother_ql): ported from brother_ql's conversion.py, raster.py, models.py and labels.py; by Philipp Klaus, GPL-3.0-or-later.
 - [src/printers/dymo-labelwriter.js, the DYMO label sizes and margins](https://github.com/matthiasbock/dymo-cups-drivers): ported from DYMO's LabelWriterDriver.cpp and taken from its lw450.ppd and lw4xl.ppd; Copyright (C) 2008 Sanford L.P., GPL-2.0-or-later.
+- [src/icons.js, the brand icons](https://simpleicons.org): SVG paths from Simple Icons, CC0 1.0 (public domain); the brands are trademarks of their owners.
 - [src/codes/qr.js](https://www.nayuki.io/page/qr-code-generator-library): follows Project Nayuki's QR Code generator library (tables, Reed–Solomon, placement, masking); Copyright (c) Project Nayuki, MIT License, whose notice is in the file.
 
 **Standards and tools**

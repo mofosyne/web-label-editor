@@ -23,14 +23,14 @@ const TYPES = {
 // Example designs, one per screenshot, as saved by the app.
 const DESIGNS = {
   'editor-dymo': {
-    version: 2, printer: 'dymo-lw450', medium: '30252', options: {}, length: { mode: 'auto', mm: 60, padMm: 2 }, border: false, invert: false,
+    version: 2, printer: 'dymo-lw450', medium: '30252', options: {}, length: { mode: 'auto', mm: 60, padMm: 2 }, invert: false,
     items: [
       { id: 'a', type: 'text', text: 'Jane Doe\n42 Label Street\nSpringfield 4000', font: 'sans-serif', bold: true, italic: false, align: 'left', fit: true, size: 5, x: 6.5, y: 2, w: 58, h: 23.5 },
       { id: 'b', type: 'qr', data: 'https://mofosyne.github.io/web-label-editor/', ecc: 'M', size: 21, x: 65.5, y: 3.3 },
     ],
   },
   'editor-tape': {
-    version: 2, printer: 'brother-pt-p710bt', medium: 'tze-12', options: {}, length: { mode: 'auto', mm: 60, padMm: 2 }, border: false, invert: false,
+    version: 2, printer: 'brother-pt-p710bt', medium: 'tze-12', options: {}, length: { mode: 'auto', mm: 60, padMm: 2 }, invert: false,
     items: [
       { id: 'a', type: 'text', text: 'Rack A  Port 12', font: 'sans-serif', bold: true, italic: false, align: 'left', size: 6.5, x: 2, y: 2.6 },
       { id: 'b', type: 'barcode', symbology: 'code128', data: 'NET0012', module: 0.3, height: 6.8, showText: true, textSize: 2.6, x: 52, y: 1 },

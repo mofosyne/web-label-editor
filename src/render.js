@@ -3,6 +3,7 @@
 // Strip coordinates: x runs along the label length, y across the tape/head.
 // Design units are millimetres; (0,0) is the top-left of the printable area.
 
+import { ICONS } from './icons.js';
 import { encodeQr } from './codes/qr.js';
 import { SYMBOLOGIES } from './codes/barcode.js';
 import { pageToStrip } from './layout.js';
@@ -144,6 +145,13 @@ export function textLayout(ctx, item, dpmm) {
   return { ...m, sizeMm, box, blockX, blockY, rotate: q * 90, pivot: { x: cx - blockX, y: cy - blockY } };
 }
 
+// Brand icons (see icons.js) as Path2D, made once each.
+const iconPaths = new Map();
+function iconPath(name) {
+  if (!iconPaths.has(name)) iconPaths.set(name, ICONS[name] ? new Path2D(ICONS[name].path) : null);
+  return iconPaths.get(name);
+}
+
 // Item bounds in dots, relative to the printable strip.
 export function itemBounds(ctx, item, dpmm) {
   const x = item.x * dpmm;
@@ -157,6 +165,9 @@ export function itemBounds(ctx, item, dpmm) {
   }
   if (item.type === 'box') {
     return { x, y, w: item.w * dpmm, h: item.h * dpmm };
+  }
+  if (item.type === 'icon') {
+    return { x, y, w: item.size * dpmm, h: item.size * dpmm };
   }
   if (item.type === 'qr' || item.type === 'barcode') {
     const l = codeLayout(ctx, item, dpmm);
@@ -296,17 +307,58 @@ function drawCode(ctx, item, dpmm, sx = 1) {
   }
 }
 
+// A brand icon, drawn from its 24-unit path at item.size mm square.
+function drawIcon(ctx, item, dpmm) {
+  const path = iconPath(item.icon);
+  if (!path) return;
+  const s = (item.size * dpmm) / 24;
+  ctx.save();
+  ctx.translate(item.x * dpmm, item.y * dpmm);
+  ctx.scale(s, s);
+  ctx.fillStyle = '#000';
+  ctx.fill(path);
+  ctx.restore();
+}
+
+// Shapes: a rectangle (the default), a rounded rectangle, an ellipse in the
+// box, or a line along the box's longer side; outlined with item.stroke, or
+// filled.
 function drawBox(ctx, item, dpmm) {
   const x = item.x * dpmm;
   const y = item.y * dpmm;
   const w = item.w * dpmm;
   const h = item.h * dpmm;
+  const shape = item.shape ?? 'rect';
   ctx.fillStyle = item.white ? '#fff' : '#000';
+  ctx.strokeStyle = ctx.fillStyle;
+  const t = Math.max(1, (item.stroke ?? 0.3) * dpmm);
+  if (shape === 'line') {
+    if (w >= h) ctx.fillRect(x, y + (h - t) / 2, w, t);
+    else ctx.fillRect(x + (w - t) / 2, y, t, h);
+    return;
+  }
+  if (shape === 'rounded' || shape === 'ellipse') {
+    const r = Math.min(w, h) / 2;
+    const radius = shape === 'rounded' ? Math.min(r, (item.radius ?? 2) * dpmm) : 0;
+    const path = (inset) => {
+      ctx.beginPath();
+      if (shape === 'ellipse') ctx.ellipse(x + w / 2, y + h / 2, Math.max(0, w / 2 - inset), Math.max(0, h / 2 - inset), 0, 0, 2 * Math.PI);
+      else ctx.roundRect(x + inset, y + inset, Math.max(0, w - 2 * inset), Math.max(0, h - 2 * inset), Math.max(0, radius - inset));
+    };
+    if (item.fill) {
+      path(0);
+      ctx.fill();
+    } else {
+      ctx.lineWidth = t;
+      path(t / 2);
+      ctx.stroke();
+    }
+    return;
+  }
   if (item.fill) {
     ctx.fillRect(x, y, w, h);
     return;
   }
-  const t = Math.max(1, (item.stroke ?? 0.3) * dpmm);
   ctx.fillRect(x, y, w, t);
   ctx.fillRect(x, y + h - t, w, t);
   ctx.fillRect(x, y, t, h);
@@ -357,8 +409,6 @@ export function renderDesign(design, model, medium, onAssetLoad, opts = {}) {
   // The surface drawn on: the strip, or the upright page with the
   // overprint border turned with it (strip top = page left, strip bottom =
   // page right, strip end = page top; see pageToStrip).
-  const labelW = portrait ? across : length;
-  const labelH = portrait ? length : across;
   const offX = portrait ? ext.top : 0;
   const offY = portrait ? ext.right : ext.top;
   const width = portrait ? ext.top + across + ext.bottom : length + ext.right;
@@ -381,9 +431,9 @@ export function renderDesign(design, model, medium, onAssetLoad, opts = {}) {
     if (item.type === 'text') drawText(ctx, item, dpmm);
     else if (item.type === 'image') drawImage(ctx, item, dpmm, onAssetLoad);
     else if (item.type === 'box') drawBox(ctx, item, dpmm);
+    else if (item.type === 'icon') drawIcon(ctx, item, dpmm);
     else if (item.type === 'qr' || item.type === 'barcode') drawCode(ctx, item, dpmm, sx);
   }
-  if (design.border) drawBox(ctx, { x: 0, y: 0, w: labelW / dpmm, h: labelH / dpmm, stroke: 0.4 }, dpmm);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 
   const id = ctx.getImageData(0, 0, W, H);

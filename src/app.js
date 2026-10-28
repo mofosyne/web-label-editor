@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { MODELS, mediumMargins } from './printers/models.js';
 import { LANGUAGES, LANGUAGE_NAMES, printerRecord } from './printers/generic.js';
+import { ICONS, SYMBOLS } from './icons.js';
 import { renderDesign, bitmapToCanvas, itemError, quarterTurns } from './render.js';
 import {
   parseData, usedFields, hasFields, usesData, chosenRows, fieldValues, fillItems, labelRuns, counterText, COUNTER,
@@ -36,7 +37,6 @@ function newDesign() {
     medium: '30252',
     options: {},
     length: { mode: 'auto', mm: 60, padMm: 2 },
-    border: false,
     invert: false,
     items: [
       {
@@ -55,6 +55,25 @@ function uid() {
 // the printable band; they are now relative to the whole tape or label, so
 // such items move by the band's offset to stay where they print.
 function migrateDesign(d) {
+  if (d.border) {
+    // The Border option drew on the die cut, where the printer can't print
+    // reliably: it is now a box inside the safe area (die-cut labels), or
+    // gone (tape and rolls, whose length isn't fixed).
+    const m = MODELS[d.printer];
+    const med = m?.media.find((x) => x.id === d.medium);
+    if (med?.lengthDots) {
+      const r1 = (v) => Math.round(v * 10) / 10;
+      const mg = mediumMargins(med);
+      const dpmm = m.dpi / 25.4;
+      const [W, H] = [med.lengthDots / dpmm, med.acrossDots / dpmm];
+      const [pw, ph] = d.orientation === 'portrait' ? [H, W] : [W, H];
+      const [l, r, t, b] = d.orientation === 'portrait' ? [mg.top, mg.bottom, mg.right, mg.left] : [mg.left, mg.right, mg.top, mg.bottom];
+      d.items = [...(d.items ?? []), {
+        id: uid(), type: 'box', shape: 'rect', x: r1(l), y: r1(t), w: r1(pw - l - r), h: r1(ph - t - b), stroke: 0.4, fill: false,
+      }];
+    }
+  }
+  delete d.border;
   if ((d.version ?? 1) >= 2) return d;
   const m = MODELS[d.printer];
   const med = m?.media.find((x) => x.id === d.medium);
@@ -443,6 +462,7 @@ const round1 = (v) => Math.round(v * 10) / 10;
 // Items that show a corner handle for resizing, and how a drag sets the size.
 const RESIZERS = {
   box: (it, w, h) => { it.w = w; it.h = h; },
+  icon: (it, w, h) => { it.size = Math.max(w, h); },
   image: (it, w) => { it.w = w; },
   qr: (it, w, h) => { it.size = Math.max(w, h); },
   text: (it, w, h) => { it.w = w; it.h = h; },
@@ -1146,7 +1166,6 @@ function buildSetup() {
   $('len-mm').closest('label').hidden = design.length.mode !== 'fixed';
   $('pad-mm').value = design.length.padMm;
   $('pad-mm').closest('label').hidden = design.length.mode !== 'auto';
-  $('border').checked = !!design.border;
   $('invert').checked = !!design.invert;
 
   const opts = $('model-options');
@@ -2384,10 +2403,75 @@ function addImage(file) {
   reader.readAsDataURL(file);
 }
 
-function addBox() {
+// "+ Shape": a rectangle as tall as the label (across), a rounded one, a
+// circle, or a line across or down.
+function addShape(kind) {
   const across = Math.max(2, round1(usableMm() - 1));
-  const box = growsDown() ? { w: across, h: 20 } : { w: 20, h: across };
-  addItem({ type: 'box', ...placeNew(box.h), ...box, stroke: 0.4, fill: false });
+  const vertical = growsDown();
+  if (kind === 'line' || kind === 'vline') {
+    // Across the label (or down it), as long as the safe area allows.
+    const down = (kind === 'vline') !== vertical;
+    const len = down ? across : 20;
+    const box = down ? { w: 1, h: len } : { w: len, h: 1 };
+    if (vertical) [box.w, box.h] = [box.h, box.w];
+    addItem({ type: 'box', shape: 'line', ...placeNew(box.h), ...box, stroke: 0.4, fill: false });
+    return;
+  }
+  const side = kind === 'ellipse' ? across : 20;
+  const box = vertical ? { w: across, h: side } : { w: side, h: across };
+  addItem({ type: 'box', shape: kind, ...placeNew(box.h), ...box, stroke: 0.4, fill: false, ...(kind === 'rounded' ? { radius: 2 } : {}) });
+}
+
+function addIcon(name) {
+  const size = round1(Math.min(15, usableMm() * 0.8));
+  addItem({ type: 'icon', icon: name, size, ...placeNew(size) });
+}
+
+// "+ Symbol": characters go into the text (at the cursor while editing it
+// on the label, else into the selected text, else as a new text); brand
+// icons are items of their own.
+function openSymbols() {
+  const dialog = $('symbol-dialog');
+  const el = (tag, props = {}, ...kids) => {
+    const e = Object.assign(document.createElement(tag), props);
+    e.append(...kids);
+    return e;
+  };
+  const close = el('button', { type: 'button', className: 'close', textContent: '×', ariaLabel: 'Close' });
+  close.onclick = () => dialog.close();
+  const pick = (fn) => (e) => { e.preventDefault(); dialog.close(); fn(); };
+  const symbolButtons = SYMBOLS.map(([group, chars]) => [
+    el('h3', { textContent: group }),
+    el('div', { className: 'grid' }, ...chars.map((ch) => {
+      const b = el('button', { type: 'button', textContent: ch, title: `Insert ${ch}` });
+      b.onmousedown = (e) => e.preventDefault(); // keep the text being edited open
+      b.onclick = pick(() => insertField(ch));
+      return b;
+    })),
+  ]).flat();
+  const svg = (path) => {
+    const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    s.setAttribute('viewBox', '0 0 24 24');
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', path);
+    s.append(p);
+    return s;
+  };
+  const icons = el('div', { className: 'grid' }, ...Object.entries(ICONS).map(([name, icon]) => {
+    const b = el('button', { type: 'button', title: icon.title, ariaLabel: icon.title }, svg(icon.path));
+    b.onclick = pick(() => addIcon(name));
+    return b;
+  }));
+  dialog.replaceChildren(
+    el('header', {}, el('h2', { textContent: 'Symbols and icons' }), close),
+    el('p', { className: 'note', textContent: 'Symbols are characters: they go into the selected text, at the cursor if you are '
+      + 'editing it on the label, or into a new text. Brand icons are items of their own (Simple Icons, public domain; '
+      + 'the brands are trademarks of their owners).' }),
+    ...symbolButtons,
+    el('h3', { textContent: 'Brand icons' }),
+    icons,
+  );
+  if (!dialog.open) dialog.showModal();
 }
 
 function addQr() {
@@ -2411,7 +2495,9 @@ function describe(item) {
   if (item.type === 'image') return `${item.w} mm wide`;
   if (item.type === 'qr') return `${warn}${item.data.split('\n')[0] || '(empty)'}`;
   if (item.type === 'barcode') return `${warn}${SYMBOLOGIES[item.symbology].name}: ${item.data}`;
-  return `${item.w} × ${item.h} mm`;
+  if (item.type === 'icon') return `${ICONS[item.icon]?.title ?? item.icon} icon`;
+  const shape = { rounded: 'rounded ', ellipse: 'ellipse ', line: 'line ' }[item.shape] ?? '';
+  return `${shape}${item.w} × ${item.h} mm`;
 }
 
 // ---------- the text format bar ----------
@@ -2659,10 +2745,18 @@ function buildProps() {
       codeInfo(),
     );
   } else if (item.type === 'box') {
+    const shape = item.shape ?? 'rect';
     panel.append(
+      field('Shape', 'shape', { type: 'select', choices: [['rect', 'Rectangle'], ['rounded', 'Rounded rectangle'], ['ellipse', 'Circle / ellipse'], ['line', 'Line']] }),
       pair(num('Width (mm)', 'w', 0.5, 0.5), num('Height (mm)', 'h', 0.5, 0.5)),
-      num('Line (mm)', 'stroke', 0.1, 0.1),
-      field('Filled', 'fill', { type: 'checkbox' }),
+      num(shape === 'line' ? 'Thickness (mm)' : 'Line (mm)', 'stroke', 0.1, 0.1),
+      ...(shape === 'rounded' ? [num('Corner radius (mm)', 'radius', 0.5, 0)] : []),
+      ...(shape === 'line' ? [] : [field('Filled', 'fill', { type: 'checkbox' })]),
+    );
+  } else if (item.type === 'icon') {
+    panel.append(
+      field('Icon', 'icon', { type: 'select', choices: Object.entries(ICONS).map(([id, ic]) => [id, ic.title]) }),
+      num('Size (mm)', 'size', 0.5, 2),
     );
   }
   panel.append(pair(num('X (mm)', 'x'), num('Y (mm)', 'y')));
@@ -3346,7 +3440,6 @@ function wire() {
   });
   $('len-mm').oninput = (e) => { design.length.mm = parseFloat(e.target.value) || 5; refresh(); };
   $('pad-mm').oninput = (e) => { design.length.padMm = parseFloat(e.target.value) || 0; refresh(); };
-  $('border').onchange = (e) => { design.border = e.target.checked; refresh(); };
   $('invert').onchange = (e) => { design.invert = e.target.checked; refresh(); };
   $('btn-detect').onclick = detect;
   $('btn-usb-help').onclick = () => showUsbHelp();
@@ -3381,7 +3474,15 @@ function wire() {
     e.target.value = '';
   };
   $('copies').addEventListener('input', () => { dataBarKey = ''; refresh(); });
-  $('add-box').onclick = addBox;
+  const shapeMenu = $('shape-menu');
+  shapeMenu.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-shape]');
+    if (!b) return;
+    shapeMenu.open = false;
+    addShape(b.dataset.shape);
+  });
+  document.addEventListener('click', (e) => { if (!shapeMenu.contains(e.target)) shapeMenu.open = false; });
+  $('add-symbol').onclick = () => openSymbols();
   $('add-qr').onclick = addQr;
   $('add-barcode').onclick = addBarcode;
   // Zooming the editor leaves the actual-size panel open; when the editor
