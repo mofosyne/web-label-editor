@@ -199,7 +199,7 @@ The app has its own welcome page and **Help** with the same information.
   (or Ctrl+Y) undo and redo, with a drag or a burst of typing as one step.
 - **Batches from data, numbering and dates:** put `{Name}` (a column),
   `{n}` (a counter) or `{date}` / `{time}` in any text, QR code or barcode.
-  The *Batch…* button walks through it: open a data file, click the fields
+  The *Batch…* button, next to Copies, walks through it: open a data file, click the fields
   to put on the label, check each label, print. Data comes from a CSV, a Markdown table,
   JSON or a GNU recfile; Print makes one label per chosen row, as one job
   where the printer allows. Step through the labels before printing to check

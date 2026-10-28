@@ -17,6 +17,7 @@ export function encodeItem(item) {
     : `bc|${item.symbology}|${item.data}`;
   if (!codeCache.has(key)) {
     try {
+      if (!String(item.data ?? '').trim()) throw new Error(`The ${item.type === 'qr' ? 'QR code' : 'barcode'} is empty`);
       const code = item.type === 'qr'
         ? encodeQr(item.data ?? '', item.ecc ?? 'M')
         : SYMBOLOGIES[item.symbology].encode(item.data ?? '');

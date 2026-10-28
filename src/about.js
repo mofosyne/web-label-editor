@@ -135,7 +135,7 @@ function tips() {
       li(b('Rulers'), ' measure from the label\'s starting edge and from each label\'s top, and mark the selected item.')),
     el('h3', { textContent: 'Batches: data, numbers and dates' }),
     el('ul', {},
-      li(b('Batch…'), ' in the toolbar opens the Batch panel under the label, in three steps: open a data file '
+      li(b('Batch…'), ' (top bar, next to Copies) opens the Batch panel under the label, in three steps: open a data file '
         + '(optional), click the fields to put on the label, then check each label and print.'),
       li(b('Data files'), ': a CSV, the first Markdown table in a file, JSON (a list of records) or a GNU recfile. '
         + 'Its column names become fields, e.g. ', b('{Name}'), '; Print makes one label per row (times Copies).'),

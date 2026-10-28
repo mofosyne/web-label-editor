@@ -348,6 +348,7 @@ a.small-link { display: block; font-size: 12px; color: var(--accent); margin: -4
 #report-printer { color: var(--accent); }
 
 /* Data rows, counter and date: under the editor while the design has fields. */
+.data-bar[hidden] { display: none; }
 .data-bar { margin: 8px 0 0; padding: 10px 12px; background: var(--stage); border-radius: 8px; font-size: 13px; display: grid; gap: 10px; }
 .data-bar header { display: flex; align-items: center; justify-content: space-between; }
 .data-bar h2 { margin: 0; font-size: 13px; }

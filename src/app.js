@@ -586,6 +586,17 @@ function draw() {
     || (b.y + b.h) * scale > a.y1 + slack || (b.x + b.w) * scale > a.x1 + slack;
   const shownBounds = last.bounds.map((b, i) => (b ? { b, lane: last.lanes[i] } : null)).filter(Boolean);
   const offLabel = shownBounds.some(({ b }) => outside(b, hard));
+  // Name what is cut off, so it can be found and moved.
+  const cutOff = last.bounds.map((b, i) => (b && outside(b, hard) ? design.items[i] : null)).filter(Boolean);
+  const kinds = { text: 'text', qr: 'QR code', barcode: 'barcode', image: 'image', box: 'box' };
+  const short = (it) => {
+    const s = it.type === 'text' ? it.text.split('\n')[0] : it.type === 'qr' || it.type === 'barcode' ? it.data : '';
+    return s ? ` "${s.length > 24 ? `${s.slice(0, 23)}…` : s}"` : '';
+  };
+  const cutNote = cutOff.length
+    ? `  ·  ⚠ The ${kinds[cutOff[0].type]}${short(cutOff[0])}${cutOff.length > 1 ? ` and ${cutOff.length - 1} more` : ''} `
+      + `${cutOff.length > 1 ? 'go' : 'goes'} past where the printer can print and will be cut off`
+    : '';
   const overprint = !offLabel && shownBounds.some(({ b, lane }) => outside(b, safe[lane]));
   const dims = $('dims');
   // In words: the ends as seen in the preview.
@@ -594,7 +605,7 @@ function draw() {
     + (feed.cuts ? `, cut at the ${end(feed.trail)}` : '')
     + (feed.grows ? `; grows ${last.portrait ? 'downwards' : 'to the right'} as you add content` : '');
   dims.textContent = `${tape} × ${lenMm.toFixed(1)} mm long${last.portrait ? ', portrait' : ''}  ·  ${geo.width} × ${geo.height} dots @ ${m.dpi} dpi`
-    + (offLabel ? '  ·  ⚠ Something is where the printer cannot print and will be cut off' : '')
+    + cutNote
     + (overprint ? '  ·  Overprinting past the safe area (the die cut may trim it)' : '')
     + (last.hidden ? `  ·  ${last.hidden} item${last.hidden > 1 ? 's' : ''} on the other label${lanes?.count > 2 ? 's' : ''} hidden (choose "A different design on each")` : '')
     + `  ·  ${feedNote}`;
@@ -1419,7 +1430,8 @@ async function print() {
       const broken = d.items.find((it) => itemError(it));
       if (broken) {
         const which = batch && batch.length > 1 ? ` label ${n + 1}` : '';
-        showBanner(`Can't print${which}: ${itemError(broken)} (${broken.type === 'qr' ? 'QR code' : 'barcode'} "${broken.data}").`);
+        const what = broken.data ? ` (${broken.type === 'qr' ? 'QR code' : 'barcode'} "${broken.data}")` : '';
+        showBanner(`Can't print${which}: ${itemError(broken)}${what}.`);
         return;
       }
     }
