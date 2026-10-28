@@ -29,6 +29,9 @@ function welcome(go) {
     p('Design labels and print them ', b('straight from your browser'), ' to DYMO LabelWriter and Brother P-touch / QL '
       + 'label printers, with no drivers or software to install. Continuous rolls are first class: a label is as long as '
       + 'its content, or any length you choose.'),
+    p(b('See it at its real size before you print:'), ' the panel under the editor draws the label at its actual size. '
+      + 'Calibrate your screen once with a bank card (Calibrate… in that panel), then hold the label or the thing it goes '
+      + 'on up to the screen.'),
     p(b('Why:'), ' the makers\' own label editors don\'t run on Linux, and the Linux tools that exist don\'t handle '
       + 'continuous rolls or auto-sizing text well. Linux users shouldn\'t be second-class citizens with label printers; a '
       + 'web page that talks to the printer directly works the same everywhere.'),
@@ -44,8 +47,9 @@ function welcome(go) {
         + 'preview that shows exactly what will print, copy and paste between labels, and above all ',
       b('text that sizes itself to fit'), '. Too many label editors leave you guessing, and text gets cut off.'),
       li(b('Continuous rolls are the normal case.'), ' A label is as long as its content unless you say otherwise.'),
-      li(b('What you see is what prints.'), ' The preview is the exact dots the printer will burn. Hatched: the printer '
-        + 'cannot reach. Dashed: the safe area; going past it, even onto the liner, is allowed. You decide.'),
+      li(b('What you see is what prints, at the size it prints.'), ' The preview is the exact dots the printer will burn, '
+        + 'and the panel under it shows them at real size once your screen is calibrated. Hatched: the printer cannot '
+        + 'reach. Dashed: the safe area; going past it, even onto the liner, is allowed. You decide.'),
       li(b('Print directly.'), ' The page talks to the printer over USB or Bluetooth itself, the same on Linux, Windows, '
         + 'macOS and ChromeOS.'),
       li(b('Measure, don\'t guess.'), ' Test prints and per-roll calibration correct for your printer and your label '

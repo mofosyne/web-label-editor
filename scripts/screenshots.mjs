@@ -33,7 +33,7 @@ const DESIGNS = {
     version: 2, printer: 'brother-pt-p710bt', medium: 'tze-12', options: {}, length: { mode: 'auto', mm: 60, padMm: 2 }, border: false, invert: false,
     items: [
       { id: 'a', type: 'text', text: 'Rack A  Port 12', font: 'sans-serif', bold: true, italic: false, align: 'left', size: 6.5, x: 2, y: 2.6 },
-      { id: 'b', type: 'barcode', symbology: 'code128', data: 'NET0012', module: 0.3, height: 6.8, showText: true, textSize: 2.6, x: 66, y: 1 },
+      { id: 'b', type: 'barcode', symbology: 'code128', data: 'NET0012', module: 0.3, height: 6.8, showText: true, textSize: 2.6, x: 52, y: 1 },
     ],
   },
 };
@@ -71,23 +71,28 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, dev
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 try {
-  for (const [name, design] of Object.entries(DESIGNS)) {
-    await page.goto(url);
-    await page.evaluate((d) => {
+  // Storage is set from a plain file on the same origin, where the app is
+  // not running: the app saves its own design shortly after it starts and
+  // would overwrite one written while it is open.
+  const setStorage = async (items) => {
+    await page.goto(`${url}catalog/media.rec`);
+    await page.evaluate((entries) => {
       localStorage.clear();
-      localStorage.setItem('web-label-editor:welcomed', '1');
-      localStorage.setItem('web-label-editor:design', JSON.stringify(d));
-    }, design);
-    await page.reload();
+      for (const [k, v] of entries) localStorage.setItem(k, v);
+    }, Object.entries(items));
+  };
+  for (const [name, design] of Object.entries(DESIGNS)) {
+    await setStorage({ 'web-label-editor:welcomed': '1', 'web-label-editor:design': JSON.stringify(design) });
+    await page.goto(url);
     await page.waitForTimeout(400);
     await page.locator('#item-list li').first().click();
     await page.waitForTimeout(150);
     await page.screenshot({ path: join(OUT, `${name}.png`) });
     console.log(`docs/screenshots/${name}.png`);
   }
-  // The welcome page, as on a first visit.
-  await page.evaluate(() => localStorage.removeItem('web-label-editor:welcomed'));
-  await page.reload();
+  // The welcome page, as on a first visit (over the tape design).
+  await setStorage({ 'web-label-editor:design': JSON.stringify(DESIGNS['editor-tape']) });
+  await page.goto(url);
   await page.waitForTimeout(400);
   await page.screenshot({ path: join(OUT, 'welcome.png') });
   console.log('docs/screenshots/welcome.png');

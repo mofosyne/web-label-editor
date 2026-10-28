@@ -15,6 +15,7 @@ export const AIMS = [
   'You print on **continuous rolls or tape**, where the label is as long as its content.',
   'You want to **edit text right on the label** (click it and type) and have it **fit**: sized automatically to its box, never cut off, as in the original DYMO Label software.',
   'Position matters: the preview shows the **true printable area**, and test prints and **per-roll calibration** handle third-party label stock.',
+  'You want to **see the label at its real size** on screen before printing: calibrate once with a bank card, then hold the label or the thing it goes on up to the screen.',
 ];
 
 export const LOOK_ELSEWHERE = [
@@ -41,7 +42,8 @@ export function aimsMarkdown() {
 
 export const OTHER_TOOLS_INTRO = 'Low-level libraries for these printers are plentiful; label editors are rarer, '
   + 'mostly cover one brand, and often print through CUPS or a small server. This one aims at DYMO LabelWriter and '
-  + 'Brother printers together, continuous rolls, text edited in place that fits its box, and a true preview of the printable area; if one of '
+  + 'Brother printers together, continuous rolls, text edited in place that fits its box, and a true preview of the printable area, '
+  + 'also at real size; if one of '
   + 'these fits you better, use it. Developers: the libraries are where most of the protocol knowledge lives.';
 
 export const OTHER_TOOLS = [
