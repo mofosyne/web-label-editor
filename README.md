@@ -228,9 +228,11 @@ The app has its own welcome page and **Help** with the same information.
   `{{n}}` (a counter) or `{{date}}` / `{{time}}` in any text, QR code or
   barcode (double braces, as in most mail merges, so a single `{brace}` in
   a label stays text).
-  The *Batch…* button, next to Copies, walks through it: open a data file, click the fields
-  to put on the label, check each label, print. Data comes from a CSV, a Markdown table,
-  JSON or a GNU recfile; Print makes one label per chosen row, as one job
+  The *Batch…* button, next to Copies, walks through it: open a data file or paste cells (or *Try an
+  example*), click the fields to put on the label, check each label, print. Data comes from
+  spreadsheet cells, a CSV, a Markdown table, JSON or a GNU recfile. A CSV or a pasted list
+  without column names (say, a list of serial numbers) is spotted, and its columns are
+  `{{A}}`, `{{B}}`…; a tick box says otherwise when the guess is wrong. Print makes one label per chosen row, as one job
   where the printer allows. Step through the labels before printing to check
   each one fits; the counter carries on from where the last print stopped.
   The data is saved with the label, so a saved label is a template.

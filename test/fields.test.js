@@ -70,3 +70,20 @@ test('data: recfiles, first record type, repeated fields joined', () => {
   assert.deepEqual(parseData('Name,Bin\nAnn,1').rows, [['Ann', '1']]);
 });
 
+
+test('CSV without column names: A, B, C… and the first row as data; a guess at it', async () => {
+  const { withoutHeader, withHeader, looksHeaderless, columnLetters, dataFormat } = await import('../src/fields.js');
+  const d = parseCsv('M3,10,A1\nM4,12,A2');
+  assert.equal(looksHeaderless(d), true, 'numbers in the first row');
+  assert.equal(looksHeaderless(parseCsv('Part,Size,Bin\nM3,10,A1')), false);
+  assert.equal(looksHeaderless(parseCsv('x,x\n1,2')), true, 'repeated names');
+  assert.equal(looksHeaderless(parseCsv('SN-0001\nSN-0002\nSN-0003')), true, 'a pasted list of serial numbers');
+  assert.equal(looksHeaderless(parseCsv('Serial\nSN-0001\nSN-0002')), false, 'the same list with a name');
+  assert.equal(looksHeaderless(parseCsv('Name,Bin\nAnn,A1\nBo,A2')), false);
+  const plain = withoutHeader(d);
+  assert.deepEqual(plain.columns, ['A', 'B', 'C']);
+  assert.deepEqual(plain.rows, [['M3', '10', 'A1'], ['M4', '12', 'A2']]);
+  assert.deepEqual(withHeader(plain).columns, ['M3', '10', 'A1']);
+  assert.deepEqual(columnLetters(28).slice(24), ['Y', 'Z', 'AA', 'AB']);
+  assert.deepEqual(['a.json', 'a.md', 'a.rec', 'a.csv', ''].map((n) => dataFormat(n ? 'x' : 'a\tb', n)), ['json', 'markdown', 'rec', 'csv', 'csv']);
+});

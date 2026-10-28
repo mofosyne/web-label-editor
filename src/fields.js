@@ -103,21 +103,88 @@ export function parseRecData(text) {
   }));
 }
 
+// Data as tab-separated text, the way spreadsheets copy cells: to show in
+// the paste box for editing. Values with tabs, line breaks or quotes are
+// quoted, which parseCsv reads back.
+// Without `header`, just the rows (data that had no column names).
+export function toTsv({ columns, rows }, header = true) {
+  const cell = (v) => (/[\t\n\r"]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+  return [...(header ? [columns] : []), ...rows].map((r) => r.map(cell).join('\t')).join('\n');
+}
+
+// A small example to try a batch with: a few parts and their bins.
+export const EXAMPLE_DATA = {
+  name: 'Example: parts bins',
+  columns: ['Part', 'Size', 'Bin'],
+  rows: [
+    ['Hex bolt', 'M3 × 10', 'A1'],
+    ['Hex bolt', 'M4 × 12', 'A2'],
+    ['Nyloc nut', 'M3', 'B1'],
+    ['Nyloc nut', 'M4', 'B2'],
+    ['Washer', 'M3', 'C1'],
+    ['Washer', 'M4', 'C2'],
+  ],
+};
+
 // Reads data from a file's text, by its name's extension or, failing that,
 // by what the text looks like. Returns { columns, rows }.
-export function parseData(text, name = '') {
+// Which kind of data a file's text is, by its name's extension or, failing
+// that, by what the text looks like: 'json', 'markdown', 'rec' or 'csv'.
+export function dataFormat(text, name = '') {
   const ext = name.toLowerCase().match(/\.([a-z]+)$/)?.[1];
-  const t = text.replace(/^﻿/, '');
-  if (ext === 'json' || (!ext && /^\s*[[{]/.test(t))) return parseJsonData(t);
-  if (ext === 'md' || ext === 'markdown') return parseMarkdownTable(t);
-  if (ext === 'rec') return parseRecData(t);
-  if (ext === 'csv' || ext === 'tsv') return parseCsv(t);
-  if (/^\s*[[{]/.test(t)) return parseJsonData(t);
-  if (/^\s*\|?.*\|.*\n\s*\|?\s*:?-{3,}/m.test(t)) return parseMarkdownTable(t);
+  const t = text.replace(/^\uFEFF/, '');
+  if (ext === 'json' || (!ext && /^\s*[[{]/.test(t))) return 'json';
+  if (ext === 'md' || ext === 'markdown') return 'markdown';
+  if (ext === 'rec') return 'rec';
+  if (ext === 'csv' || ext === 'tsv') return 'csv';
+  if (/^\s*[[{]/.test(t)) return 'json';
+  if (/^\s*\|?.*\|.*\n\s*\|?\s*:?-{3,}/m.test(t)) return 'markdown';
   if (/^(%rec:|[A-Za-z][A-Za-z0-9_]*: )/m.test(t.split('\n').find((l) => l.trim() && !l.startsWith('#')) ?? '')) {
-    try { return parseRecData(t); } catch { /* not a recfile after all */ }
+    try { parseRecData(t); return 'rec'; } catch { /* not a recfile after all */ }
   }
-  return parseCsv(t);
+  return 'csv';
+}
+
+// Reads data from a file's text (see dataFormat). Returns { columns, rows }.
+export function parseData(text, name = '') {
+  const t = text.replace(/^\uFEFF/, '');
+  return { json: parseJsonData, markdown: parseMarkdownTable, rec: parseRecData, csv: parseCsv }[dataFormat(t, name)](t);
+}
+
+// Spreadsheet column names: A, B, … Z, AA, AB, …
+export function columnLetters(n) {
+  return Array.from({ length: n }, (_, i) => {
+    let s = '';
+    for (let k = i + 1; k > 0; k = Math.floor((k - 1) / 26)) s = String.fromCharCode(65 + ((k - 1) % 26)) + s;
+    return s;
+  });
+}
+
+// CSV without column names: the first row is data, and the columns are
+// named A, B, C… as in a spreadsheet. withHeader undoes it.
+export function withoutHeader({ columns, rows, ...rest }) {
+  return { ...rest, header: false, columns: columnLetters(columns.length), rows: [columns, ...rows] };
+}
+export function withHeader({ columns, rows, ...rest }) {
+  const [first = [], ...data] = rows;
+  return { ...rest, header: true, columns: columns.map((_, i) => String(first[i] ?? '').trim() || `Column ${i + 1}`), rows: data };
+}
+
+// A guess at whether CSV's first row is data rather than column names:
+// names are not numbers and not repeated, and they don't look like the
+// values under them (a list of serial numbers, SN-0001, SN-0002…, is all
+// data: same letters and digits in the same places).
+const shape = (v) => String(v).trim().replace(/\d/g, '9').replace(/[A-Za-z]/g, 'a');
+export function looksHeaderless({ columns, rows }) {
+  const named = columns.filter((c) => !/^Column \d+$/.test(c));
+  if (named.some((c) => /^[-+]?\d+([.,]\d+)?$/.test(c.trim()))) return true;
+  if (new Set(named.map((c) => c.trim().toLowerCase())).size < named.length) return true;
+  if (!rows.length) return false;
+  // Every column's first value shaped like most of the values below it.
+  return columns.every((c, i) => {
+    const below = rows.map((r) => shape(r[i] ?? ''));
+    return below.filter((v) => v === shape(c)).length > below.length / 2;
+  });
 }
 
 const FIELD = /\{\{([^{}\n]+)\}\}/g;
