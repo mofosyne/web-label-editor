@@ -310,6 +310,7 @@ dialog.about { width: min(820px, calc(100vw - 32px)); }
 dialog.about .about-body { max-height: calc(100vh - 220px); overflow-y: auto; margin-bottom: 14px; }
 dialog.about h3 { font-size: 14px; margin: 16px 0 6px; }
 dialog.about ul, dialog.about ol { margin: 6px 0; padding-left: 20px; }
+dialog.about ol.start li { margin-bottom: 6px; }
 dialog.about li { margin-bottom: 4px; }
 dialog.about a, button.linklike { color: var(--accent); }
 button.linklike { border: none; background: none; padding: 0; font: inherit; cursor: pointer; text-decoration: underline; }

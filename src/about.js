@@ -20,18 +20,35 @@ const b = (text) => el('strong', { textContent: text });
 const li = (...c) => el('li', {}, ...c);
 const link = (href, text) => el('a', { href, textContent: text, target: '_blank', rel: 'noopener' });
 
+// The first thing a new user sees: three steps, and nothing else they must
+// read. Why and how it is built are on the About tab.
 function welcome(go) {
-  const start = el('button', { type: 'button', className: 'linklike', textContent: 'Printers' });
-  start.onclick = () => go('printers');
+  const linkTo = (tab, text) => {
+    const a = el('button', { type: 'button', className: 'linklike', textContent: text });
+    a.onclick = () => go(tab);
+    return a;
+  };
+  return [
+    p('Design labels and print them ', b('straight from your browser'), ' to DYMO LabelWriter and Brother P-touch / QL '
+      + 'label printers. Nothing to install.'),
+    el('ol', { className: 'start' },
+      li(b('Pick your printer and label'), ' in the Printer panel. See ', linkTo('printers', 'which printers work'), '.'),
+      li(b('Click the text on the label and type.'), ' It sizes itself to fit. Use ', b('+ Text'), ', ', b('+ QR code'),
+        ' and the rest above the label to add more.'),
+      li(b('Connect'), ' in the Printer panel, then ', b('Print'), '. If the browser is refused access, the app explains the '
+        + 'one-time fix for your system.')),
+    p('The panel under the label shows it at ', b('its real size'), ': calibrate once with a bank card, then hold up '
+      + 'the thing it goes on. More in ', linkTo('tips', 'Tips'), '.'),
+    p(el('small', {}, 'Printing needs Chrome, Edge or another Chromium browser on desktop or Android; elsewhere you can '
+      + 'still design and Download PNG.')),
+  ];
+}
+
+// Why this exists and what it holds to.
+function about(go) {
   const othersLink = el('button', { type: 'button', className: 'linklike', textContent: 'Other tools' });
   othersLink.onclick = () => go('others');
   return [
-    p('Design labels and print them ', b('straight from your browser'), ' to DYMO LabelWriter and Brother P-touch / QL '
-      + 'label printers, with no drivers or software to install. Continuous rolls are first class: a label is as long as '
-      + 'its content, or any length you choose.'),
-    p(b('See it at its real size before you print:'), ' the panel under the editor draws the label at its actual size. '
-      + 'Calibrate your screen once with a bank card (Calibrate… in that panel), then hold the label or the thing it goes '
-      + 'on up to the screen.'),
     p(b('Why:'), ' the makers\' own label editors don\'t run on Linux, and the Linux tools that exist don\'t handle '
       + 'continuous rolls or auto-sizing text well. Linux users shouldn\'t be second-class citizens with label printers; a '
       + 'web page that talks to the printer directly works the same everywhere.'),
@@ -59,16 +76,6 @@ function welcome(go) {
       li(b('Nothing leaves your computer.'), ' It is a static page: designs stay in your browser unless you save them '
         + 'to a file.'),
       li(b('Say when another tool fits better.'), ' See ', othersLink, '.')),
-    el('h3', { textContent: 'Getting started' }),
-    el('ol', {},
-      li('Pick your printer and label in the ', b('Printer'), ' panel. See ', start, ' for what is supported.'),
-      li('Add text, QR codes, barcodes, images or boxes. Drag to move; click text again to edit it on the label. Tick ',
-        b('Fit text in a fixed box'), ' to let the size follow the box.'),
-      li('Click ', b('Connect USB'), ' (or Bluetooth), then ', b('Print'), '. If the browser is refused access, the app '
-        + 'explains the one-time fix for your system.'),
-      li('If prints land off position, open ', b('Test prints & position'), ' in the Printer panel and calibrate.')),
-    p('Printing needs Chrome, Edge or another Chromium browser on desktop. In other browsers you can still design and ',
-      b('Download PNG'), '.'),
   ];
 }
 
@@ -95,6 +102,14 @@ function printers(models) {
 
 function tips() {
   return [
+    el('h3', { textContent: 'Keyboard' }),
+    el('ul', {},
+      li(b('Ctrl+C / Ctrl+X / Ctrl+V'), ': copy, cut, paste items. Paste text or images from other apps too.'),
+      li(b('Ctrl+D'), ': duplicate. ', b('Delete'), ': remove. ', b('Arrows'), ': nudge 0.1 mm (Shift: 1 mm).'),
+      li(b('Ctrl+S'), ': save to My labels.'),
+      li(b('Ctrl+Z'), ': undo. ', b('Ctrl+Shift+Z'), ' or ', b('Ctrl+Y'), ': redo (also the ↶ ↷ buttons).'),
+      li(b('Click'), ' selected text, double-click it, or press ', b('Enter'), ' / ', b('F2'), ' to edit it on the label; '
+        + 'double-click empty space to add text.')),
     el('h3', { textContent: 'Layout' }),
     el('ul', {},
       li(b('Hatched border'), ': where the printer cannot put ink at all. Anything there is cut off and flagged.'),
@@ -134,13 +149,6 @@ function tips() {
         + 'n + d mm, set ', b('Feed X'), ' to −d; a Y line gives ', b('Across Y'), ' the same way.'),
       li(b('Save as roll…'), ' stores a calibration for one roll (handy for third-party labels) with a short ID to write '
         + 'on it. Its calibration code sets the roll up on another computer.')),
-    el('h3', { textContent: 'Keyboard' }),
-    el('ul', {},
-      li(b('Ctrl+C / Ctrl+X / Ctrl+V'), ': copy, cut, paste items. Paste text or images from other apps too.'),
-      li(b('Ctrl+D'), ': duplicate. ', b('Delete'), ': remove. ', b('Arrows'), ': nudge 0.1 mm (Shift: 1 mm).'),
-      li(b('Ctrl+Z'), ': undo. ', b('Ctrl+Shift+Z'), ' or ', b('Ctrl+Y'), ': redo (also the ↶ ↷ buttons).'),
-      li(b('Click'), ' selected text, double-click it, or press ', b('Enter'), ' / ', b('F2'), ' to edit it on the label; '
-        + 'double-click empty space to add text.')),
     el('h3', { textContent: 'Your designs' }),
     p('The ', b('My labels'), ' button keeps your saved labels (open one, or use it as a template for a new label) and the '
       + 'history of what you printed, so you can reprint it. They and the current design are kept in this browser; use ',
@@ -177,7 +185,7 @@ function others() {
   ];
 }
 
-const TABS = [['welcome', 'Welcome'], ['printers', 'Printers'], ['tips', 'Tips'], ['others', 'Other tools & credits'], ['connect', 'Connecting']];
+const TABS = [['welcome', 'Welcome'], ['printers', 'Printers'], ['tips', 'Tips'], ['about', 'About'], ['others', 'Other tools & credits'], ['connect', 'Connecting']];
 
 // ctx: { models, tab, onConnectHelp }
 export function openAbout(dialog, ctx) {
@@ -203,7 +211,7 @@ export function openAbout(dialog, ctx) {
     close.onclick = () => dialog.close();
     const done = el('button', { type: 'button', className: 'primary', textContent: tab === 'welcome' ? 'Start designing' : 'Close' });
     done.onclick = () => dialog.close();
-    const body = { welcome: () => welcome(go), printers: () => printers(ctx.models), tips, others }[tab]();
+    const body = { welcome: () => welcome(go), printers: () => printers(ctx.models), tips, about: () => about(go), others }[tab]();
     dialog.replaceChildren(
       el('header', {}, el('h2', { textContent: 'Web Label Editor' }), close),
       tabs,

@@ -170,9 +170,9 @@ described [below](#adding-a-printer).
 
 1. Open the [site](https://mofosyne.github.io/web-label-editor/), pick your
    printer and label in the **Printer** panel.
-2. Add text, QR codes, barcodes, images or boxes. Drag to move; click text
-   again (or double-click it) to edit it on the label. Tick **Fit text in a fixed box** and the text
-   size follows the box.
+2. Click the text on the label and type; it sizes itself to fit. Add more
+   text, QR codes, barcodes, images or boxes from the toolbar, and drag to
+   move them.
 3. **Connect USB** (or Bluetooth), then **Print**. If your OS refuses the
    browser access, the app shows the one-time fix (see
    [per-OS setup](#connecting-per-os-setup)). On Linux with a snap or
@@ -197,9 +197,11 @@ The app has its own welcome page and **Help** with the same information.
   text; Ctrl+C / Ctrl+X / Ctrl+V for items (and pasting text or images
   from other apps); Ctrl+D duplicates; arrow keys nudge; Ctrl+Z / Ctrl+Shift+Z
   (or Ctrl+Y) undo and redo, with a drag or a burst of typing as one step.
+- **Changing the label keeps the design on it:** if it no longer fits the
+  new label or tape, it is shrunk evenly to fit (undo brings it back).
 - **Continuous rolls:** *Fit to content* makes the label as long as what is on
   it; *Fixed* sets a length. Die-cut labels use their own size.
-- **Portrait** (▭ ▯ in the toolbar, or *Orientation* in the *Label* panel):
+- **Portrait** (▭ ▯ in the toolbar):
   design the label standing upright, as in DYMO Label; it is turned for
   printing. On tape and continuous rolls the label grows downwards with the
   content; on a 2-up row the labels stand side by side, label 1 on the
@@ -209,8 +211,8 @@ The app has its own welcome page and **Help** with the same information.
 - **Tape detection** (P-touch, QL): the printer reports the loaded tape; the
   app switches to it, previews in the tape's colours (P-touch), and stops a
   print if the tape changed or the printer reports a problem.
-- **My labels and history** (*Labels* button): save designs under a name
-  with a thumbnail, reopen them, or use one as a template for a new label.
+- **My labels and history** (*My labels* button; *Save* or Ctrl+S saves):
+  save designs under a name with a thumbnail, reopen them, or use one as a template for a new label.
   Every print is recorded in a history (the last 50), so you can reprint or
   adjust past labels. Both are kept in the browser.
 - **Files:** *Save file* / *Open file* for designs as JSON, to back up or

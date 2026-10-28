@@ -95,6 +95,16 @@ const undo = new UndoHistory(JSON.stringify(design));
 let selectedId = design.items[0]?.id ?? null;
 let zoom = 6; // screen px per mm of the editing view
 let editZoom = 6; // the zoom chosen with − / +
+// Until − / + is used, the zoom follows the space: 100% (6 px per mm), or
+// less so the whole label fits the width (a phone, a long tape).
+let zoomFit = true;
+function fitZoom(display, dpmm, upright) {
+  const room = $('canvas-wrap').clientWidth - 72; // padding and ruler
+  const mm = display.width / dpmm;
+  // The roll stub past the end takes up to 15 mm more, at least 28 px.
+  const z = upright ? room / mm : Math.min(room / (mm + Math.min(mm / 4, 15)), (room - 28) / mm);
+  return Math.max(2, Math.min(6, z));
+}
 // Showing the label at its real size (the screen calibration): in a panel
 // under the editor when it fits across the window, otherwise the editor
 // itself switches to real size.
@@ -413,6 +423,7 @@ function draw() {
   last = renderView(design, m, med, { adj: adjust(), onAssetLoad: () => refresh() });
   const { display, dpmm, geo, slots, toDisplay } = last;
 
+  if (zoomFit && !editing && !drag) editZoom = fitZoom(display, dpmm, last.portrait);
   const canvas = $('canvas');
   const real = actualSize ? (actualPxPerMm() ?? ESTIMATED_PX_PER_MM) : null;
   actualPanel = !!real && (display.width / dpmm) * real <= $('canvas-wrap').clientWidth - 64;
@@ -1012,8 +1023,8 @@ function buildSetup() {
       each: `${n} labels per row: Copies counts labels, filling each row from the top.`,
     }[mode()];
   }
-  $('orientation').value = portrait() ? 'portrait' : 'landscape';
-  for (const b of document.querySelectorAll('[data-orient]')) b.setAttribute('aria-pressed', String(b.dataset.orient === $('orientation').value));
+  const orient = portrait() ? 'portrait' : 'landscape';
+  for (const b of document.querySelectorAll('[data-orient]')) b.setAttribute('aria-pressed', String(b.dataset.orient === orient));
   const overprintable = canOverprint(m, medium());
   $('bleed-box').hidden = !overprintable;
   if (overprintable) $('bleed').value = String(design.bleedMm ?? 0);
@@ -1023,6 +1034,7 @@ function buildSetup() {
   $('lib-current').hidden = !linked;
   $('lib-current').textContent = linked ? `Editing "${linked.name}" from My labels.` : '';
   $('btn-lib-save').textContent = linked ? 'Save' : 'Save to My labels';
+  $('btn-save').title = linked ? `Save "${linked.name}" in My labels (Ctrl+S)` : 'Save this label to My labels (Ctrl+S)';
   buildAdjust();
 
   const btns = $('connect-buttons');
@@ -1037,7 +1049,7 @@ function buildSetup() {
   }).slice(0, transport ? 1 : undefined));
   $('btn-detect').hidden = !(m.queryStatus && transport);
   $('btn-print').disabled = !transport;
-  $('btn-print').title = transport ? '' : 'Connect the printer first (Connect on the left)';
+  $('btn-print').title = transport ? '' : 'Connect the printer first (in the Printer panel)';
 }
 
 function buildAdjust() {
@@ -1772,8 +1784,8 @@ function buildProps() {
   }
   row.append(
     btn('Duplicate', duplicateSelected),
-    btn('Forward', () => moveItem(item, 1)),
-    btn('Back', () => moveItem(item, -1)),
+    btn('Bring forward', () => moveItem(item, 1)),
+    btn('Send back', () => moveItem(item, -1)),
     btn('Delete', () => deleteItem(item)),
   );
   panel.append(row);
@@ -2276,6 +2288,13 @@ const doRedo = () => applyUndo(undo.redo());
 // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y anywhere but in a text field, where the
 // browser's own undo applies.
 function onUndoKey(e) {
+  // Ctrl+S saves to My labels, even while typing, instead of saving the page.
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 's' && !dialogOpen()) {
+    e.preventDefault();
+    stopEdit();
+    saveToLibrary(false);
+    return;
+  }
   if (!(e.ctrlKey || e.metaKey) || e.altKey || typingInField() || editing || dialogOpen()) return;
   const key = e.key.toLowerCase();
   if (key === 'z') {
@@ -2335,6 +2354,7 @@ function wire() {
   $('btn-detect').onclick = detect;
   $('btn-usb-help').onclick = () => showUsbHelp();
   $('btn-help').onclick = () => showAbout();
+  $('btn-shortcuts').onclick = () => showAbout('tips');
   $('btn-print').onclick = print;
   $('btn-png').onclick = downloadPng;
 
@@ -2352,6 +2372,7 @@ function wire() {
   const zoomBy = (f) => {
     stopEdit();
     if (actualSize && !actualPanel && actualChosen) setActualSize(false);
+    zoomFit = false;
     editZoom = Math.min(30, Math.max(1, editZoom * f));
     refresh();
   };
@@ -2367,7 +2388,7 @@ function wire() {
   $('btn-recalibrate').onclick = calibrate;
   $('btn-hide-actual').onclick = () => { setActualSize(false); refresh(); };
   // Browser zoom or a move to another screen changes devicePixelRatio.
-  window.addEventListener('resize', () => { if (actualSize) refresh(); });
+  window.addEventListener('resize', () => { if (actualSize || zoomFit) refresh(); });
 
   $('btn-export').onclick = () => {
     const { labelId, ...plain } = design;
@@ -2378,11 +2399,11 @@ function wire() {
     if (e.target.value === 'separate') unlinkLanes();
     else setRowMode(e.target.value);
   };
-  $('orientation').onchange = (e) => setOrientation(e.target.value);
   for (const b of document.querySelectorAll('[data-orient]')) b.onclick = () => setOrientation(b.dataset.orient);
   $('bleed').onchange = (e) => { design.bleedMm = Number(e.target.value) || 0; refresh({ setup: true }); };
   $('btn-lib-open').onclick = () => showLibrary();
   $('btn-lib-save').onclick = () => saveToLibrary(false);
+  $('btn-save').onclick = () => saveToLibrary(false);
   $('btn-lib-saveas').onclick = () => saveToLibrary(true);
   $('btn-import').onclick = () => $('import-file').click();
   $('import-file').onchange = async (e) => {
@@ -2412,7 +2433,7 @@ function wire() {
   canvas.addEventListener('pointerup', onPointerUp);
   canvas.addEventListener('pointercancel', onPointerUp);
   canvas.addEventListener('keydown', onKey);
-  document.addEventListener('keydown', onUndoKey);
+  document.addEventListener('keydown', onUndoKey, true); // capture: Ctrl+S works in the text editor too
   // Clicks and menu/checkbox changes are separate actions: each starts its
   // own undo step, while typing, nudging and dragging merge.
   document.addEventListener('click', () => undo.checkpoint(), true);

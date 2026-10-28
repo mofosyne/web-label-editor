@@ -17,6 +17,7 @@
       <label class="copies">Copies <input id="copies" type="number" min="1" max="99" value="1"></label>
       <button id="btn-print" class="primary" disabled>Print</button>
       <button id="btn-png">Download PNG</button>
+      <button id="btn-save">Save</button>
       <button id="btn-labels">My labels</button>
       <button id="btn-help">Help</button>
     </div>
@@ -60,12 +61,6 @@
       <p id="length-fixed-note" class="note" hidden>Die-cut labels have a fixed length.</p>
 
       <h2>Label</h2>
-      <label id="orientation-box">Orientation
-        <select id="orientation">
-          <option value="landscape">Landscape</option>
-          <option value="portrait">Portrait (upright)</option>
-        </select>
-      </label>
       <label class="inline"><input id="border" type="checkbox"> Border</label>
       <label class="inline"><input id="invert" type="checkbox"> Invert (white on black)</label>
       <label id="bleed-box" hidden>Overprint past the label edge
@@ -131,7 +126,8 @@
         <canvas id="actual-canvas" aria-label="The label at its real size"></canvas>
       </figure>
       <p id="dims" class="dims"></p>
-      <p class="hint">Drag items to move them. Click selected text (or double-click it, or press Enter) to edit it on the label; double-click empty space to add text. Ctrl+C / Ctrl+V copy and paste items, or paste text and images from other apps; Ctrl+D duplicates; Ctrl+Z undoes. Arrow keys nudge (Shift for 1 mm). Delete removes. The preview shows the exact dots that will print.</p>
+      <p class="hint">Click text to edit it · drag to move · double-click empty space to add text ·
+        <button id="btn-shortcuts" type="button" class="linklike">Shortcuts and tips</button></p>
     </section>
 
     <aside class="panel" id="props">
