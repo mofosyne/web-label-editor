@@ -5,6 +5,7 @@
 // The command sequence, per-model quirks, status tables and tape table are
 // ported from ptouch-print: https://git.familie-radermacher.ch/linux/ptouch-print.git,
 // Copyright (C) 2013-2026 Dominic Radermacher, GPL-3.0.
+// Modified: re-implemented in JavaScript for web-label-editor, 2026-10 (see git log for later changes).
 //
 // The bitmap passed in is a "strip": width = tape length, height = printable
 // dots across the tape. Each column becomes one raster line; the strip is

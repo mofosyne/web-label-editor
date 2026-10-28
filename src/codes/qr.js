@@ -5,6 +5,7 @@
 // Its structure, tables and algorithms (error correction tables, Reed–Solomon,
 // codeword placement, masking and penalty scoring) follow Project Nayuki's
 // QR Code generator library (https://www.nayuki.io/page/qr-code-generator-library),
+// Modified: re-implemented in JavaScript for web-label-editor, 2026-10 (see git log for later changes).
 // under this notice:
 //
 //   Copyright (c) Project Nayuki. (MIT License)

@@ -4,6 +4,7 @@
 // which documents Brother's "QL Series Raster Command Reference".
 // brother_ql: https://github.com/pklaus/brother_ql, by Philipp Klaus,
 // GPL-3.0-or-later.
+// Modified: re-implemented in JavaScript for web-label-editor, 2026-10 (see git log for later changes).
 //
 // The bitmap passed in is a "strip": width = length along the feed, height =
 // printable dots across the roll. As brother_ql does for a landscape image

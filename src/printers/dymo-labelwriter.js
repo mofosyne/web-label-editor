@@ -4,6 +4,7 @@
 // official dymo-cups-drivers (src/lw/LabelWriterDriver.cpp), ported from
 // that driver: DYMO LabelWriter Drivers, Copyright (C) 2008 Sanford L.P.,
 // GPL-2.0-or-later (https://github.com/matthiasbock/dymo-cups-drivers).
+// Modified: re-implemented in JavaScript for web-label-editor, 2026-10 (see git log for later changes).
 //
 // The bitmap passed in is a "strip": width = length along the feed,
 // height = dots across the print head. Each strip column becomes one raster
