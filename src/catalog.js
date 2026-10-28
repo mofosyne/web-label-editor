@@ -92,7 +92,9 @@ function fits(rec, medium, model) {
 // Fills models[*].media from catalogue text, in file order: each model gets
 // the records of its family that fit it.
 export function applyCatalog(text, models) {
-  for (const m of Object.values(models)) m.media = [];
+  // Printers described by the user (custom) bring their own label.
+  const listed = Object.entries(models).filter(([, m]) => !m.custom);
+  for (const [, m] of listed) m.media = [];
   const seen = new Set();
   for (const rec of parseRec(text).records) {
     if (rec.type !== 'Medium') continue;
@@ -101,13 +103,13 @@ export function applyCatalog(text, models) {
     if (!FAMILIES.has(family)) throw new Error(`catalogue record ${id}: unknown family "${family}"`);
     if (seen.has(id)) throw new Error(`catalogue: duplicate Id ${id}`);
     seen.add(id);
-    for (const model of Object.values(models)) {
+    for (const [, model] of listed) {
       if (model.family !== family) continue;
       const medium = toMedium(rec, model);
       if (fits(rec, medium, model)) model.media.push(medium);
     }
   }
-  for (const [id, m] of Object.entries(models)) {
+  for (const [id, m] of listed) {
     if (!m.media.length) throw new Error(`catalogue has no media for ${id}`);
   }
   return models;

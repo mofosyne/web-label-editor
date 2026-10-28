@@ -82,10 +82,11 @@ function about(go) {
 function printers(models) {
   const rows = compatRows(models);
   const table = el('table', { className: 'compat' },
-    el('thead', {}, el('tr', {}, ...['Printer', 'Status', 'Connection', 'Labels / notes'].map((h) => el('th', { textContent: h })))),
+    el('thead', {}, el('tr', {}, ...['Printer', 'Status', 'Protocol', 'Connection', 'Labels / notes'].map((h) => el('th', { textContent: h })))),
     el('tbody', {}, ...rows.map((r) => el('tr', { className: r.status },
       el('td', { textContent: r.name }),
       el('td', { textContent: STATUS_LABEL[r.status] }),
+      el('td', { textContent: r.protocol }),
       el('td', { textContent: r.connection }),
       el('td', { textContent: r.media }),
     ))));

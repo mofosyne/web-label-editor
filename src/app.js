@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { MODELS, mediumMargins } from './printers/models.js';
+import { LANGUAGES } from './printers/generic.js';
 import { renderDesign, bitmapToCanvas, itemError, quarterTurns } from './render.js';
 import {
   parseData, usedFields, hasFields, usesData, chosenRows, fieldValues, fillItems, labelRuns, counterText, COUNTER,
@@ -82,6 +83,13 @@ function saveDesign() {
   // A drag is one undo step however long it takes.
   if (undo.record(json, { merge: !!drag })) updateUndoButtons();
 }
+
+// "Other printer": the settings the user entered for it, kept in this browser.
+const GENERIC_KEY = 'web-label-editor:generic';
+function loadGeneric() {
+  try { return JSON.parse(localStorage.getItem(GENERIC_KEY)) ?? {}; } catch { return {}; }
+}
+MODELS.generic.configure(loadGeneric());
 
 // Labels and tapes come from catalog/media.rec; nothing works without them.
 try {
@@ -997,6 +1005,9 @@ function buildSetup() {
     mediumSel.append(group);
   }
 
+  buildGeneric();
+  $('request-label').hidden = !!m.custom;
+
   const fixedLength = !!medium().lengthDots;
   $('length-controls').hidden = fixedLength;
   $('length-fixed-note').hidden = !fixedLength;
@@ -1301,7 +1312,73 @@ function addRollFromCode() {
 
 // Pre-filled GitHub issue links for this printer and label.
 function reportUrl() {
-  return printerReportUrl({ printer: model().name, label: medium().name, connection: transport?.label });
+  const m = model();
+  if (m.custom) {
+    const c = m.config;
+    return printerReportUrl({
+      printer: `${c.name || '(make and model)'} via Other printer, ${c.language.toUpperCase()}`,
+      label: medium().name,
+      connection: transport?.label,
+      settings: JSON.stringify(c, null, 2),
+    });
+  }
+  return printerReportUrl({ printer: m.name, label: medium().name, connection: transport?.label });
+}
+
+// The settings form for "Other printer": what the printer speaks and how
+// big its head and labels are. Kept in this browser and sent with a report.
+function buildGeneric() {
+  const box = $('generic-box');
+  const m = model();
+  box.hidden = !m.custom;
+  if (!m.custom) { box.replaceChildren(); return; }
+  const c = m.config;
+  const set = (key, value) => {
+    const cfg = { ...m.config, [key]: value };
+    try { localStorage.setItem(GENERIC_KEY, JSON.stringify(cfg)); } catch { /* storage unavailable */ }
+    m.configure(cfg);
+    design.medium = m.media[0].id;
+    undo.checkpoint();
+    refresh({ setup: true });
+  };
+  const field = (label, key, input, note) => {
+    const l = document.createElement('label');
+    l.append(label, input);
+    if (note) l.title = note;
+    input.onchange = () => set(key, input.type === 'checkbox' ? input.checked
+      : input.type === 'number' ? (input.value === '' ? '' : Number(input.value)) : input.value);
+    return l;
+  };
+  const number = (key, step, min) => Object.assign(document.createElement('input'), { type: 'number', step, min, value: String(c[key] ?? '') });
+  const select = (key, choices) => {
+    const s = document.createElement('select');
+    for (const [v, t] of choices) s.add(new Option(t, v, false, String(v) === String(c[key])));
+    return s;
+  };
+  const name = Object.assign(document.createElement('input'), { type: 'text', value: c.name, placeholder: 'e.g. Zebra GK420d, Rollo X1040' });
+  const rotate = Object.assign(document.createElement('input'), { type: 'checkbox', checked: !!c.rotate });
+  const rotateLabel = document.createElement('label');
+  rotateLabel.className = 'inline';
+  rotateLabel.append(rotate, ' Printed upside down? Turn it round');
+  rotate.onchange = () => set('rotate', rotate.checked);
+  const h = document.createElement('h3');
+  h.textContent = 'Your printer (experimental)';
+  const intro = document.createElement('p');
+  intro.className = 'note';
+  intro.textContent = 'Not listed? If it speaks one of these languages, describe it here, print the Grid test, and '
+    + 'report the settings that worked so it can get its own entry. Its manual or spec sheet gives the language and '
+    + 'resolution (203 dpi is the usual for 4 × 6 shipping printers).';
+  box.replaceChildren(h, intro,
+    field('Make and model', 'name', name),
+    field('Printer language', 'language', select('language', Object.entries(LANGUAGES))),
+    field('Resolution', 'dpi', select('dpi', [[152, '152 dpi'], [180, '180 dpi'], [200, '200 dpi'], [203, '203 dpi'], [300, '300 dpi'], [600, '600 dpi']])),
+    field('Print head width (mm)', 'headMm', number('headMm', 0.5, 8), 'The widest the printer can print: 104 mm on 4-inch printers, 48 mm on 58 mm receipt-style printers.'),
+    field('Label width (mm)', 'widthMm', number('widthMm', 0.5, 5)),
+    field('Label length (mm, 0 for a continuous roll)', 'lengthMm', number('lengthMm', 0.5, 0)),
+    ...(c.language === 'tspl' ? [field('Gap between labels (mm)', 'gapMm', number('gapMm', 0.5, 0))] : []),
+    field('Margin (mm)', 'marginMm', number('marginMm', 0.5, 0), 'The safe area inset from each edge.'),
+    field(c.language === 'zpl' ? 'Darkness (0–30, blank: the printer\'s own)' : c.language === 'tspl' ? 'Darkness (0–15, blank: the printer\'s own)' : 'Darkness (not used)', 'darkness', number('darkness', 1, 0)),
+    rotateLabel);
 }
 function updateReportLinks() {
   const r = $('report-printer');

@@ -18,6 +18,7 @@ import {
   encodePTouch, initCommand, STATUS_REQUEST, parseStatus, HEAD_DOTS,
 } from './brother-ptouch.js';
 import { encodeQL, qlParams, parseQLStatus } from './brother-ql.js';
+import { genericPrinter } from './generic.js';
 
 // Print quality, on printers with a 300 x 600 dpi mode: twice the raster
 // lines along the feed, for barcode bars sized to 1/600 inch and smoother
@@ -45,6 +46,7 @@ function labelWriter({ name, status, devices, dpi = 300, headDots = 672, product
     status,
     devices: devices ?? [{ name, status }],
     family: 'dymo-lw',
+    protocol: se450 ? 'DYMO LabelWriter raster (SE450 subset)' : 'DYMO LabelWriter raster',
     dpi,
     highRes: !se450,
     headDots,
@@ -98,6 +100,7 @@ function pTouch({ name, status, devices, productId, maxTapeMm = 24, quirks = {},
     status,
     devices: devices ?? [{ name, status }],
     family: 'brother-pt',
+    protocol: 'Brother P-touch raster',
     dpi: 180,
     headDots: HEAD_DOTS,
     maxWidthMm: maxTapeMm,
@@ -149,6 +152,7 @@ function brotherQL(name, { editorLite = false, status = 'experimental' } = {}) {
     status,
     devices: [{ name: `Brother ${name}`, status }],
     family: 'brother-ql',
+    protocol: 'Brother QL raster',
     // The strip's right end prints first (see brother-ql.js).
     leadingEnd: 'end',
     dpi: 300,
@@ -243,6 +247,9 @@ export const MODELS = {
   'brother-ql-1100': brotherQL('QL-1100'),
   'brother-ql-1110nwb': brotherQL('QL-1110NWB'),
   'brother-ql-1115nwb': brotherQL('QL-1115NWB'),
+
+  // Anything else, described by the user (see generic.js).
+  generic: genericPrinter(),
 
 };
 

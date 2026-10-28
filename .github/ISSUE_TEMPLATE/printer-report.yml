@@ -47,6 +47,14 @@ body:
         that comes out first, Y across from the top edge. Where do the first and last X and Y lines land, measured
         from those edges, and which Feed X / Across Y values (if any) made it line up?
       placeholder: "e.g. X line 0 at 6.0 mm, X line 50 at 56.0 mm; Y line 0 at 1.0 mm; settled on Feed X −6.0, Across Y +1.0"
+  - type: textarea
+    id: settings
+    attributes:
+      label: Printer settings (Other printer only)
+      description: >-
+        If you used "Other printer (ZPL, TSPL or ESC/POS)", the settings you entered: the app fills these in. Say
+        which ones worked, or what you changed to make it work.
+      render: json
   - type: input
     id: system
     attributes:

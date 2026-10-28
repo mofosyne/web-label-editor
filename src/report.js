@@ -22,9 +22,11 @@ function issueUrl(template, title, fields) {
   return `${REPO_URL}/issues/new?${q}`;
 }
 
-export function printerReportUrl({ printer, label, connection }) {
+// settings: for a printer described by the user ("Other printer"), what
+// they entered, so a working set can become the printer's own entry.
+export function printerReportUrl({ printer, label, connection, settings }) {
   return issueUrl('printer-report.yml', `Printer report: ${printer}`, {
-    printer, label, connection, system: systemInfo(),
+    printer, label, connection, settings, system: systemInfo(),
   });
 }
 

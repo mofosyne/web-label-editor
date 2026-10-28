@@ -331,7 +331,8 @@ details.section > summary h2 { display: inline; margin: 0; white-space: nowrap; 
 details.section > summary .state { color: var(--accent); font-size: 12px; }
 details.section > div { margin-top: 10px; }
 details.section > summary .state { flex-basis: 100%; padding-left: 14px; }
-label[hidden] { display: none; }
+/* hidden always wins over a display set above (flex, grid, block links). */
+[hidden] { display: none !important; }
 
 dialog.library .cards { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
 dialog.library .card { display: grid; grid-template-columns: 130px 1fr; gap: 6px 12px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; align-items: center; }
@@ -349,6 +350,8 @@ a.small-link { display: block; font-size: 12px; color: var(--accent); margin: -4
 
 /* Data rows, counter and date: under the editor while the design has fields. */
 .data-bar[hidden] { display: none; }
+.generic-box { border-left: 3px solid var(--accent); padding: 4px 0 4px 10px; margin: 6px 0; }
+.generic-box h3 { margin: 0 0 4px; font-size: 13px; }
 .data-bar { margin: 8px 0 0; padding: 10px 12px; background: var(--stage); border-radius: 8px; font-size: 13px; display: grid; gap: 10px; }
 .data-bar header { display: flex; align-items: center; justify-content: space-between; }
 .data-bar h2 { margin: 0; font-size: 13px; }
