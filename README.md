@@ -1,4 +1,4 @@
-# Web Label Editor
+# <img src="icon.svg" alt="" width="32" height="32" align="top"> Web Label Editor
 
 Design labels and print them **straight from your browser** to DYMO
 LabelWriter and Brother P-touch / QL label printers. No drivers, no CUPS, no

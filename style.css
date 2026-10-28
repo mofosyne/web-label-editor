@@ -307,6 +307,8 @@ dialog.symbols h3 { margin: 8px 0 2px; font-size: 13px; }
 details.menu .menu-list button { border: none; background: none; text-align: left; padding: 7px 10px; border-radius: 5px; }
 details.menu .menu-list button:hover { background: var(--stage); }
 .pill.muted { color: var(--muted); }
+.topbar h1 { display: flex; align-items: center; gap: 8px; }
+.topbar h1 .logo { display: block; }
 .dims.caution { color: var(--warn-text); }
 .hint { color: var(--muted); font-size: 12px; margin: 0; }
 

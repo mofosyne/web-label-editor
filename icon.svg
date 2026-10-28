@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <title>Web Label Editor</title>
+  <path d="M3 9.5a3.5 3.5 0 0 1 3.5-3.5h14.3a3 3 0 0 1 2.3 1.1l6.3 7.6a2 2 0 0 1 0 2.6l-6.3 7.6a3 3 0 0 1-2.3 1.1H6.5A3.5 3.5 0 0 1 3 22.5z" fill="#2463eb"/>
+  <circle cx="22.5" cy="16" r="2.2" fill="#fff"/>
+  <path d="M7.5 11.5h9M7.5 16h6.5M7.5 20.5h9" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+</svg>
