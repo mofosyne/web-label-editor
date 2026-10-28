@@ -26,6 +26,11 @@ function saveScreen(devicePxPerMm) {
   } catch { /* storage unavailable */ }
 }
 
+// The browser's nominal millimetre (CSS defines 96 px per inch): the best
+// guess at real size before the screen is calibrated. Often off by a
+// quarter or more, depending on the screen.
+export const ESTIMATED_PX_PER_MM = 96 / 25.4;
+
 // CSS px per real mm on this screen at the current browser zoom, or null.
 export function actualPxPerMm() {
   const s = loadScreen();

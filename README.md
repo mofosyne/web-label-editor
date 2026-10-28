@@ -373,17 +373,14 @@ take a few seconds to send.
   on a dimmed copy switches to a design per label, starting from a copy of
   the first; **🔗 Same as label 1** links it back (its own items are kept,
   hidden, until you unlink again).
-- **Actual size (1:1):** after a one-time screen calibration (match an
-  outline to a bank card or a ruler held against the screen), the 1:1
-  button shows the label at its real size in a panel under the editor, so
-  you can keep editing at any zoom and hold the label or the thing it goes
-  on up to the screen. When the real-size label is too long to fit across
-  the window, the editor itself switches to real size instead. Saved per browser; it follows browser
-  zoom, but a different monitor needs its own calibration (*Recalibrate…*
-  in the panel, or right-click 1:1).
-- **Rulers** along the top and side of the preview measure in mm from the
-  label's starting edge and from each label's top edge, and mark the
-  selected item.
+- **Actual size:** a panel under the editor shows the label at its real
+  size, so you can hold the label or the thing it goes on up to the screen
+  while editing at any zoom. Until the screen is calibrated it is an
+  estimate (the browser's nominal millimetre) and says so; *Calibrate…*
+  matches an outline to a bank card or a ruler held against the screen.
+  The calibration follows browser zoom; a different monitor needs its own.
+  1:1 or *Hide* turns the panel off (remembered); when a label is too long
+  for the panel, pressing 1:1 shows it at real size in the editor itself.
 - **The roll:** a short faded stub past the label's trailing end shows the
   rest of the roll still in the printer (the gap and the next label, or the
   tape running on), with a torn edge and an arrow the way the label moves

@@ -15,7 +15,7 @@ import {
 } from './layout.js';
 import { newRollId, rollCode, parseRollCode } from './rolls.js';
 import { UndoHistory } from './undo.js';
-import { actualPxPerMm, openScreenCalibration } from './screen.js';
+import { actualPxPerMm, openScreenCalibration, ESTIMATED_PX_PER_MM } from './screen.js';
 
 const STORAGE_KEY = 'web-label-editor:design';
 const $ = (id) => document.getElementById(id);
@@ -98,8 +98,20 @@ let editZoom = 6; // the zoom chosen with − / +
 // Showing the label at its real size (the screen calibration): in a panel
 // under the editor when it fits across the window, otherwise the editor
 // itself switches to real size.
-let actualSize = false;
+// On by default (an estimate until the screen is calibrated); hiding it is
+// remembered. The editor itself only switches to real size when 1:1 was
+// pressed, not by default.
+const ACTUAL_KEY = 'web-label-editor:actual';
+let actualSize = (() => {
+  try { return localStorage.getItem(ACTUAL_KEY) !== 'off'; } catch { return true; }
+})();
+let actualChosen = false;
 let actualPanel = false;
+function setActualSize(on) {
+  actualSize = on;
+  actualChosen = true;
+  try { localStorage.setItem(ACTUAL_KEY, on ? 'on' : 'off'); } catch { /* storage unavailable */ }
+}
 // Where the label starts on the editor canvas, CSS px (past the roll stub).
 let viewOrigin = { x: 0, y: 0 };
 let transport = null;
@@ -402,9 +414,11 @@ function draw() {
   const { display, dpmm, geo, slots, toDisplay } = last;
 
   const canvas = $('canvas');
-  const real = actualSize ? actualPxPerMm() : null;
+  const real = actualSize ? (actualPxPerMm() ?? ESTIMATED_PX_PER_MM) : null;
   actualPanel = !!real && (display.width / dpmm) * real <= $('canvas-wrap').clientWidth - 64;
-  zoom = real && !actualPanel ? real : editZoom;
+  // Too long for the panel: the editor goes to real size only when asked.
+  const takeOver = !!real && !actualPanel && actualChosen;
+  zoom = takeOver ? real : editZoom;
   drawActualPanel(actualPanel ? real : null);
   const scale = zoom / dpmm; // screen px per dot
   const cssW = display.width * scale;
@@ -569,7 +583,7 @@ function draw() {
     + (last.hidden ? `  ·  ${last.hidden} item${last.hidden > 1 ? 's' : ''} on the other label${lanes?.count > 2 ? 's' : ''} hidden (choose "A different design on each")` : '')
     + `  ·  ${feedNote}`;
   dims.classList.toggle('warn', offLabel);
-  $('zoom-label').textContent = actualSize && !actualPanel ? '1:1' : `${Math.round((zoom / 6) * 100)}%`;
+  $('zoom-label').textContent = takeOver ? '1:1' : `${Math.round((zoom / 6) * 100)}%`;
   updateActualButton();
   updateCodeInfo();
   updateFitInfo();
@@ -2139,9 +2153,15 @@ function drawActualPanel(real) {
   ctx.drawImage(bitmapToCanvas(display, colors.ink, colors.paper), 0, 0, w, h);
   const plain = last.slots.length === 1 && !last.geo.top && !last.geo.bottom && !last.geo.right;
   c.style.borderRadius = plain && medium().cornerMm ? `${medium().cornerMm * real}px` : '0';
+  const calibrated = !!actualPxPerMm();
+  const title = $('actual-title');
+  title.textContent = calibrated ? 'Actual size' : 'Approximate size: this screen is not calibrated yet';
+  title.className = calibrated ? '' : 'estimate';
+  $('btn-recalibrate').textContent = calibrated ? 'Recalibrate…' : 'Calibrate…';
 }
 
-// The 1:1 button: dimmed until the screen is calibrated, pressed while on.
+// The 1:1 button: pressed while the actual-size view is on; dimmed while
+// that size is only an estimate.
 function updateActualButton() {
   const b = $('zoom-actual');
   const ready = !!actualPxPerMm();
@@ -2149,7 +2169,7 @@ function updateActualButton() {
   b.setAttribute('aria-pressed', String(actualSize));
   b.title = ready
     ? 'Actual size: the label at its real size on this screen (right-click to recalibrate)'
-    : 'Actual size: calibrate this screen first (a bank card or a ruler against the screen)';
+    : 'Actual size (approximate until you calibrate this screen with a bank card or a ruler; right-click to calibrate)';
 }
 
 // ---------- undo ----------
@@ -2249,24 +2269,21 @@ function wire() {
   // itself was at real size, zooming leaves real size.
   const zoomBy = (f) => {
     stopEdit();
-    if (actualSize && !actualPanel) actualSize = false;
+    if (actualSize && !actualPanel && actualChosen) setActualSize(false);
     editZoom = Math.min(30, Math.max(1, editZoom * f));
     refresh();
   };
   $('zoom-in').onclick = () => zoomBy(1.25);
   $('zoom-out').onclick = () => zoomBy(1 / 1.25);
-  // Actual size needs the screen calibrated first; until then the button
-  // opens the calibration.
+  // 1:1 shows or hides the actual-size view (an estimate until the screen
+  // is calibrated); calibrating from the panel or a right-click.
   const calibrate = () => openScreenCalibration($('screen-dialog'), {
-    onDone: (ok) => { actualSize = ok; refresh(); },
+    onDone: (ok) => { if (ok) setActualSize(true); refresh(); },
   });
-  $('zoom-actual').onclick = () => {
-    stopEdit();
-    if (!actualPxPerMm()) calibrate();
-    else { actualSize = !actualSize; refresh(); }
-  };
+  $('zoom-actual').onclick = () => { stopEdit(); setActualSize(!actualSize); refresh(); };
   $('zoom-actual').oncontextmenu = (e) => { e.preventDefault(); calibrate(); };
   $('btn-recalibrate').onclick = calibrate;
+  $('btn-hide-actual').onclick = () => { setActualSize(false); refresh(); };
   // Browser zoom or a move to another screen changes devicePixelRatio.
   window.addEventListener('resize', () => { if (actualSize) refresh(); });
 
