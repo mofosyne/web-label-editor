@@ -3,7 +3,10 @@
 // millimetres are nominal), so the user calibrates once by matching an
 // outline to a bank card or a ruler held against the screen. Stored as
 // device pixels per mm, so it survives browser zoom (devicePixelRatio
-// changes); a different monitor needs its own calibration.
+// changes); a different monitor needs its own calibration. One scale serves
+// both directions: screen pixels are square, and browser zoom is the same
+// both ways. The card outline keeps the card's shape, so matching it checks
+// both at once.
 
 const KEY = 'web-label-editor:screen';
 
@@ -65,7 +68,8 @@ export function openScreenCalibration(dialog, ctx = {}) {
       outline.style.width = `${100 * pxPerMm}px`;
       outline.style.height = '18px';
       outline.classList.remove('card');
-      label.textContent = 'Hold a ruler against the screen and resize the bar until it is exactly 100 mm long.';
+      label.textContent = 'Hold a ruler against the screen and resize the bar until it is exactly 100 mm long. Screen '
+        + 'pixels are square, so this sets the height too; the bank card checks both at once if in doubt.';
     }
     slider.value = String(pxPerMm);
   };

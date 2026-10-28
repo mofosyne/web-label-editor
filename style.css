@@ -286,6 +286,15 @@ textarea.inplace {
 .dims { color: var(--text); font-variant-numeric: tabular-nums; margin: 10px 0 2px; }
 /* Red: will be cut off. Amber: past the safe area, may not print. */
 .dims.warn { color: var(--danger); }
+/* The File menu in the header. */
+details.menu { position: relative; }
+details.menu > summary { list-style: none; cursor: pointer; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; }
+details.menu > summary::-webkit-details-marker { display: none; }
+details.menu[open] > summary, details.menu > summary:hover { border-color: var(--accent); }
+details.menu .menu-list { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; display: grid; min-width: 190px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, .18); padding: 4px; }
+details.menu .menu-list button { border: none; background: none; text-align: left; padding: 7px 10px; border-radius: 5px; }
+details.menu .menu-list button:hover { background: var(--stage); }
+.pill.muted { color: var(--muted); }
 .dims.caution { color: var(--warn-text); }
 .hint { color: var(--muted); font-size: 12px; margin: 0; }
 

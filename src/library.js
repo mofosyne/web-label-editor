@@ -136,7 +136,7 @@ export function openLibrary(dialog, ctx) {
             }),
           ],
         })))
-        : el('p', { className: 'empty', textContent: 'No saved labels yet. Use "Save to My labels" in the Design panel to keep the current label here; saved labels can be reopened or used as templates.' });
+        : el('p', { className: 'empty', textContent: 'No saved labels yet. Use Save (top right, or Ctrl+S) to keep the current label here; saved labels can be reopened or used as templates.' });
     } else {
       const list = history.list();
       body = list.length

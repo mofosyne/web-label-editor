@@ -234,8 +234,12 @@ The app has its own welcome page and **Help** with the same information.
   save designs under a name with a thumbnail, reopen them, or use one as a template for a new label.
   Every print is recorded in a history (the last 50), so you can reprint or
   adjust past labels. Both are kept in the browser.
-- **Files:** *Save file* / *Open file* for designs as JSON, to back up or
-  share. *Download PNG* exports the label at the printer's resolution.
+- **Files** (*File* menu, top right): *Save file* / *Open file* for designs
+  as JSON, to back up or share; *Download PNG* exports the label at the
+  printer's resolution; *New design* starts over.
+- **Printer settings** (collapsed in the left panel, its options summed up
+  on its heading): darkness, print quality, cutting, the printer's notes,
+  USB help and the report link.
 
 ## Direct USB instead of a printer driver
 

@@ -1089,6 +1089,19 @@ function handleRect(b, scale) {
 
 // ---------- setup panel ----------
 
+// The Printer settings heading's one line: the options that are set, so
+// they show without opening it.
+function printerSummary(m) {
+  return m.options.map((o) => {
+    const v = option(o.id);
+    const name = o.label.split(/[:(]/)[0].trim();
+    if (o.type === 'checkbox') return v ? name : null;
+    const choice = o.choices.find((c) => (Array.isArray(c) ? c[0] : c) === v);
+    const text = Array.isArray(choice) ? choice[1].split(' (')[0] : v;
+    return `${name}: ${text}`;
+  }).filter(Boolean).join(' · ');
+}
+
 function buildSetup() {
   const m = model();
   const printerSel = $('printer');
@@ -1127,7 +1140,6 @@ function buildSetup() {
 
   const fixedLength = !!medium().lengthDots;
   $('length-controls').hidden = fixedLength;
-  $('length-fixed-note').hidden = !fixedLength;
   document.querySelectorAll('input[name="lenmode"]').forEach((r) => { r.checked = r.value === design.length.mode; });
   $('len-mm').value = design.length.mm;
   // Only the setting that applies: a length when fixed, padding when it fits the content.
@@ -1160,6 +1172,7 @@ function buildSetup() {
     return label;
   }));
   $('model-note').textContent = m.note ?? '';
+  $('printer-summary').textContent = printerSummary(m);
   const lanes = medium().lanes;
   $('lanes-box').hidden = !lanes;
   if (lanes) {
@@ -1183,8 +1196,8 @@ function buildSetup() {
   const linked = design.labelId ? labels.get(design.labelId) : null;
   if (design.labelId && !linked) delete design.labelId;
   $('lib-current').hidden = !linked;
-  $('lib-current').textContent = linked ? `Editing "${linked.name}" from My labels.` : '';
-  $('btn-lib-save').textContent = linked ? 'Save' : 'Save to My labels';
+  $('lib-current').textContent = linked ? `“${linked.name}”` : '';
+  $('lib-current').title = linked ? 'Editing this label from My labels; Save updates it' : '';
   $('btn-save').title = linked ? `Save "${linked.name}" in My labels (Ctrl+S)` : 'Save this label to My labels (Ctrl+S)';
   buildAdjust();
 
@@ -3337,6 +3350,11 @@ function wire() {
   $('invert').onchange = (e) => { design.invert = e.target.checked; refresh(); };
   $('btn-detect').onclick = detect;
   $('btn-usb-help').onclick = () => showUsbHelp();
+  // The File menu closes after a choice, or a click anywhere else.
+  const fileMenu = $('file-menu');
+  fileMenu.addEventListener('click', (e) => { if (e.target.closest('.menu-list button')) fileMenu.open = false; });
+  document.addEventListener('click', (e) => { if (!fileMenu.contains(e.target)) fileMenu.open = false; });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fileMenu.open = false; });
   $('btn-help').onclick = () => showAbout();
   $('btn-shortcuts').onclick = () => showAbout('tips');
   $('btn-print').onclick = print;
@@ -3399,8 +3417,6 @@ function wire() {
     else setRowMode(e.target.value);
   };
   for (const b of document.querySelectorAll('[data-orient]')) b.onclick = () => setOrientation(b.dataset.orient);
-  $('btn-lib-open').onclick = () => showLibrary();
-  $('btn-lib-save').onclick = () => saveToLibrary(false);
   $('btn-save').onclick = () => saveToLibrary(false);
   $('btn-lib-saveas').onclick = () => saveToLibrary(true);
   $('btn-import').onclick = () => $('import-file').click();

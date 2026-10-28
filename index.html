@@ -12,14 +12,25 @@
     <h1>Web Label Editor</h1>
     <div class="conn">
       <span id="conn-status" class="pill">Not connected</span>
+      <span id="lib-current" class="pill muted" hidden></span>
     </div>
     <div class="actions">
       <button id="btn-batch" title="Print a batch: one label per row of a spreadsheet or list, numbered or dated">Batch…</button>
       <label class="copies">Copies <input id="copies" type="number" min="1" max="99" value="1"></label>
       <button id="btn-print" class="primary" disabled>Print</button>
-      <button id="btn-png">Download PNG</button>
       <button id="btn-save">Save</button>
       <button id="btn-labels">My labels</button>
+      <details class="menu" id="file-menu">
+        <summary>File ▾</summary>
+        <div class="menu-list" role="menu">
+          <button id="btn-new" role="menuitem">New design</button>
+          <button id="btn-import" role="menuitem">Open file…</button>
+          <button id="btn-export" role="menuitem">Save file…</button>
+          <button id="btn-lib-saveas" role="menuitem">Save as new label…</button>
+          <button id="btn-png" role="menuitem">Download PNG</button>
+        </div>
+      </details>
+      <input id="import-file" type="file" accept="application/json,.json" hidden>
       <button id="btn-help">Help</button>
     </div>
   </header>
@@ -45,42 +56,31 @@
       </div>
       <div class="row" id="connect-buttons"></div>
       <button id="btn-detect" hidden>Detect loaded tape</button>
-      <button id="btn-usb-help" class="link">USB setup help</button>
-      <div id="model-options"></div>
-      <p id="model-note" class="note"></p>
-      <p class="note"><a id="report-printer" target="_blank" rel="noopener"></a></p>
+
+      <details id="printer-settings" class="section">
+        <summary><h2>Printer settings</h2> <span id="printer-summary" class="state"></span></summary>
+        <div>
+          <div id="model-options"></div>
+          <p id="model-note" class="note"></p>
+          <button id="btn-usb-help" class="link">USB setup help</button>
+          <p class="note"><a id="report-printer" target="_blank" rel="noopener"></a></p>
+        </div>
+      </details>
 
       <details id="adjust-box" class="section">
         <summary><h2>Test prints &amp; position</h2> <span id="adjust-state" class="state"></span></summary>
         <div id="adjust"></div>
       </details>
 
-      <h2>Length</h2>
+      <h2>Label</h2>
       <div id="length-controls">
         <label class="inline"><input type="radio" name="lenmode" value="auto"> Fit to content</label>
         <label class="inline"><input type="radio" name="lenmode" value="fixed"> Fixed</label>
         <label>Length (mm) <input id="len-mm" type="number" min="5" step="1"></label>
         <label>End padding (mm) <input id="pad-mm" type="number" min="0" step="0.5"></label>
       </div>
-      <p id="length-fixed-note" class="note" hidden>Die-cut labels have a fixed length.</p>
-
-      <h2>Label</h2>
       <label class="inline"><input id="border" type="checkbox"> Border</label>
       <label class="inline"><input id="invert" type="checkbox"> Invert (white on black)</label>
-
-      <h2>Design</h2>
-      <p id="lib-current" class="note" hidden></p>
-      <div class="row">
-        <button id="btn-lib-save">Save to My labels</button>
-        <button id="btn-lib-saveas">Save as new…</button>
-        <button id="btn-lib-open">My labels &amp; history</button>
-      </div>
-      <div class="row">
-        <button id="btn-export">Save file…</button>
-        <button id="btn-import">Open file…</button>
-        <input id="import-file" type="file" accept="application/json,.json" hidden>
-      </div>
-      <button id="btn-new" class="danger-link">New design</button>
     </aside>
 
     <section class="stage">

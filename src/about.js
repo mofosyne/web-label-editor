@@ -176,7 +176,7 @@ function tips() {
     el('h3', { textContent: 'Your designs' }),
     p('The ', b('My labels'), ' button keeps your saved labels (open one, or use it as a template for a new label) and the '
       + 'history of what you printed, so you can reprint it. They and the current design are kept in this browser; use ',
-    b('Save file…'), ' / ', b('Open file…'), ' for copies you can back up or share. Source code, issues and the full '
+    b('File'), ' → ', b('Save file…'), ' / ', b('Open file…'), ' for copies you can back up or share. Source code, issues and the full '
       + 'guide: ', link(REPO_URL, 'GitHub'), '.'),
   ];
 }
