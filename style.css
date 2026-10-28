@@ -215,6 +215,10 @@ dialog.screen .cal-outline { border: 2px solid var(--accent); background: rgba(3
 dialog.screen .cal-outline.card { border-radius: 3mm; }
 dialog.screen .row input[type="range"] { flex: 1; }
 #zoom-actual.unset { opacity: .55; }
+/* The label at its real size, under the editor. */
+.actual-wrap { margin: 10px 0 0; padding: 12px 16px 16px; background: var(--stage); border-radius: 8px; overflow: auto; }
+.actual-wrap figcaption { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+#actual-canvas { display: block; box-shadow: 0 1px 4px rgba(0, 0, 0, .25); }
 #zoom-actual[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 
 /* Rulers above and left of the label. */

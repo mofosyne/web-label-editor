@@ -375,8 +375,10 @@ take a few seconds to send.
   hidden, until you unlink again).
 - **Actual size (1:1):** after a one-time screen calibration (match an
   outline to a bank card or a ruler held against the screen), the 1:1
-  button shows the label at its real size, so you can hold the label or the
-  thing it goes on up to the screen. Saved per browser; it follows browser
+  button shows the label at its real size in a panel under the editor, so
+  you can keep editing at any zoom and hold the label or the thing it goes
+  on up to the screen. When the real-size label is too long to fit across
+  the window, the editor itself switches to real size instead. Saved per browser; it follows browser
   zoom, but a different monitor needs its own calibration (right-click 1:1
   to recalibrate).
 - **Rulers** along the top and side of the preview measure in mm from the
