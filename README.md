@@ -379,8 +379,8 @@ take a few seconds to send.
   you can keep editing at any zoom and hold the label or the thing it goes
   on up to the screen. When the real-size label is too long to fit across
   the window, the editor itself switches to real size instead. Saved per browser; it follows browser
-  zoom, but a different monitor needs its own calibration (right-click 1:1
-  to recalibrate).
+  zoom, but a different monitor needs its own calibration (*Recalibrate…*
+  in the panel, or right-click 1:1).
 - **Rulers** along the top and side of the preview measure in mm from the
   label's starting edge and from each label's top edge, and mark the
   selected item.

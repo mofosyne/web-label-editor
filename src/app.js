@@ -2150,6 +2150,7 @@ function wire() {
     else { actualSize = !actualSize; refresh(); }
   };
   $('zoom-actual').oncontextmenu = (e) => { e.preventDefault(); calibrate(); };
+  $('btn-recalibrate').onclick = calibrate;
   // Browser zoom or a move to another screen changes devicePixelRatio.
   window.addEventListener('resize', () => { if (actualSize) refresh(); });
 
