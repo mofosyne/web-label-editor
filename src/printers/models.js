@@ -150,7 +150,12 @@ function brotherQL(name, { editorLite = false, status = 'experimental' } = {}) {
     brand: 'Brother QL',
     name: `Brother ${name}`,
     status,
-    devices: [{ name: `Brother ${name}`, status }],
+    // What has been tried on hardware, beyond the plain print (see compat.js).
+    devices: [{
+      name: `Brother ${name}`,
+      status,
+      note: status === 'tested' && params.highRes ? 'printing and cutting tested; 300 × 600 dpi and batches not yet' : undefined,
+    }],
     family: 'brother-ql',
     protocol: 'Brother QL raster',
     // The strip's right end prints first (see brother-ql.js).
@@ -190,7 +195,7 @@ export const MODELS = {
     name: 'DYMO LabelWriter 450 / 450 Turbo / 400',
     status: 'tested',
     devices: [
-      { name: 'DYMO LabelWriter 450', status: 'tested' },
+      { name: 'DYMO LabelWriter 450', status: 'tested', note: '300 × 600 dpi tested' },
       { name: 'DYMO LabelWriter 450 Turbo', status: 'experimental' },
       { name: 'DYMO LabelWriter 400 / 400 Turbo', status: 'experimental' },
       { name: 'DYMO LabelWriter 450 Duo (label side)', status: 'experimental' },

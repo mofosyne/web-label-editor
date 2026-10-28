@@ -190,7 +190,7 @@ dialog.help .row { justify-content: flex-end; margin: 0; }
 .toolbar > button { padding: 6px 10px; }
 /* Icons in buttons (Lucide, see lucide.js), before the name if there is one. */
 svg.ico { width: 16px; height: 16px; vertical-align: -3px; flex: none; }
-button:not(.icon) > svg.ico, summary > svg.ico { margin-right: 6px; }
+button:not(.icon) > svg.ico, summary > svg.ico, .menu-list a > svg.ico { margin-right: 6px; }
 .icon > svg.ico { display: block; margin: 0 auto; }
 dialog.symbols .grid button > svg.ico { width: 22px; height: 22px; margin: 0 auto; display: block; }
 dialog.symbols input[type="search"] { width: 100%; box-sizing: border-box; margin: 4px 0 6px; }
@@ -305,7 +305,9 @@ dialog.symbols .grid { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 1
 dialog.symbols .grid button { min-width: 38px; height: 38px; font-size: 18px; padding: 0 6px; }
 dialog.symbols h3 { margin: 8px 0 2px; font-size: 13px; }
 details.menu .menu-list button { border: none; background: none; text-align: left; padding: 7px 10px; border-radius: 5px; }
-details.menu .menu-list button:hover { background: var(--stage); }
+details.menu .menu-list button:hover, details.menu .menu-list a:hover { background: var(--stage); }
+details.menu .menu-list a { color: inherit; text-decoration: none; padding: 7px 10px; border-radius: 5px; font-size: inherit; }
+.browser-note { color: var(--warn-text); font-weight: 600; }
 .pill.muted { color: var(--muted); }
 .topbar h1 { display: flex; align-items: center; gap: 8px; }
 .topbar h1 .logo { display: block; }

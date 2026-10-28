@@ -6,6 +6,8 @@
   <title>Web Label Editor</title>
   <meta name="description" content="Design labels and print them straight to DYMO LabelWriter and Brother P-touch printers from the browser, including continuous rolls.">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#2463eb">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -29,6 +31,8 @@
           <button id="btn-export" role="menuitem" data-icon="saveFile">Save file…</button>
           <button id="btn-lib-saveas" role="menuitem" data-icon="labels">Save as new label…</button>
           <button id="btn-png" role="menuitem" data-icon="png">Download PNG</button>
+          <button id="btn-install" role="menuitem" data-icon="saveFile" hidden>Install as an app</button>
+          <a id="btn-offline" role="menuitem" data-icon="saveFile" href="https://mofosyne.github.io/web-label-editor/web-label-editor.zip" download>Download for offline use (.zip)</a>
         </div>
       </details>
       <input id="import-file" type="file" accept="application/json,.json" hidden>
@@ -57,6 +61,9 @@
       </div>
       <div class="row" id="connect-buttons"></div>
       <button id="btn-detect" hidden>Detect loaded tape</button>
+      <p id="browser-note" class="note browser-note" hidden>This browser can't reach printers: open this page in
+        <strong>Chromium, Chrome or Edge</strong> to print (Firefox and Safari have no WebUSB or Web Serial).
+        You can still design labels and download a PNG.</p>
 
       <details id="printer-settings" class="section">
         <summary><h2>Printer settings</h2> <span id="printer-summary" class="state"></span></summary>

@@ -62,10 +62,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # The app files (scripts/app-files.mjs) and the offline download zip.
       - name: Assemble site
         run: |
-          mkdir _site
-          cp -r index.html style.css src catalog _site/
+          node scripts/package.mjs
+          cp -r dist/site _site
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

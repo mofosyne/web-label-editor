@@ -55,7 +55,8 @@ export function compatRows(models) {
     for (const model of Object.values(models).filter((m) => m.brand === brand)) {
       for (const d of model.devices) {
         rows.push({
-          brand, name: d.name, status: d.status, protocol: model.protocol ?? '', connection: d.connection ?? connection(model), media: mediaSummary(model),
+          brand, name: d.name, status: d.status, protocol: model.protocol ?? '', connection: d.connection ?? connection(model),
+          media: d.note ? `${mediaSummary(model)}; ${d.note}` : mediaSummary(model),
         });
       }
     }

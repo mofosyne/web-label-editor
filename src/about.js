@@ -22,7 +22,7 @@ const link = (href, text) => el('a', { href, textContent: text, target: '_blank'
 
 // The first thing a new user sees: three steps, and nothing else they must
 // read. Why and how it is built are on the About tab.
-function welcome(go) {
+function welcome(go, canPrint = true) {
   const linkTo = (tab, text) => {
     const a = el('button', { type: 'button', className: 'linklike', textContent: text });
     a.onclick = () => go(tab);
@@ -37,10 +37,14 @@ function welcome(go) {
         ' and the rest above the label to add more.'),
       li(b('Connect'), ' in the Printer panel, then ', b('Print'), '. If the browser is refused access, the app explains the '
         + 'one-time fix for your system.')),
+    canPrint ? null : p(el('strong', { className: 'warn', textContent: 'This browser can\'t reach printers.' }),
+      ' Open this page in Chromium, Chrome or Edge to print; Firefox and Safari have no WebUSB or Web Serial. '
+      + 'You can design here and download a PNG.'),
     p('The panel under the label shows it at ', b('its real size'), ': calibrate once with a bank card, then hold up '
       + 'the thing it goes on. More in ', linkTo('tips', 'Tips'), '.'),
     p(el('small', {}, 'Printing needs Chrome, Edge or another Chromium browser on desktop or Android; elsewhere you can '
-      + 'still design and Download PNG.')),
+      + 'still design and Download PNG. Works offline once opened: install it from File, or download a copy for a '
+      + 'computer without internet (File → Download for offline use).')),
   ];
 }
 
@@ -235,7 +239,7 @@ export function openAbout(dialog, ctx) {
     close.onclick = () => dialog.close();
     const done = el('button', { type: 'button', className: 'primary', textContent: tab === 'welcome' ? 'Start designing' : 'Close' });
     done.onclick = () => dialog.close();
-    const body = { welcome: () => welcome(go), printers: () => printers(ctx.models), tips, about: () => about(go), others }[tab]();
+    const body = { welcome: () => welcome(go, ctx.canPrint !== false), printers: () => printers(ctx.models), tips, about: () => about(go), others }[tab]();
     dialog.replaceChildren(
       el('header', {}, el('h2', { textContent: 'Web Label Editor' }), close),
       tabs,

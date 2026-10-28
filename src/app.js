@@ -1205,7 +1205,10 @@ function buildSetup() {
   }).slice(0, transport ? 1 : undefined));
   $('btn-detect').hidden = !(m.queryStatus && transport);
   $('btn-print').disabled = !transport;
-  $('btn-print').title = transport ? '' : 'Connect the printer first (in the Printer panel)';
+  const canPrint = support.usb || support.serial;
+  $('browser-note').hidden = canPrint;
+  $('btn-print').title = transport ? '' : canPrint ? 'Connect the printer first (in the Printer panel)'
+    : 'This browser can\'t reach printers: open the page in Chromium, Chrome or Edge to print';
 }
 
 function buildAdjust() {
@@ -3602,6 +3605,26 @@ function wire() {
 if (!support.usb && !support.serial) {
   showBanner('This browser cannot talk to printers directly (WebUSB / Web Serial need Chrome, Edge or another Chromium browser). You can still design labels and download them as PNG.');
 }
+
+// Offline: the published site caches itself (sw.js) so it opens without a
+// network after the first visit, and can be installed as an app. Not on
+// plain http (a local copy or development), which has its files already.
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+let installPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  installPrompt = e;
+  $('btn-install').hidden = false;
+});
+$('btn-install').onclick = async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  await installPrompt.userChoice.catch(() => {});
+  installPrompt = null;
+  $('btn-install').hidden = true;
+};
 // ---------- My labels and print history ----------
 
 // A small preview image of a design, for the library and history.
@@ -3681,7 +3704,7 @@ function showLibrary(tab) {
 }
 
 function showAbout(tab) {
-  openAbout($('about-dialog'), { models: MODELS, tab, onConnectHelp: () => showUsbHelp() });
+  openAbout($('about-dialog'), { models: MODELS, tab, canPrint: support.usb || support.serial, onConnectHelp: () => showUsbHelp() });
 }
 
 // Welcome page on the first visit.
