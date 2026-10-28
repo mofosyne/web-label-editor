@@ -208,7 +208,7 @@ const dpmmNow = () => model().dpi / 25.4;
 // (Brother QL) it shifts the other way along the strip.
 const feedDots = (feedMm, m, dpmm) => Math.round((m.leadingEnd === 'end' ? -1 : 1) * feedMm * dpmm);
 const bleedMm = () => (canOverprint(model(), medium()) ? Math.min(MAX_BLEED_MM, design.bleedMm ?? 0) : 0);
-function geometry(length = 0, adj = adjust()) {
+function geometry(length = medium().lengthDots ?? 0, adj = adjust()) {
   const dpmm = dpmmNow();
   return viewGeometry(model(), medium(), {
     length,
@@ -1037,6 +1037,7 @@ function buildSetup() {
   }).slice(0, transport ? 1 : undefined));
   $('btn-detect').hidden = !(m.queryStatus && transport);
   $('btn-print').disabled = !transport;
+  $('btn-print').title = transport ? '' : 'Connect the printer first (Connect on the left)';
 }
 
 function buildAdjust() {
@@ -1105,6 +1106,60 @@ function updateAdjustState() {
 }
 
 // Chooses a catalogue label type, or one of "My rolls" ("roll:ID").
+// The label or tape a printer starts on: the most common one it takes.
+const COMMON_MEDIA = ['30252', 'tze-12', 'ql-62'];
+function defaultMedium(m) {
+  return (m.media.find((x) => COMMON_MEDIA.includes(x.id)) ?? m.media[0]).id;
+}
+
+// Runs a change of label or tape; if the design then no longer fits the
+// safe area, it is moved in and shrunk evenly until it does, so text that
+// fitted the old label isn't cut off on the new one. A design that still
+// fits is left alone (undo brings back the old size).
+function keepFitting(change) {
+  const before = last && design.items.map((it, i) => {
+    const b = last.bounds[i];
+    const slot = b && last.slots.find((sl) => sl.lane === last.lanes[i]);
+    return b && slot ? { x: (b.x - slot.ox) / last.dpmm, y: (b.y - slot.oy) / last.dpmm, w: b.w / last.dpmm, h: b.h / last.dpmm } : null;
+  });
+  change();
+  const boxes = (before ?? []).filter(Boolean);
+  if (!boxes.length) return;
+  const c = {
+    x: Math.min(...boxes.map((b) => b.x)), y: Math.min(...boxes.map((b) => b.y)),
+    r: Math.max(...boxes.map((b) => b.x + b.w)), b: Math.max(...boxes.map((b) => b.y + b.h)),
+  };
+  const mg = itemMargins();
+  const page = pageSize();
+  const room = {
+    x: mg.left, y: mg.top,
+    r: page.wFixed ? page.w - mg.right : Infinity, b: page.hFixed ? page.h - mg.bottom : Infinity,
+  };
+  if (c.x >= room.x && c.y >= room.y && c.r <= room.r && c.b <= room.b) return;
+  // A little under the exact fit, so rounding to 0.1 mm stays inside.
+  const f = Math.min(1, (room.r - room.x - 0.2) / (c.r - c.x), (room.b - room.y - 0.2) / (c.b - c.y));
+  // Where the content's corner goes: kept if it can be, else just inside.
+  const place = (lo, hi, at, size) => round1(Math.max(lo + 0.1, Math.min(at, hi - size - 0.1)));
+  const nx = place(room.x, room.r, c.x, (c.r - c.x) * f);
+  const ny = place(room.y, room.b, c.y, (c.b - c.y) * f);
+  const sc = (v) => (v == null ? v : round1(v * f));
+  for (const it of design.items) {
+    it.x = round1(nx + (it.x - c.x) * f);
+    it.y = round1(ny + (it.y - c.y) * f);
+    if (f === 1) continue;
+    if (it.type === 'text') { it.size = Math.max(1, sc(it.size)); it.w = sc(it.w); it.h = sc(it.h); }
+    if (it.type === 'box') { it.w = sc(it.w); it.h = sc(it.h); }
+    if (it.type === 'image') it.w = sc(it.w);
+    if (it.type === 'qr') it.size = sc(it.size);
+    if (it.type === 'barcode') {
+      it.module = Math.max(0.1, Math.round(it.module * f * 100) / 100);
+      it.height = sc(it.height);
+      it.textSize = sc(it.textSize);
+    }
+  }
+  if (f < 1) showBanner(`The design was shrunk to ${Math.round(f * 100)}% to fit this label. Undo (Ctrl+Z) brings it back.`);
+}
+
 function selectMedium(value) {
   if (value.startsWith('roll:')) {
     const roll = rolls.find((r) => r.id === value.slice(5));
@@ -1198,8 +1253,7 @@ function addRollFromCode() {
       design.printer = printer;
       disconnect();
     }
-    design.medium = roll.medium;
-    design.roll = roll.id;
+    keepFitting(() => { design.medium = roll.medium; design.roll = roll.id; });
     showBanner(`Roll ${roll.id} ready: ${roll.name}.`);
     refresh({ setup: true });
   } catch (err) {
@@ -1305,8 +1359,7 @@ async function detect({ keep = false } = {}) {
     if (!keep) await transport.release();
     loaded = status;
     if (status.mediumId && status.mediumId !== design.medium) {
-      design.medium = status.mediumId;
-      delete design.roll;
+      keepFitting(() => { design.medium = status.mediumId; delete design.roll; });
     }
     setStatus(`Connected: ${transport.label} · ${describeTape(status)}`, true);
     const notes = [...status.errors, ...status.warnings];
@@ -1467,10 +1520,39 @@ function nextX() {
 }
 
 function addText() {
-  const size = newTextSize();
+  let size = newTextSize();
+  let at = placeNew(size * 1.15);
+  // A full fixed-size label: rather than on top of what is there, a smaller
+  // line in the space below it, if there is some.
+  const lane = currentLane();
+  const slot = last?.slots.find((sl) => sl.lane === lane);
+  const mine = slot ? last.bounds.filter((b, i) => b && last.lanes[i] === lane) : [];
+  const mm = (b) => ({ x: (b.x - slot.ox) / last.dpmm, y: (b.y - slot.oy) / last.dpmm, w: b.w / last.dpmm, h: b.h / last.dpmm });
+  const hits = (r) => mine.map(mm).some((b) => r.x < b.x + b.w && b.x < r.x + r.w && r.y < b.y + b.h && b.y < r.y + r.h);
+  if (!growsDown() && hits({ ...at, w: size * 2, h: size * 1.15 })) {
+    const bottom = Math.max(...mine.map(mm).map((b) => b.y + b.h));
+    const room = pageSize().h - itemMargins().bottom - bottom - 0.5;
+    if (room >= 2) {
+      size = Math.max(1.5, round1(Math.min(size, room / 1.15)));
+      at = { x: round1(itemMargins().left + 1), y: round1(bottom + 0.5) };
+    } else {
+      // No space: a fitted text box filling the label gives up its lower
+      // half to the new line, and both still fit their text.
+      const big = design.items.filter((it) => it.type === 'text' && it.fit && !it.rotate && laneOf(it) === lane)
+        .sort((a, b) => b.h - a.h)[0];
+      if (big && big.h >= 6) {
+        const h = round1(big.h / 2);
+        big.h = h;
+        addItem({
+          type: 'text', text: 'Text', font: big.font, size: h * 0.8, bold: false, italic: false, align: big.align,
+          fit: true, x: big.x, y: round1(big.y + h), w: big.w, h,
+        });
+        return;
+      }
+    }
+  }
   addItem({
-    type: 'text', text: 'Text', font: 'sans-serif', size, bold: false, italic: false, align: 'left',
-    ...placeNew(size * 1.15),
+    type: 'text', text: 'Text', font: 'sans-serif', size, bold: false, italic: false, align: 'left', ...at,
   });
 }
 
@@ -2239,10 +2321,10 @@ function wire() {
     design.printer = e.target.value;
     delete design.roll;
     loaded = null;
-    design.medium = model().media[0].id;
+    keepFitting(() => { design.medium = defaultMedium(model()); });
     disconnect().then(autoConnect);
   };
-  $('medium').onchange = (e) => { selectMedium(e.target.value); refresh({ setup: true }); };
+  $('medium').onchange = (e) => { keepFitting(() => selectMedium(e.target.value)); refresh({ setup: true }); };
   document.querySelectorAll('input[name="lenmode"]').forEach((r) => {
     r.onchange = () => { design.length.mode = r.value; refresh({ setup: true }); };
   });

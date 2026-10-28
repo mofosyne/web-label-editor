@@ -157,7 +157,7 @@ export function openLibrary(dialog, ctx) {
     }
 
     dialog.replaceChildren(
-      el('header', {}, el('h2', { textContent: 'Labels' }), close),
+      el('header', {}, el('h2', { textContent: 'My labels & history' }), close),
       tabs,
       el('div', { className: 'about-body' }, body),
       el('div', { className: 'row' }, button('Close', () => dialog.close())),
