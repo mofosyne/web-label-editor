@@ -120,7 +120,8 @@ function tips() {
       li(b('Portrait'), ' (▭ ▯ in the toolbar) lets you design the label standing upright; it is turned for printing. '
         + 'On tape it grows downwards with the content.'),
       li(b('Actual size'), ': the panel under the editor shows the label at its real size; until you calibrate your '
-        + 'screen (Calibrate…, with a bank card or a ruler) it is an estimate. 1:1 or Hide turns it off.'),
+        + 'screen (Calibrate…, with a bank card or a ruler) it is an estimate. It shows only what lands inside the safe '
+        + 'area, so anything cut off there may be trimmed or not print. 1:1 or Hide turns it off.'),
       li(b('The faded stub'), ' past one end of the label is the rest of the roll, still in the printer; its arrow shows '
         + 'which way the label moves out.'),
       li(b('Ruler marks'), ': the arrow is the end that comes out of the printer first, ✂ where it is cut, » where a '

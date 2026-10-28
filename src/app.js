@@ -3148,11 +3148,47 @@ function drawActualPanel(real) {
   const ctx = c.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, w, h);
   const colors = previewColors();
+  // What the label will look like, not the design: just the labels (no
+  // liner), and only the ink inside each one's safe area and within the
+  // printer's reach. Past the safe area a print may be trimmed by the die
+  // cut or not come out at all, so it is left off here: something missing
+  // in this view is something to fix before printing.
+  const { geo, slots, toDisplay } = last;
+  const med = medium();
+  const round = med.shape === 'round';
+  const radius = (med.cornerMm ?? 0) * real;
+  const px = (r) => ({ x: r.x * scale, y: r.y * scale, w: r.w * scale, h: r.h * scale });
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, .25)';
+  ctx.shadowBlur = 4;
+  ctx.shadowOffsetY = 1;
+  ctx.fillStyle = `rgb(${colors.paper.join(',')})`;
+  ctx.beginPath();
+  for (const s of slots) {
+    const l = px(s.label);
+    labelOutline(ctx, l.x, l.y, l.w, l.h, radius, round);
+  }
+  ctx.fill();
+  ctx.restore();
+  ctx.save();
+  const reach = px(toDisplay({ x: geo.reach.x0, y: geo.reach.y0, w: geo.reach.x1 - geo.reach.x0, h: geo.reach.y1 - geo.reach.y0 }));
+  ctx.beginPath();
+  ctx.rect(reach.x, reach.y, reach.w, reach.h);
+  ctx.clip();
+  ctx.beginPath();
+  for (const s of slots) {
+    const mg = round ? evenMargins(margins(s.lane)) : margins(s.lane);
+    const a = px(toDisplay({
+      x: mg.left * dpmm, y: s.y + mg.top * dpmm,
+      w: geo.length - (mg.left + mg.right) * dpmm, h: geo.labelDots - (mg.top + mg.bottom) * dpmm,
+    }));
+    labelOutline(ctx, a.x, a.y, a.w, a.h, round ? 0 : Math.max(0, radius - Math.min(mg.left, mg.top) * real), round);
+  }
+  ctx.clip();
   ctx.drawImage(bitmapToCanvas(display, colors.ink, colors.paper), 0, 0, w, h);
-  const plain = last.slots.length === 1 && !last.geo.top && !last.geo.bottom && !last.geo.right;
-  c.style.borderRadius = plain && medium().shape === 'round' ? '50%'
-    : plain && medium().cornerMm ? `${medium().cornerMm * real}px` : '0';
+  ctx.restore();
   const calibrated = !!actualPxPerMm();
   const title = $('actual-title');
   title.textContent = calibrated ? 'Actual size' : 'Approximate size: this screen is not calibrated yet';
