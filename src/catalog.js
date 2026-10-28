@@ -28,7 +28,9 @@ function toMedium(rec, model) {
   const medium = {
     id: text('Id', true),
     name: text('Name', true),
-    acrossDots: printableDots ?? Math.min(toDots(widthMm), model.headDots),
+    // Brother media: the whole tape or label, with the printable band in it
+    // (below); others: the label, clipped to the head.
+    acrossDots: printableDots != null ? toDots(widthMm) : Math.min(toDots(widthMm), model.headDots),
     continuous: kind === 'continuous',
     margins: {
       left: num('MarginLeftMm') ?? 0,
@@ -37,7 +39,18 @@ function toMedium(rec, model) {
       bottom: num('MarginBottomMm') ?? 0,
     },
   };
-  if (kind === 'diecut') medium.lengthDots = num('PrintableLengthDots') ?? toDots(num('LengthMm', true));
+  if (kind === 'diecut') medium.lengthDots = toDots(num('LengthMm', true));
+  // Where the printer can print on Brother media (PrintableDots across,
+  // PrintableLengthDots along a die-cut label), centred on the tape or
+  // label: the preview hatches the rest and printing sends only this band.
+  if (printableDots != null) {
+    medium.band = { y: Math.floor((medium.acrossDots - printableDots) / 2), h: printableDots };
+    const printableLength = num('PrintableLengthDots');
+    if (kind === 'diecut' && printableLength != null) {
+      medium.band.x = Math.floor((medium.lengthDots - printableLength) / 2);
+      medium.band.w = printableLength;
+    }
+  }
   // "2 up" labels: the editor designs one label; printing places it into
   // each slot of the row (see composeRow).
   const across = num('LabelsAcross');
@@ -70,7 +83,7 @@ const FAMILIES = new Set(['dymo-lw', 'brother-pt', 'brother-ql']);
 function fits(rec, medium, model) {
   const printableMm = Number(field(rec, 'WidthMm')) - medium.margins.top - medium.margins.bottom;
   const widthDots = Math.round((printableMm * model.dpi) / 25.4);
-  const across = field(rec, 'PrintableDots') != null ? medium.acrossDots : widthDots;
+  const across = medium.band ? medium.band.h : widthDots;
   if (across > model.headDots * 1.02) return false;
   return model.maxWidthMm == null || Number(field(rec, 'WidthMm')) <= model.maxWidthMm;
 }

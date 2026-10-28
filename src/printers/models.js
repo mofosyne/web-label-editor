@@ -1,9 +1,11 @@
 // Printer models: how to reach and drive each printer. The labels and tapes
 // each one takes (`media`) come from catalog/media.rec, loaded by catalog.js:
 // a model gets every record of its `family` that fits its head.
-// A medium describes the printable strip: `acrossDots` dots across the head,
+// A medium describes the label or tape: `acrossDots` dots across the head,
 // and either a fixed `lengthDots` (die-cut labels) or continuous media whose
-// length comes from the design.
+// length comes from the design. Brother media also have a `band`, the part
+// the printer can print on ({ y, h } across, and { x, w } along a die-cut
+// label); the job sent to the printer is that band (see layout.js).
 //
 // `status` is shown in the printer menu; `devices` lists the printers a model
 // entry drives, each with its own status, for the README compatibility table:

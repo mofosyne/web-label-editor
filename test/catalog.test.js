@@ -65,8 +65,10 @@ test('catalogue builds the expected media', () => {
   assert.equal(dymo['11354'].acrossDots, 672, 'clipped to the 672-dot head');
 
   const tapes = models['brother-pt-p710bt'].media;
-  assert.deepEqual(tapes.map((t) => [t.id, t.acrossDots, t.statusMm]), [
-    ['tze-3.5', 24, 4], ['tze-6', 32, 6], ['tze-9', 52, 9], ['tze-12', 76, 12], ['tze-18', 120, 18], ['tze-24', 128, 24],
+  // The whole tape across, with the printable band (ptouch-print's dots) centred in it.
+  assert.deepEqual(tapes.map((t) => [t.id, t.acrossDots, t.band.y, t.band.h, t.statusMm]), [
+    ['tze-3.5', 25, 0, 24, 4], ['tze-6', 43, 5, 32, 6], ['tze-9', 64, 6, 52, 9], ['tze-12', 85, 4, 76, 12],
+    ['tze-18', 128, 4, 120, 18], ['tze-24', 170, 21, 128, 24],
   ]);
   assert.equal(tapes[3].tapeMm, 12);
 
@@ -79,7 +81,8 @@ test('catalogue builds the expected media', () => {
   assert.ok(!ids('brother-ql-800').includes('ql-102'), '102 mm rolls need a QL-1100');
   assert.ok(ids('brother-ql-1100').includes('ql-102') && ids('brother-ql-1100').includes('ql-62'));
   const dk = models['brother-ql-800'].media.find((m) => m.id === 'ql-29x90');
-  assert.deepEqual([dk.acrossDots, dk.lengthDots, dk.offsetRightDots, dk.widthMm, dk.lengthMm], [306, 991, 6, 29, 90]);
+  assert.deepEqual([dk.acrossDots, dk.lengthDots, dk.offsetRightDots, dk.widthMm, dk.lengthMm], [343, 1063, 6, 29, 90]);
+  assert.deepEqual(dk.band, { y: 18, h: 306, x: 36, w: 991 }, 'printable 306 × 991 dots, centred on the label');
 });
 
 test('catalogue loader rejects broken records', () => {

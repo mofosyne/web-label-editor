@@ -22,7 +22,7 @@ const FONTS = ['sans-serif', 'serif', 'monospace', 'Arial', 'Helvetica', 'Verdan
 
 function newDesign() {
   return {
-    version: 1,
+    version: 2,
     // The tested printer, with a text box filling the printable area.
     printer: 'dymo-lw450',
     medium: '30252',
@@ -43,10 +43,28 @@ function uid() {
   return Math.random().toString(36).slice(2, 10);
 }
 
+// Designs from before version 2 placed items on Brother media relative to
+// the printable band; they are now relative to the whole tape or label, so
+// such items move by the band's offset to stay where they print.
+function migrateDesign(d) {
+  if ((d.version ?? 1) >= 2) return d;
+  const m = MODELS[d.printer];
+  const med = m?.media.find((x) => x.id === d.medium);
+  if (med?.band) {
+    const dpmm = m.dpi / 25.4;
+    for (const it of d.items ?? []) {
+      it.y = Math.round((it.y + med.band.y / dpmm) * 10) / 10;
+      if (med.band.x) it.x = Math.round((it.x + med.band.x / dpmm) * 10) / 10;
+    }
+  }
+  d.version = 2;
+  return d;
+}
+
 function loadDesign() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) return migrateDesign(JSON.parse(raw));
   } catch { /* storage unavailable */ }
   return newDesign();
 }
@@ -478,7 +496,8 @@ function draw() {
 
   const lenMm = geo.length / dpmm;
   const lanes = med.lanes;
-  let tape = med.tapeMm ? `${med.tapeMm} mm tape, ${acrossMm().toFixed(1)} mm printable` : `${acrossMm().toFixed(1)} mm wide`;
+  const stock = m.family === 'brother-pt' ? 'tape' : med.continuous ? 'roll' : 'label';
+  let tape = med.band ? `${med.tapeMm} mm ${stock}, ${(med.band.h / dpmm).toFixed(1)} mm printable` : `${acrossMm().toFixed(1)} mm wide`;
   if (lanes) tape = `${lanes.count} labels per row, each ${tape}`;
   $('dims').title = 'Hatched: the printer cannot print there. Dashed line: the safe area (from the label maker\'s driver); '
     + 'items past it still print, overprinting towards the label edge, but the die cut may trim them.'
@@ -2076,7 +2095,7 @@ function wire() {
     try {
       const d = JSON.parse(await file.text());
       if (!Array.isArray(d.items)) throw new Error('not a label design');
-      design = { ...newDesign(), ...d };
+      design = { ...newDesign(), ...migrateDesign(d) };
       selectedId = design.items[0]?.id ?? null;
       refresh({ setup: true, props: true });
     } catch (err) {
@@ -2127,7 +2146,7 @@ function thumbnail(d) {
   try {
     const m = MODELS[d.printer] ?? model();
     const med = m.media.find((x) => x.id === d.medium) ?? m.media[0];
-    const { display } = renderView(d, m, med);
+    const { display } = renderView(migrateDesign(JSON.parse(JSON.stringify(d))), m, med);
     const full = bitmapToCanvas(display);
     const scale = Math.min(1, 240 / full.width, 80 / full.height);
     const c = document.createElement('canvas');
@@ -2182,7 +2201,7 @@ function showLibrary(tab) {
     currentLabelId: design.labelId,
     describe: describeDesign,
     onOpen(d, labelId) {
-      design = { ...newDesign(), ...JSON.parse(JSON.stringify(d)) };
+      design = { ...newDesign(), ...migrateDesign(JSON.parse(JSON.stringify(d))) };
       if (labelId) design.labelId = labelId;
       else delete design.labelId;
       selectedId = design.items[0]?.id ?? null;

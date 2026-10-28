@@ -58,9 +58,13 @@ export function viewGeometry(model, medium, { length, bleed = 0, feed = 0, acros
   // Where the head reaches across the row, in row coordinates (0 = top of
   // the row). A LabelWriter puts the row's bottom edge at head dot 0, so with
   // a head wider than the row the space above the row is reachable too;
-  // other printers only print the row itself.
-  const reachTop = model.overprint ? P - across - model.headDots : -across;
-  const reachBottom = P - across;
+  // other printers only print the row itself, or on Brother media the
+  // printable band of it.
+  const band = medium.band;
+  const bandY = band?.y ?? 0;
+  const bandH = band?.h ?? P;
+  const reachTop = model.overprint ? P - across - model.headDots : bandY - across;
+  const reachBottom = model.overprint ? P - across : bandY + bandH - across;
 
   const top = Math.min(b, Math.max(0, -reachTop));
   const bottom = Math.min(b, Math.max(0, reachBottom - P));
@@ -81,13 +85,17 @@ export function viewGeometry(model, medium, { length, bleed = 0, feed = 0, acros
   // The part of the view the printer can put ink on. Along the feed the job
   // starts `skip - feed` dots into the label (the LabelWriter never prints
   // its leading margin) and a positive net shift pushes the end out.
+  const dx = feed - skip;
+  const along = band?.w != null
+    // A die-cut Brother label: the band along it, moved by the adjustment.
+    ? { x0: Math.max(0, band.x - dx), x1: Math.min(width, band.x + band.w - dx) }
+    : { x0: Math.max(0, -dx), x1: width - Math.max(0, dx) };
   const reach = {
-    x0: Math.max(0, skip - feed),
-    x1: width - Math.max(0, feed - skip),
+    ...along,
     y0: Math.max(0, top + reachTop),
     y1: Math.min(height, top + reachBottom),
   };
-  return { width, height, length, labelDots: W, rowDots: P, top, bottom, right, skip, slots, reach, bleed: b };
+  return { width, height, length, labelDots: W, rowDots: P, top, bottom, right, skip, slots, reach, bleed: b, band };
 }
 
 // The job to encode from a rendered view: applies the position adjustment
@@ -96,6 +104,12 @@ export function viewGeometry(model, medium, { length, bleed = 0, feed = 0, acros
 // to land past the label's far edge, up to the head width.
 export function jobBitmap(view, geo, model, { feed = 0, across = 0, grow = false }) {
   const dx = feed - geo.skip;
+  const { band } = geo;
+  if (band) {
+    // Brother media: only the printable band goes to the printer.
+    if (band.w == null) return placeBitmap(view, dx, across - band.y, { grow, height: band.h });
+    return blit(blankBitmap(band.w, band.h), view, dx - band.x, across - band.y);
+  }
   if (!model.overprint) return placeBitmap(view, dx, across, { grow });
   const height = Math.max(1, Math.min(model.headDots, geo.rowDots + geo.top - across));
   const dy = height - geo.rowDots - geo.top + across;

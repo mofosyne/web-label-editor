@@ -347,8 +347,10 @@ take a few seconds to send.
 ## Labels, margins and calibration
 
 - **Hatched border:** where the printer cannot put ink at all (the
-  LabelWriter's leading margin, or an edge a position adjustment moved out of
-  reach). Anything there is cut off and flagged under the preview.
+  LabelWriter's leading margin, the edges of Brother tape and DK labels
+  outside the printable width, or an edge a position adjustment moved out of
+  reach). Anything there is cut off and flagged under the preview. Every
+  label is shown at its real size, DYMO and Brother alike.
 - **Dashed line, the safe area:** the makers' own printable area (for DYMO,
   the driver's). The head can print past it, but the die-cut edge or a label
   sitting slightly off may trim what is there. Going past it is allowed on
@@ -491,10 +493,15 @@ the preview exact. Design decisions worth knowing:
   feed and y across the head; the encoders map that onto each printer's
   raster lines.
 - **Two kinds of margin:** *hard* (the printer can't put ink there: the
-  LabelWriter's leading margin, or an edge a position adjustment moved out
-  of reach) and *safe* (the maker's printable area). Only hard margins cut
-  anything off; layout.js works out the reach, including the head's width
-  past the label edge that an overprint border can use.
+  LabelWriter's leading margin, the edges of Brother media outside their
+  printable band, or an edge a position adjustment moved out of reach) and
+  *safe* (the maker's printable area). Only hard margins cut anything off;
+  layout.js works out the reach, including the head's width past the label
+  edge that an overprint border can use.
+- **Brother media are shown whole:** a medium's `band` is the printable part
+  (ptouch-print's and brother_ql's printable dots, centred on the tape or
+  label); the preview hatches the rest and the job sent to the printer is
+  just the band, so the encoders still receive printable-width bitmaps.
 - **The job is not the view:** the job drops what the printer can't reach
   and applies the position adjustment, so a calibrated print lands where
   the preview shows it, and a die-cut job ends at the label's end instead

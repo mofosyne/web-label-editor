@@ -102,3 +102,23 @@ test('portrait pages turn into strips and back', async () => {
   assert.deepEqual(stripToPage(strip), page);
   assert.deepEqual(stripRectToPage({ x: 3, y: 0, w: 1, h: 1 }, 5), { x: 0, y: 1, w: 1, h: 1 });
 });
+
+test('Brother media: hatched edges outside the printable band, and the job is the band', () => {
+  const pt = { dpi: 180, headDots: 128 };
+  const tape12 = { acrossDots: 85, band: { y: 4, h: 76 } };
+  const g = viewGeometry(pt, tape12, { length: 100 });
+  assert.deepEqual([g.reach.y0, g.reach.y1], [4, 80]);
+  const job = jobBitmap(bmp(100, 85, (x, y) => x === 10 && (y === 4 || y === 2)), g, pt, {});
+  assert.deepEqual([job.width, job.height], [100, 76]);
+  assert.equal(job.data[0 * 100 + 10], 1, 'band row 0 = label row 4');
+  assert.equal(job.data.reduce((a, b) => a + b, 0), 1, 'row 2 is outside the band and dropped');
+  // Across +2 moves content 2 dots down: the reachable band moves up.
+  assert.deepEqual([viewGeometry(pt, tape12, { length: 100, across: 2 }).reach.y0], [2]);
+
+  const ql = { dpi: 300, headDots: 720 };
+  const dk = { acrossDots: 343, lengthDots: 1063, band: { y: 18, h: 306, x: 36, w: 991 } };
+  const gd = viewGeometry(ql, dk, { length: 1063 });
+  assert.deepEqual(gd.reach, { x0: 36, x1: 1027, y0: 18, y1: 324 });
+  const dj = jobBitmap(bmp(1063, 343, (x, y) => x === 36 && y === 18), gd, ql, {});
+  assert.deepEqual([dj.width, dj.height, dj.data[0]], [991, 306, 1]);
+});
