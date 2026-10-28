@@ -12,7 +12,7 @@ const gh = (path) => `https://github.com/${path}`;
 export const AIMS = [
   'You have a **DYMO LabelWriter** (400 / 450 family) and/or a **Brother P-touch** (or QL) and want one editor for both, in the browser on Linux, Windows, macOS and ChromeOS (Windows needs a one-time driver switch for USB).',
   'You print on **continuous rolls or tape**, where the label is as long as its content.',
-  'Your text has to **fit**: sized automatically to a box, never cut off, as in the original DYMO Label software.',
+  'You want to **edit text right on the label** (double-click and type) and have it **fit**: sized automatically to its box, never cut off, as in the original DYMO Label software.',
   'Position matters: the preview shows the **true printable area**, and test prints and **per-roll calibration** handle third-party label stock.',
 ];
 
@@ -40,7 +40,7 @@ export function aimsMarkdown() {
 
 export const OTHER_TOOLS_INTRO = 'Low-level libraries for these printers are plentiful; label editors are rarer, '
   + 'mostly cover one brand, and often print through CUPS or a small server. This one aims at DYMO LabelWriter and '
-  + 'Brother printers together, continuous rolls, text that fits, and a true preview of the printable area; if one of '
+  + 'Brother printers together, continuous rolls, text edited in place that fits its box, and a true preview of the printable area; if one of '
   + 'these fits you better, use it. Developers: the libraries are where most of the protocol knowledge lives.';
 
 export const OTHER_TOOLS = [
