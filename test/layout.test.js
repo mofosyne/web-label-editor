@@ -88,3 +88,17 @@ test('row modes and lanes', () => {
   assert.equal(itemVisible({}, 'same'), true);
   assert.equal(itemVisible({ lane: 1 }, 'same', 1), true);
 });
+
+test('portrait pages turn into strips and back', async () => {
+  const { pageToStrip, stripToPage, stripRectToPage } = await import('../src/layout.js');
+  // A 3 wide × 5 tall page with one dot at page (0, 1): left edge, near the top.
+  const page = bmp(3, 5, (x, y) => x === 0 && y === 1);
+  const strip = pageToStrip(page);
+  assert.equal(strip.width, 5);
+  assert.equal(strip.height, 3);
+  // Page left = strip top row; page top = strip end (the leading edge,
+  // strip x = 0, is the page's bottom).
+  assert.equal(strip.data[0 * 5 + 3], 1);
+  assert.deepEqual(stripToPage(strip), page);
+  assert.deepEqual(stripRectToPage({ x: 3, y: 0, w: 1, h: 1 }, 5), { x: 0, y: 1, w: 1, h: 1 });
+});

@@ -11,21 +11,32 @@ import { ByteWriter } from './bytes.js';
 
 const ESC = 0x1b;
 
-// Model parameters from brother_ql's models.py.
+// Model parameters from brother_ql's models.py. minLengthDots is the
+// shortest print (brother_ql's min_max_length_dots); compression is never
+// used here, so its flag is left out.
 export const QL_MODELS = {
+  'QL-500': { minLengthDots: 295, modeSetting: false, expandedMode: false, cutting: false },
+  'QL-550': { minLengthDots: 295, modeSetting: false },
+  'QL-560': { minLengthDots: 295, modeSetting: false },
+  'QL-570': { modeSetting: false },
+  'QL-580N': {},
+  'QL-650TD': { minLengthDots: 295 },
   'QL-700': { bytesPerRow: 90, modeSetting: false },
   'QL-710W': { bytesPerRow: 90 },
   'QL-720NW': { bytesPerRow: 90 },
   'QL-800': { bytesPerRow: 90, invalidateBytes: 400 },
   'QL-810W': { bytesPerRow: 90, invalidateBytes: 400 },
   'QL-820NWB': { bytesPerRow: 90, invalidateBytes: 400 },
-  'QL-1100': { bytesPerRow: 162, additionalOffsetR: 44 },
-  'QL-1110NWB': { bytesPerRow: 162, additionalOffsetR: 44 },
-  'QL-1115NWB': { bytesPerRow: 162, additionalOffsetR: 44 },
+  'QL-1050': { bytesPerRow: 162, additionalOffsetR: 44, minLengthDots: 295 },
+  'QL-1060N': { bytesPerRow: 162, additionalOffsetR: 44, minLengthDots: 295 },
+  'QL-1100': { bytesPerRow: 162, additionalOffsetR: 44, minLengthDots: 301 },
+  'QL-1110NWB': { bytesPerRow: 162, additionalOffsetR: 44, minLengthDots: 301 },
+  'QL-1115NWB': { bytesPerRow: 162, additionalOffsetR: 44, minLengthDots: 301 },
 };
 
 const DEFAULTS = {
   bytesPerRow: 90, additionalOffsetR: 0, modeSetting: true, cutting: true, expandedMode: true, invalidateBytes: 200,
+  minLengthDots: 150,
 };
 
 export function qlParams(name) {
@@ -59,9 +70,14 @@ export function encodeQL(bitmap, medium, params, { cut = true } = {}) {
   switchMode();
   w.push(ESC, 0x69, 0x53); // ESC i S: status request (as brother_ql sends it)
 
+  // A continuous label shorter than the model's minimum is padded with
+  // blank lines at its end.
+  const lines = qlRows(bitmap, medium, params);
+  if (medium.continuous) while (lines.length < params.minLengthDots) lines.push(new Uint8Array(params.bytesPerRow));
+
   // ESC i z: media type, width, length (mm), raster line count; all
   // fields valid plus high quality (0xCE).
-  const rows = bitmap.width;
+  const rows = lines.length;
   w.push(ESC, 0x69, 0x7a, 0xce,
     medium.continuous ? 0x0a : 0x0b,
     Math.round(medium.widthMm) & 0xff,
@@ -76,7 +92,7 @@ export function encodeQL(bitmap, medium, params, { cut = true } = {}) {
   const feed = medium.feedMarginDots ?? 0;
   w.push(ESC, 0x69, 0x64, feed & 0xff, feed >> 8); // ESC i d: feed margin
 
-  for (const row of qlRows(bitmap, medium, params)) {
+  for (const row of lines) {
     w.push(0x67, 0x00, params.bytesPerRow); // g 00 n: raster line
     w.add(row);
   }

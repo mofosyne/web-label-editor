@@ -4,6 +4,7 @@
 
 import { encodeQr } from './codes/qr.js';
 import { SYMBOLOGIES } from './codes/barcode.js';
+import { pageToStrip } from './layout.js';
 
 const imageCache = new Map();
 const codeCache = new Map();
@@ -285,30 +286,43 @@ export function stripLength(design, medium, dpi, ctx, items = design.items) {
 // opts.ext: { top, bottom, right } dots of overprint border past the label
 // edge, rendered too (the bitmap grows by them; the label starts at
 // (0, ext.top)). Bounds and text layouts are relative to the label.
+//
+// opts.portrait: the items are laid out on the label standing upright
+// (across the head is the page's width, the feed its height), and the
+// bitmap is turned into strip orientation for printing; bounds and text
+// layouts stay in page coordinates.
 export function renderDesign(design, model, medium, onAssetLoad, opts = {}) {
   const dpi = model.dpi;
   const dpmm = dpi / 25.4;
   const items = opts.items ?? design.items;
   const ext = { top: 0, bottom: 0, right: 0, ...opts.ext };
+  const portrait = !!opts.portrait;
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   const length = opts.length ?? stripLength(design, medium, dpi, ctx, items);
   const across = medium.acrossDots;
-  const width = length + ext.right;
-  const height = ext.top + across + ext.bottom;
+  // The surface drawn on: the strip, or the upright page with the
+  // overprint border turned with it (strip top = page left, strip bottom =
+  // page right, strip end = page top; see pageToStrip).
+  const labelW = portrait ? across : length;
+  const labelH = portrait ? length : across;
+  const offX = portrait ? ext.top : 0;
+  const offY = portrait ? ext.right : ext.top;
+  const width = portrait ? ext.top + across + ext.bottom : length + ext.right;
+  const height = portrait ? ext.right + length : ext.top + across + ext.bottom;
   canvas.width = width;
   canvas.height = height;
 
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, width, height);
-  ctx.translate(0, ext.top);
+  ctx.translate(offX, offY);
   for (const item of items) {
     if (item.type === 'text') drawText(ctx, item, dpmm);
     else if (item.type === 'image') drawImage(ctx, item, dpmm, onAssetLoad);
     else if (item.type === 'box') drawBox(ctx, item, dpmm);
     else if (item.type === 'qr' || item.type === 'barcode') drawCode(ctx, item, dpmm);
   }
-  if (design.border) drawBox(ctx, { x: 0, y: 0, w: length / dpmm, h: across / dpmm, stroke: 0.4 }, dpmm);
+  if (design.border) drawBox(ctx, { x: 0, y: 0, w: labelW / dpmm, h: labelH / dpmm, stroke: 0.4 }, dpmm);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 
   const id = ctx.getImageData(0, 0, width, height);
@@ -323,7 +337,8 @@ export function renderDesign(design, model, medium, onAssetLoad, opts = {}) {
 
   const bounds = items.map((item) => itemBounds(ctx, item, dpmm));
   const textLayouts = items.map((item) => (item.type === 'text' ? textLayout(ctx, item, dpmm) : null));
-  return { bitmap: { width, height, data }, length, bounds, textLayouts, dpmm };
+  const surface = { width, height, data };
+  return { bitmap: portrait ? pageToStrip(surface) : surface, length, bounds, textLayouts, dpmm };
 }
 
 // Turn a 1-bit bitmap into a canvas, e.g. for preview or PNG export.

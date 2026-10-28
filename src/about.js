@@ -94,6 +94,8 @@ function tips() {
       li(b('Hatched border'), ': where the printer cannot put ink at all. Anything there is cut off and flagged.'),
       li(b('Dashed line'), ': the safe area. Items past it still print (overprinting towards the label edge), but the '
         + 'die cut may trim them.'),
+      li(b('Portrait'), ' (Orientation, die-cut labels) lets you design the label standing upright; it is turned for '
+        + 'printing.'),
       li(b('Rotate'), ' turns text in quarter turns, for cable flags and vertical text; a fitted box turns with it '
         + 'and its text refits.'),
       li(b('Fit text in a fixed box'), ' picks the largest size that fits; ', b('Fill safe area'), ' makes the box '

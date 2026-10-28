@@ -15,7 +15,6 @@ export const UNIMPLEMENTED = [
   { brand: 'DYMO', name: 'DYMO LabelManager (D1 tape)', why: 'Different protocol, and it first appears as a USB drive.' },
   { brand: 'Brother P-touch', name: 'Brother PT-P900 / P900W / P950NW', why: '360 dpi with a 560-dot head; needs its own tape table.' },
   { brand: 'Brother P-touch', name: 'Brother PT-P300BT', why: 'Bluetooth Low Energy only.' },
-  { brand: 'Brother QL', name: 'Brother QL-500 / 550 / 560 / 570 / 580N / 650TD / 1050 / 1060N', why: 'Older models; same protocol family, not added yet.' },
 ];
 
 // Printers deliberately left out.

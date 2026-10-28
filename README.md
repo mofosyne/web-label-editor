@@ -126,16 +126,23 @@ right, copy it; don't make users discover the same problems again.
 | Brother PT-E560BT | 🧪 Experimental | USB, Bluetooth | TZe tape, up to 24 mm |
 | Brother PT-P900 / P900W / P950NW | ⬜ Unimplemented |  | 360 dpi with a 560-dot head; needs its own tape table. |
 | Brother PT-P300BT | ⬜ Unimplemented |  | Bluetooth Low Energy only. |
+| Brother QL-500 | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
+| Brother QL-550 | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
+| Brother QL-560 | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
+| Brother QL-570 | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
+| Brother QL-580N | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
+| Brother QL-650TD | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
 | Brother QL-700 | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
 | Brother QL-710W | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
 | Brother QL-720NW | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
 | Brother QL-800 | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
 | Brother QL-810W | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
 | Brother QL-820NWB | 🧪 Experimental | USB | DK rolls and labels, up to 62 mm |
+| Brother QL-1050 | 🧪 Experimental | USB | DK rolls and labels, up to 104 mm |
+| Brother QL-1060N | 🧪 Experimental | USB | DK rolls and labels, up to 104 mm |
 | Brother QL-1100 | 🧪 Experimental | USB | DK rolls and labels, up to 104 mm |
 | Brother QL-1110NWB | 🧪 Experimental | USB | DK rolls and labels, up to 104 mm |
 | Brother QL-1115NWB | 🧪 Experimental | USB | DK rolls and labels, up to 104 mm |
-| Brother QL-500 / 550 / 560 / 570 / 580N / 650TD / 1050 / 1060N | ⬜ Unimplemented |  | Older models; same protocol family, not added yet. |
 
 **Tried a printer?** [Report how it went](https://github.com/mofosyne/web-label-editor/issues/new?template=printer-report.yml), whether it worked or not: reports are how
 printers move from 🧪 to ✅. **Missing a label or tape size?** [Request it](https://github.com/mofosyne/web-label-editor/issues/new?template=label-request.yml).
@@ -184,6 +191,9 @@ The app has its own welcome page and **Help** with the same information.
   (or Ctrl+Y) undo and redo, with a drag or a burst of typing as one step.
 - **Continuous rolls:** *Fit to content* makes the label as long as what is on
   it; *Fixed* sets a length. Die-cut labels use their own size.
+- **Portrait** (die-cut labels, *Orientation* in the *Label* panel): design
+  the label standing upright, as in DYMO Label; it is turned for printing.
+  On a 2-up row the labels stand side by side, label 1 on the left.
 - **QR codes and barcodes** are drawn on whole printer dots, so edges stay
   sharp and they scan. Leave a few mm of blank space around QR codes.
 - **Tape detection** (P-touch, QL): the printer reports the loaded tape; the
@@ -460,7 +470,10 @@ The preview and the printer get the same view bitmap, which is what makes
 the preview exact. Design decisions worth knowing:
 
 - **Units:** designs are in millimetres, relative to the label's top-left
-  corner, so they survive a change of printer resolution. Items on the
+  corner as you see it (upright in portrait), so they survive a change of
+  printer resolution. Portrait renders the upright page and turns the
+  bitmap a quarter turn anticlockwise into the strip
+  (`layout.js` `pageToStrip`). Items on the
   second label of a 2-up row carry `lane: 1`.
 - **Strip orientation:** every printer gets a bitmap whose x runs along the
   feed and y across the head; the encoders map that onto each printer's
@@ -598,7 +611,7 @@ Low-level libraries for these printers are plentiful; label editors are rarer, m
 ## Roadmap
 
 - Hardware reports for the experimental printers
-- PT-P900 series (360 dpi) and more QL models
+- PT-P900 series (360 dpi)
 - A desktop build (e.g. Tauri) with native USB and raw network printing, so
   Windows needs no driver swap and Wi-Fi models work
 

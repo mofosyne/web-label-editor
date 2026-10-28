@@ -10,6 +10,7 @@ import { loadCatalog } from './catalog.js';
 import { testPatternDesign } from './calibration.js';
 import {
   viewGeometry, jobBitmap, rowMode, itemLane, itemVisible, canOverprint, blit, blankBitmap, MAX_BLEED_MM,
+  stripToPage, stripRectToPage,
 } from './layout.js';
 import { newRollId, rollCode, parseRollCode } from './rolls.js';
 import { UndoHistory } from './undo.js';
@@ -222,6 +223,23 @@ function edgeArea(lane = currentLane()) {
   };
 }
 
+// Portrait: die-cut labels designed standing upright (as in DYMO Label) and
+// turned for printing. Items then live on the upright page.
+const isPortrait = (d, med) => d.orientation === 'portrait' && !!med.lengthDots;
+const portrait = () => isPortrait(design, medium());
+// Strip-oriented insets turned onto the upright page: the page's bottom is
+// the label's leading edge and its left is the strip's top.
+const toPage = (m) => (portrait() ? { left: m.top, right: m.bottom, top: m.right, bottom: m.left } : m);
+// Margins and edge area as the items see them.
+const itemMargins = (lane) => toPage(margins(lane));
+const itemEdge = (lane) => toPage(edgeArea(lane));
+// The label's size as the items see it, mm (w is null on a continuous roll,
+// whose length follows the content).
+function pageSize() {
+  const len = medium().lengthDots ? medium().lengthDots / dpmmNow() : null;
+  return portrait() ? { w: acrossMm(), h: len } : { w: len, h: acrossMm() };
+}
+
 // Renders a design as the editor shows it: every label of the row (with
 // copies of the design on the others, unless each has its own) and the
 // overprint border. Bounds and text layouts are per design item, in view
@@ -232,6 +250,7 @@ function renderView(d = design, m = model(), med = medium(), { filled, adj, onAs
   const a = adj ?? { feedMm: 0, acrossMm: 0 };
   const md = rowMode(d, med);
   const count = med.lanes?.count ?? 1;
+  const upright = isPortrait(d, med);
   const opts = {
     bleed: canOverprint(m, med) ? Math.round(Math.min(MAX_BLEED_MM, d.bleedMm ?? 0) * dpmm) : 0,
     feed: Math.round(a.feedMm * dpmm),
@@ -241,13 +260,24 @@ function renderView(d = design, m = model(), med = medium(), { filled, adj, onAs
   let length;
   const slots = viewGeometry(m, med, { ...opts, length: 0 }).slots.map((s) => {
     const items = md === 'separate' ? shown.filter((it) => itemLane(it, md, count) === s.lane) : shown;
-    const r = renderDesign(d, m, med, onAssetLoad, { items, ext: s.ext, length });
+    const r = renderDesign(d, m, med, onAssetLoad, { items, ext: s.ext, length, portrait: upright });
     length = r.length;
     return { ...s, items, r, copy: md !== 'separate' && s.lane > 0 };
   });
   const geo = viewGeometry(m, med, { ...opts, length });
   const bitmap = blankBitmap(geo.width, geo.height);
   slots.forEach((s, k) => { if (filled == null || k < filled) blit(bitmap, s.r.bitmap, 0, s.y - s.ext.top); });
+
+  // What the editor shows: the strip, or in portrait the strip turned
+  // upright. Rectangles in strip dots map onto it with toDisplay; each
+  // label's top-left on it is (ox, oy).
+  const toDisplay = (r) => (upright ? stripRectToPage(r, geo.width) : r);
+  for (const s of slots) {
+    s.label = toDisplay({ x: 0, y: s.y, w: geo.length, h: geo.labelDots });
+    s.outer = toDisplay({ x: 0, y: s.y - s.ext.top, w: geo.length + s.ext.right, h: geo.labelDots + s.ext.top + s.ext.bottom });
+    s.ox = s.label.x;
+    s.oy = s.label.y;
+  }
 
   const bounds = d.items.map(() => null);
   const textLayouts = d.items.map(() => null);
@@ -257,19 +287,26 @@ function renderView(d = design, m = model(), med = medium(), { filled, adj, onAs
     s.items.forEach((it, j) => {
       const i = d.items.indexOf(it);
       const b = s.r.bounds[j];
-      bounds[i] = { ...b, y: b.y + s.y };
+      bounds[i] = { ...b, x: b.x + s.ox, y: b.y + s.oy };
       lanes[i] = s.lane;
       const l = s.r.textLayouts[j];
-      if (l) textLayouts[i] = { ...l, blockY: l.blockY + s.y, box: { ...l.box, y: l.box.y + s.y } };
+      if (l) {
+        textLayouts[i] = {
+          ...l, blockX: l.blockX + s.ox, blockY: l.blockY + s.oy, box: { ...l.box, x: l.box.x + s.ox, y: l.box.y + s.oy },
+        };
+      }
     });
   }
   const hidden = d.items.length - shown.length;
-  return { bitmap, geo, slots, bounds, textLayouts, lanes, hidden, dpmm, mode: md };
+  return {
+    bitmap, display: upright ? stripToPage(bitmap) : bitmap, toDisplay, portrait: upright,
+    geo, slots, bounds, textLayouts, lanes, hidden, dpmm, mode: md,
+  };
 }
 
-// The printable band across the strip, in mm.
-const bandTop = () => margins().top;
-const usableMm = () => acrossMm() - margins().top - margins().bottom;
+// The printable band down the page (across the strip in landscape), in mm.
+const bandTop = () => itemMargins().top;
+const usableMm = () => (pageSize().h ?? 0) - itemMargins().top - itemMargins().bottom;
 const round1 = (v) => Math.round(v * 10) / 10;
 
 // Items that show a corner handle for resizing, and how a drag sets the size.
@@ -305,12 +342,12 @@ function draw() {
   const m = model();
   const med = medium();
   last = renderView(design, m, med, { adj: adjust(), onAssetLoad: () => refresh() });
-  const { bitmap, dpmm, geo, slots } = last;
+  const { display, dpmm, geo, slots, toDisplay } = last;
 
   const canvas = $('canvas');
   const scale = zoom / dpmm; // screen px per dot
-  const cssW = bitmap.width * scale;
-  const cssH = bitmap.height * scale;
+  const cssW = display.width * scale;
+  const cssH = display.height * scale;
   const dpr = window.devicePixelRatio || 1;
   canvas.style.width = `${cssW}px`;
   canvas.style.height = `${cssH}px`;
@@ -321,18 +358,20 @@ function draw() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.imageSmoothingEnabled = false;
   const colors = previewColors();
-  ctx.drawImage(bitmapToCanvas(bitmap, colors.ink, colors.paper), 0, 0, cssW, cssH);
+  ctx.drawImage(bitmapToCanvas(display, colors.ink, colors.paper), 0, 0, cssW, cssH);
+  const px = (r) => ({ x: r.x * scale, y: r.y * scale, w: r.w * scale, h: r.h * scale });
 
   // Label outlines: the canvas itself when it is just one label; otherwise
   // each label is outlined and the liner around them tinted.
-  const lenPx = geo.length * scale;
-  const labelPx = geo.labelDots * scale;
   const radius = (med.cornerMm ?? 0) * zoom;
   const plain = slots.length === 1 && !geo.top && !geo.bottom && !geo.right;
   canvas.style.borderRadius = plain && radius ? `${radius}px` : '0';
   if (!plain) {
     const shapes = new Path2D();
-    for (const s of slots) shapes.roundRect(0, s.y * scale, lenPx, labelPx, radius);
+    for (const s of slots) {
+      const l = px(s.label);
+      shapes.roundRect(l.x, l.y, l.w, l.h, radius);
+    }
     const liner = new Path2D();
     liner.rect(0, 0, cssW, cssH);
     liner.addPath(shapes);
@@ -348,17 +387,19 @@ function draw() {
   }
   // Labels that repeat the design: dimmed and not editable.
   for (const s of slots.filter((x) => x.copy)) {
+    const l = px(s.label);
     ctx.fillStyle = 'rgba(255, 255, 255, .45)';
-    ctx.fillRect(0, s.y * scale, lenPx, labelPx);
+    ctx.fillRect(l.x, l.y, l.w, l.h);
     ctx.fillStyle = 'rgba(90, 90, 90, .9)';
     ctx.font = '11px system-ui, sans-serif';
-    ctx.fillText(last.mode === 'each' ? 'next label' : 'copy', 4, s.y * scale + 12);
+    ctx.fillText(last.mode === 'each' ? 'next label' : 'copy', l.x + 4, l.y + 12);
   }
 
   // Hatch where the printer cannot print; a dashed line marks each label's
   // safe area (printing past it overprints towards and past the edge).
   const r = geo.reach;
-  const hard = { x0: r.x0 * scale, y0: r.y0 * scale, x1: r.x1 * scale, y1: r.y1 * scale };
+  const reach = px(toDisplay({ x: r.x0, y: r.y0, w: r.x1 - r.x0, h: r.y1 - r.y0 }));
+  const hard = { x0: reach.x, y0: reach.y, x1: reach.x + reach.w, y1: reach.y + reach.h };
   ctx.fillStyle = marginPattern(ctx);
   ctx.fillRect(0, 0, cssW, hard.y0);
   ctx.fillRect(0, hard.y1, cssW, cssH - hard.y1);
@@ -366,17 +407,20 @@ function draw() {
   ctx.fillRect(hard.x1, hard.y0, cssW - hard.x1, hard.y1 - hard.y0);
   const safe = slots.map((s) => {
     const mg = margins(s.lane);
-    return {
-      x0: mg.left * zoom, y0: s.y * scale + mg.top * zoom,
-      x1: lenPx - mg.right * zoom, y1: s.y * scale + labelPx - mg.bottom * zoom,
-    };
+    const a = px(toDisplay({
+      x: mg.left * dpmm, y: s.y + mg.top * dpmm,
+      w: geo.length - (mg.left + mg.right) * dpmm, h: geo.labelDots - (mg.top + mg.bottom) * dpmm,
+    }));
+    return { x0: a.x, y0: a.y, x1: a.x + a.w, y1: a.y + a.h };
   });
   ctx.strokeStyle = 'rgba(120, 120, 120, .6)';
   ctx.lineWidth = 1;
   ctx.setLineDash([3, 3]);
-  for (const a of safe) {
-    if (a.x0 || a.x1 < lenPx || a.y0 > 0 || a.y1 < cssH) ctx.strokeRect(a.x0, a.y0, a.x1 - a.x0, a.y1 - a.y0);
-  }
+  slots.forEach((s, k) => {
+    const a = safe[k];
+    const l = px(s.label);
+    if (a.x0 > l.x || a.y0 > l.y || a.x1 < l.x + l.w || a.y1 < l.y + l.h) ctx.strokeRect(a.x0, a.y0, a.x1 - a.x0, a.y1 - a.y0);
+  });
   ctx.setLineDash([]);
 
   const sel = design.items.findIndex((i) => i.id === selectedId);
@@ -395,7 +439,7 @@ function draw() {
     }
   }
   drawRulers(selBounds);
-  placeLaneButtons(scale, lenPx);
+  placeLaneButtons(scale);
 
   const lenMm = geo.length / dpmm;
   const lanes = med.lanes;
@@ -412,7 +456,7 @@ function draw() {
   const offLabel = shownBounds.some(({ b }) => outside(b, hard));
   const overprint = !offLabel && shownBounds.some(({ b, lane }) => outside(b, safe[lane]));
   const dims = $('dims');
-  dims.textContent = `${tape} × ${lenMm.toFixed(1)} mm long  ·  ${geo.width} × ${geo.height} dots @ ${m.dpi} dpi`
+  dims.textContent = `${tape} × ${lenMm.toFixed(1)} mm long${last.portrait ? ', portrait' : ''}  ·  ${geo.width} × ${geo.height} dots @ ${m.dpi} dpi`
     + (offLabel ? '  ·  ⚠ Something is where the printer cannot print and will be cut off' : '')
     + (overprint ? '  ·  Overprinting past the safe area (the die cut may trim it)' : '')
     + (last.hidden ? `  ·  ${last.hidden} item${last.hidden > 1 ? 's' : ''} on the other label${lanes?.count > 2 ? 's' : ''} hidden (choose "A different design on each")` : '');
@@ -428,7 +472,7 @@ function draw() {
 // back to label 1. Rebuilt only when the layout changes, so a click isn't
 // lost to a redraw.
 let laneButtonsKey = '';
-function placeLaneButtons(scale, lenPx) {
+function placeLaneButtons(scale) {
   const box = $('lane-buttons');
   const slots = last.slots.filter((s) => s.lane > 0);
   const key = `${last.mode}|${slots.map((s) => s.lane).join()}`;
@@ -454,9 +498,46 @@ function placeLaneButtons(scale, lenPx) {
   const canvas = $('canvas');
   for (const b of box.children) {
     const s = last.slots[Number(b.dataset.lane)];
-    b.style.left = `${canvas.offsetLeft + lenPx - 4}px`;
-    b.style.top = `${canvas.offsetTop + s.y * scale + 4}px`;
+    b.style.left = `${canvas.offsetLeft + (s.label.x + s.label.w) * scale - 4}px`;
+    b.style.top = `${canvas.offsetTop + s.label.y * scale + 4}px`;
   }
+}
+
+// Landscape or portrait (die-cut labels). Items keep their place relative
+// to each label's safe area, scaled to the turned page; fitted boxes resize
+// with it, so one that filled the safe area still does.
+function setOrientation(value) {
+  const area = (lane) => {
+    const page = pageSize();
+    const mg = itemMargins(lane);
+    return { x: mg.left, y: mg.top, w: (page.w ?? 0) - mg.left - mg.right, h: page.h - mg.top - mg.bottom };
+  };
+  const lanes = [...Array(laneCount()).keys()];
+  const before = lanes.map(area);
+  design.orientation = value;
+  const after = lanes.map(area);
+  if (before[0].w > 0 && after[0].w > 0) {
+    for (const it of design.items) {
+      const lane = laneOf(it);
+      const [a, z] = [before[lane], after[lane]];
+      const sx = z.w / a.w;
+      const sy = z.h / a.h;
+      const b = last?.bounds[design.items.indexOf(it)];
+      const w = b ? b.w / last.dpmm : 0;
+      const h = b ? b.h / last.dpmm : 0;
+      if (it.type === 'text' && it.fit) {
+        it.x = round1(z.x + (it.x - a.x) * sx);
+        it.y = round1(z.y + (it.y - a.y) * sy);
+        it.w = round1(it.w * sx);
+        it.h = round1(it.h * sy);
+      } else {
+        // Keep the item's centre at the same relative place.
+        it.x = round1(z.x + (it.x + w / 2 - a.x) * sx - w / 2);
+        it.y = round1(z.y + (it.y + h / 2 - a.y) * sy - h / 2);
+      }
+    }
+  }
+  refresh({ setup: true, props: true });
 }
 
 function setRowMode(value) {
@@ -504,50 +585,64 @@ function drawRulers(sel) {
   const step = zoom >= 4 ? 1 : 5; // mm between ticks
   const every = zoom >= 2.5 ? 10 : 20; // mm between numbers
 
-  const top = setup('ruler-top', geo.width * scale, T);
+  // Each label starts its own scale: along the top in portrait (labels side
+  // by side), down the side in landscape (labels stacked).
+  const scaleAt = (ctx, starts, extent, labelLen, horizontal) => {
+    for (const s0 of starts) {
+      const p0 = s0 * scale;
+      for (let mm = 0; mm <= labelLen / dpmm + 0.001; mm += step) {
+        const p = Math.round(p0 + mm * zoom) + 0.5;
+        if (p > extent) break;
+        const len = mm % every === 0 ? T : mm % 5 === 0 ? T * 0.55 : T * 0.3;
+        ctx.beginPath();
+        if (horizontal) {
+          ctx.moveTo(p, T);
+          ctx.lineTo(p, T - len);
+        } else {
+          ctx.moveTo(T, p);
+          ctx.lineTo(T - len, p);
+        }
+        ctx.stroke();
+        if (mm % every === 0 && (horizontal || mm > 0)) {
+          if (horizontal) ctx.fillText(String(mm), p + 2, 9);
+          else {
+            ctx.save();
+            ctx.translate(9, p - 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText(String(mm), 0, 0);
+            ctx.restore();
+          }
+        }
+      }
+      if (starts.length > 1) {
+        ctx.fillStyle = accent;
+        if (horizontal) ctx.fillRect(p0, 0, 1.5, T);
+        else ctx.fillRect(0, p0, T, 1.5);
+        ctx.fillStyle = ink;
+      }
+    }
+  };
+  const uniq = (v) => [...new Set(v)];
+  const { display } = last;
+  const labelW = slots[0].label.w;
+  const labelH = slots[0].label.h;
+
+  const top = setup('ruler-top', display.width * scale, T);
   if (sel) {
     top.fillStyle = `${accent}33`;
     top.fillRect(sel.x * scale, 0, sel.w * scale, T);
     top.fillStyle = ink;
   }
-  for (let mm = 0; mm * zoom <= geo.width * scale; mm += step) {
-    const x = Math.round(mm * zoom) + 0.5;
-    const len = mm % every === 0 ? T : mm % 5 === 0 ? T * 0.55 : T * 0.3;
-    top.beginPath();
-    top.moveTo(x, T);
-    top.lineTo(x, T - len);
-    top.stroke();
-    if (mm % every === 0) top.fillText(String(mm), x + 2, 9);
-  }
+  // A continuous roll's scale runs on past the label to the end of the view.
+  scaleAt(top, uniq(slots.map((s) => s.ox)), display.width * scale, last.portrait ? labelW : display.width, true);
 
-  const side = setup('ruler-left', T, geo.height * scale);
+  const side = setup('ruler-left', T, display.height * scale);
   if (sel) {
     side.fillStyle = `${accent}33`;
     side.fillRect(0, sel.y * scale, T, sel.h * scale);
     side.fillStyle = ink;
   }
-  for (const s of slots) {
-    const y0 = s.y * scale;
-    for (let mm = 0; mm <= geo.labelDots / dpmm + 0.001; mm += step) {
-      const y = Math.round(y0 + mm * zoom) + 0.5;
-      const len = mm % every === 0 ? T : mm % 5 === 0 ? T * 0.55 : T * 0.3;
-      side.beginPath();
-      side.moveTo(T, y);
-      side.lineTo(T - len, y);
-      side.stroke();
-      if (mm % every === 0 && mm > 0) {
-        side.save();
-        side.translate(9, y - 2);
-        side.rotate(-Math.PI / 2);
-        side.fillText(String(mm), 0, 0);
-        side.restore();
-      }
-    }
-    // Each label starts its own scale.
-    side.fillStyle = accent;
-    side.fillRect(0, y0, T, 1.5);
-    side.fillStyle = ink;
-  }
+  scaleAt(side, uniq(slots.map((s) => s.oy)), display.height * scale, last.portrait ? display.height : labelH, false);
 }
 
 let hatch = null;
@@ -653,6 +748,8 @@ function buildSetup() {
       each: `${n} labels per row: Copies counts labels, filling each row from the top.`,
     }[mode()];
   }
+  $('orientation-box').hidden = !medium().lengthDots;
+  $('orientation').value = portrait() ? 'portrait' : 'landscape';
   const overprintable = canOverprint(m, medium());
   $('bleed-box').hidden = !overprintable;
   if (overprintable) $('bleed').value = String(design.bleedMm ?? 0);
@@ -1041,8 +1138,8 @@ async function printTestPattern(pattern) {
 }
 
 function downloadPng() {
-  const { bitmap } = renderView();
-  bitmapToCanvas(bitmap).toBlob((blob) => download(blob, 'label.png'));
+  const { display } = renderView();
+  bitmapToCanvas(display).toBlob((blob) => download(blob, 'label.png'));
 }
 
 function download(blob, name) {
@@ -1065,8 +1162,13 @@ function addItem(item) {
 function nextX() {
   const lane = currentLane();
   const mine = last ? last.bounds.filter((b, i) => b && last.lanes[i] === lane) : [];
-  const right = Math.max(0, ...mine.map((b) => (b.x + b.w) / last.dpmm));
-  return round1(right ? right + 3 : Math.max(2, margins().left + 1));
+  const ox = last?.slots[lane]?.ox ?? 0;
+  const right = Math.max(0, ...mine.map((b) => (b.x - ox + b.w) / last.dpmm));
+  const start = Math.max(2, itemMargins().left + 1);
+  // On a label narrower than that (e.g. portrait), start at the left again.
+  const page = pageSize();
+  if (right && page.w != null && right + 3 + 5 > page.w - itemMargins().right) return round1(start);
+  return round1(right ? right + 3 : start);
 }
 
 function addText() {
@@ -1248,27 +1350,21 @@ function buildProps() {
     }),
   );
   if (item.type === 'text' && item.fit) {
-    row.append(btn('Fill safe area', () => {
-      const mg = margins(laneOf(item));
+    // Size the box to an area given as insets from the label's edges; the
+    // width only when the label has one (not a continuous roll).
+    const fill = (mg) => {
+      const page = pageSize();
       item.y = round1(mg.top);
-      item.h = round1(usableMm());
-      if (medium().lengthDots) {
+      item.h = round1(page.h - mg.top - mg.bottom);
+      if (page.w != null) {
         item.x = round1(mg.left);
-        item.w = round1(medium().lengthDots / last.dpmm - mg.left - mg.right);
+        item.w = round1(page.w - mg.left - mg.right);
       }
       refresh({ props: true });
-    }));
-    row.append(btn('Fill to edge', () => {
-      // Overprint: the whole label the printer can reach, ignoring the safe area.
-      const mg = edgeArea(laneOf(item));
-      item.y = round1(mg.top);
-      item.h = round1(acrossMm() - mg.top - mg.bottom);
-      if (medium().lengthDots) {
-        item.x = round1(mg.left);
-        item.w = round1(medium().lengthDots / last.dpmm - mg.left - mg.right);
-      }
-      refresh({ props: true });
-    }));
+    };
+    row.append(btn('Fill safe area', () => fill(itemMargins(laneOf(item)))));
+    // Overprint: the whole label the printer can reach, ignoring the safe area.
+    row.append(btn('Fill to edge', () => fill(itemEdge(laneOf(item)))));
   } else if (item.type === 'text') {
     row.append(btn('Fill height', () => {
       const b = last.bounds[design.items.indexOf(item)];
@@ -1314,8 +1410,8 @@ function setRotation(item, degrees) {
     if (item.fit) [item.w, item.h] = [item.h, item.w];
     // Turned about its centre, then kept on the label: inside the printable
     // band across, or centred on it when it is longer than the band.
-    const mg = margins(laneOf(item));
-    const room = acrossMm() - mg.top - mg.bottom;
+    const mg = itemMargins(laneOf(item));
+    const room = pageSize().h - mg.top - mg.bottom;
     const y = cy - w / 2;
     if (item.fit && w > room) {
       // A fitted box shrinks to the band; the text refits.
@@ -1445,14 +1541,19 @@ function onHandle(e) {
   return x >= h.x - pad && x <= h.x + h.size + pad && y >= h.y - pad && y <= h.y + h.size + pad ? item : null;
 }
 
-// The label of the row under a point (view mm), or null outside them.
+// The label of the row under a point (view mm), overprint border
+// included, or null outside them.
 function slotAt(pt) {
   if (!last) return null;
+  const x = pt.x * last.dpmm;
   const y = pt.y * last.dpmm;
-  return last.slots.find((s) => y >= s.y - s.ext.top && y < s.y + last.geo.labelDots + s.ext.bottom) ?? null;
+  return last.slots.find(({ outer: o }) => x >= o.x && x < o.x + o.w && y >= o.y && y < o.y + o.h) ?? null;
 }
 // Where an item's label starts in the view, mm.
-const labelTopMm = (item) => (last ? last.slots[laneOf(item)].y / last.dpmm : 0);
+function labelOrigin(item) {
+  const s = last?.slots[laneOf(item)];
+  return s ? { x: s.ox / last.dpmm, y: s.oy / last.dpmm } : { x: 0, y: 0 };
+}
 
 let drag = null;
 function onPointerDown(e) {
@@ -1487,7 +1588,8 @@ function onPointerMove(e) {
   const pt = canvasPointToMm(e);
   const it = drag.item;
   if (drag.resize) {
-    RESIZERS[it.type](it, Math.max(1, round1(pt.x - it.x)), Math.max(1, round1(pt.y - labelTopMm(it) - it.y)));
+    const o = labelOrigin(it);
+    RESIZERS[it.type](it, Math.max(1, round1(pt.x - o.x - it.x)), Math.max(1, round1(pt.y - o.y - it.y)));
     refresh();
     return;
   }
@@ -1499,12 +1601,17 @@ function onPointerMove(e) {
   // With a design per label, dragging an item onto another label moves it there.
   const b = last.bounds[design.items.indexOf(it)];
   if (mode() === 'separate' && b) {
-    const centre = { x: pt.x, y: labelTopMm(it) + it.y + b.h / last.dpmm / 2 };
+    const o = labelOrigin(it);
+    const centre = { x: o.x + it.x + b.w / last.dpmm / 2, y: o.y + it.y + b.h / last.dpmm / 2 };
     const to = slotAt(centre);
     if (to && to.lane !== laneOf(it)) {
-      const shift = (last.slots[laneOf(it)].y - to.y) / last.dpmm;
-      it.y = round1(it.y + shift);
-      drag.dy -= shift;
+      const from = last.slots[laneOf(it)];
+      const sx = (from.ox - to.ox) / last.dpmm;
+      const sy = (from.oy - to.oy) / last.dpmm;
+      it.x = round1(it.x + sx);
+      it.y = round1(it.y + sy);
+      drag.dx -= sx;
+      drag.dy -= sy;
       it.lane = to.lane;
       activeLane = to.lane;
     }
@@ -1615,10 +1722,11 @@ function onDoubleClick(e) {
     if (!slot || slot.copy) return;
     if (mode() === 'separate') activeLane = slot.lane;
     const size = Math.max(1.5, round1(usableMm() * 0.6));
-    const y = pt.y - slot.y / last.dpmm;
+    const x = pt.x - slot.ox / last.dpmm;
+    const y = pt.y - slot.oy / last.dpmm;
     design.items.push({
       id: uid(), type: 'text', text: 'Text', font: 'sans-serif', size, bold: false, italic: false, align: 'left',
-      x: +Math.max(0, pt.x).toFixed(1), y: +Math.max(0, y - size * 0.6).toFixed(1),
+      x: +Math.max(0, x).toFixed(1), y: +Math.max(0, y - size * 0.6).toFixed(1),
       ...(mode() === 'separate' ? { lane: slot.lane } : {}),
     });
     const created = design.items.at(-1);
@@ -1807,6 +1915,7 @@ function wire() {
     if (e.target.value === 'separate') unlinkLanes();
     else setRowMode(e.target.value);
   };
+  $('orientation').onchange = (e) => setOrientation(e.target.value);
   $('bleed').onchange = (e) => { design.bleedMm = Number(e.target.value) || 0; refresh({ setup: true }); };
   $('btn-lib-open').onclick = () => showLibrary();
   $('btn-lib-save').onclick = () => saveToLibrary(false);
@@ -1869,8 +1978,8 @@ function thumbnail(d) {
   try {
     const m = MODELS[d.printer] ?? model();
     const med = m.media.find((x) => x.id === d.medium) ?? m.media[0];
-    const { bitmap } = renderView(d, m, med);
-    const full = bitmapToCanvas(bitmap);
+    const { display } = renderView(d, m, med);
+    const full = bitmapToCanvas(display);
     const scale = Math.min(1, 240 / full.width, 80 / full.height);
     const c = document.createElement('canvas');
     c.width = Math.max(1, Math.round(full.width * scale));

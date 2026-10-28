@@ -74,9 +74,26 @@ test('QL-700 has no mode switch; continuous rolls send feed margin and no length
   assert.ok(out.subarray(0, 200).every((b) => b === 0));
   assert.deepEqual([...out.subarray(200, 202)], [0x1b, 0x40]);
   const z = out.indexOf(0x7a) - 2;
-  assert.deepEqual([...out.subarray(z, z + 13)], [0x1b, 0x69, 0x7a, 0xce, 0x0a, 62, 0, 1, 0, 0, 0, 0, 0]);
+  // One line of content, padded to the model's 150-line minimum.
+  assert.deepEqual([...out.subarray(z, z + 13)], [0x1b, 0x69, 0x7a, 0xce, 0x0a, 62, 0, 150, 0, 0, 0, 0, 0]);
   const after = [...out.subarray(z + 13, z + 22)];
   assert.deepEqual(after, [0x1b, 0x69, 0x4b, 0x00, 0x1b, 0x69, 0x64, 35, 0], 'no cut commands; feed margin 35');
+});
+
+test('QL-500: no mode switch, cutter or expanded mode; longer minimum length', () => {
+  const params = qlParams('QL-500');
+  const out = encodeQL(bitmap(10, 696, () => true), { continuous: true, widthMm: 62, offsetRightDots: 12, feedMarginDots: 35 },
+    params, { cut: true });
+  const z = out.indexOf(0x7a) - 2;
+  assert.deepEqual([...out.subarray(z, z + 13)], [0x1b, 0x69, 0x7a, 0xce, 0x0a, 62, 0, 295 & 0xff, 295 >> 8, 0, 0, 0, 0]);
+  assert.deepEqual([...out.subarray(z + 13, z + 18)], [0x1b, 0x69, 0x64, 35, 0], 'only the feed margin follows');
+  assert.ok(![...out.subarray(0, z)].some((b, k, a) => b === 0x1b && a[k + 1] === 0x69 && a[k + 2] === 0x61), 'no ESC i a');
+  const rows = out.length - (z + 18) - 1;
+  assert.equal(rows, 295 * (3 + 90));
+  // Die-cut labels are never padded.
+  const die = encodeQL(bitmap(10, 306, () => false), { continuous: false, widthMm: 29, lengthMm: 90, offsetRightDots: 6 }, params);
+  const dz = die.indexOf(0x7a) - 2;
+  assert.equal(die[dz + 7], 10);
 });
 
 test('QL status reply', () => {

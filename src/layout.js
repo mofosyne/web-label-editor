@@ -144,3 +144,37 @@ export function blit(dst, src, x, y) {
 export function blankBitmap(width, height) {
   return { width, height, data: new Uint8Array(width * height) };
 }
+
+// Portrait labels are designed upright and printed turned a quarter turn
+// anticlockwise: the page's left edge is the strip's top (so on a 2-up row
+// label 1 is on the left) and the page's bottom is the label's leading edge
+// (strip x = 0). In strip terms:
+//   strip x = pageHeight - 1 - page y,  strip y = page x
+export function pageToStrip(page) {
+  const { width: pw, height: ph } = page;
+  const out = blankBitmap(ph, pw);
+  for (let py = 0; py < ph; py++) {
+    for (let px = 0; px < pw; px++) {
+      if (page.data[py * pw + px]) out.data[px * ph + (ph - 1 - py)] = 1;
+    }
+  }
+  return out;
+}
+
+// The inverse: a strip (e.g. the whole print view) turned upright for display.
+export function stripToPage(strip) {
+  const { width: sw, height: sh } = strip;
+  const out = blankBitmap(sh, sw);
+  for (let y = 0; y < sh; y++) {
+    for (let x = 0; x < sw; x++) {
+      if (strip.data[y * sw + x]) out.data[(sw - 1 - x) * sh + y] = 1;
+    }
+  }
+  return out;
+}
+
+// A rectangle { x, y, w, h } in a strip `stripWidth` long, as it appears on
+// the upright page.
+export function stripRectToPage(r, stripWidth) {
+  return { x: r.y, y: stripWidth - (r.x + r.w), w: r.h, h: r.w };
+}

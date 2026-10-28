@@ -110,7 +110,7 @@ function pTouch({ name, status, devices, productId, maxTapeMm = 24, quirks = {},
 // ---- Brother QL (DK rolls, 300 dpi) ----
 // Model parameters from brother_ql; see brother-ql.js.
 
-const QL_NOTE = 'Brother QL: print 62 mm and narrower DK rolls; the QL-1100 series also takes 102 mm rolls.';
+const QL_NOTE = 'Brother QL: print 62 mm and narrower DK rolls; the QL-1050, QL-1060N and QL-1100 series also take 102 mm rolls.';
 const EDITOR_LITE = 'Turn off Editor Lite (hold its button until the light goes out): in that mode the printer appears as a USB drive, not a printer.';
 
 function brotherQL(name, { editorLite = false } = {}) {
@@ -126,10 +126,11 @@ function brotherQL(name, { editorLite = false } = {}) {
     transports: ['usb'],
     usbFilters: [{ vendorId: 0x04f9, classCode: 7 }],
     media: [],
-    options: [{ id: 'autoCut', label: 'Cut after label', type: 'checkbox', default: true }],
+    // The QL-500 has no automatic cutter.
+    options: params.cutting ? [{ id: 'autoCut', label: 'Cut after label', type: 'checkbox', default: true }] : [],
     note: editorLite ? `${QL_NOTE} ${EDITOR_LITE}` : QL_NOTE,
     encode(bitmap, medium, opts) {
-      return encodeQL(bitmap, medium, params, { cut: opts.autoCut ?? true });
+      return encodeQL(bitmap, medium, params, { cut: params.cutting && (opts.autoCut ?? true) });
     },
     async queryStatus(transport) {
       const init = new Uint8Array(params.invalidateBytes + 5);
@@ -181,12 +182,20 @@ export const MODELS = {
   'brother-pt-e310bt': pTouch({ name: 'Brother PT-E310BT', status: 'experimental', productId: 0x2201, maxTapeMm: 18, bluetooth: true, quirks: { packbits: false, p700Init: true, infoCmd: true, precut: false, magic: true } }),
   'brother-pt-e560bt': pTouch({ name: 'Brother PT-E560BT', status: 'experimental', productId: 0x2203, bluetooth: true, quirks: { packbits: false, p700Init: true, infoCmd: true, precut: false, magic: true } }),
 
+  'brother-ql-500': brotherQL('QL-500'),
+  'brother-ql-550': brotherQL('QL-550'),
+  'brother-ql-560': brotherQL('QL-560'),
+  'brother-ql-570': brotherQL('QL-570'),
+  'brother-ql-580n': brotherQL('QL-580N'),
+  'brother-ql-650td': brotherQL('QL-650TD'),
   'brother-ql-700': brotherQL('QL-700', { editorLite: true }),
   'brother-ql-710w': brotherQL('QL-710W'),
   'brother-ql-720nw': brotherQL('QL-720NW'),
   'brother-ql-800': brotherQL('QL-800', { editorLite: true }),
   'brother-ql-810w': brotherQL('QL-810W', { editorLite: true }),
   'brother-ql-820nwb': brotherQL('QL-820NWB', { editorLite: true }),
+  'brother-ql-1050': brotherQL('QL-1050'),
+  'brother-ql-1060n': brotherQL('QL-1060N'),
   'brother-ql-1100': brotherQL('QL-1100'),
   'brother-ql-1110nwb': brotherQL('QL-1110NWB'),
   'brother-ql-1115nwb': brotherQL('QL-1115NWB'),
