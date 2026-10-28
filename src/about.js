@@ -104,6 +104,15 @@ function tips() {
         + 'all, a different design on each (click a label to add to it, drag items between them), or one at a time. '
         + 'The 🔓 Edit separately button on the dimmed copy unlinks it, starting from a copy of label 1.'),
       li(b('Rulers'), ' measure from the label\'s starting edge and from each label\'s top, and mark the selected item.')),
+    el('h3', { textContent: 'Cable flags' }),
+    el('ol', {},
+      li('Set ', b('Length'), ' to ', b('Fixed'), ': twice the flag length plus once around the cable (e.g. 30 mm flags on '
+        + 'a 6 mm cable: 2 × 30 + 3.14 × 6 ≈ 79 mm).'),
+      li('Add text, tick ', b('Fit text in a fixed box'), ', click ', b('Fill safe area'), ', then set the box width to '
+        + 'the flag length so it covers the first flag.'),
+      li(b('Ctrl+D'), ' duplicates it; move the copy to the far end, leaving the wrap in the middle blank.'),
+      li('Print one and wrap it round the cable. If the far side reads upside down, set the copy\'s ', b('Rotate'),
+        ' to 180°. Flexible ID tape holds best.')),
     el('h3', { textContent: 'Calibration and rolls' }),
     el('ul', {},
       li('Print the ', b('Grid'), ' test: each numbered line should sit that many mm from the label\'s starting edge. If '
