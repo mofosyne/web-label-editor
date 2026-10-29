@@ -40,7 +40,7 @@ function newDesign() {
     medium: '30252',
     options: {},
     length: { mode: 'auto', mm: 60 },
-    margins: { endsMm: 0, sidesMm: 0 },
+    margins: { endsMm: 3, sidesMm: 0 },
     invert: false,
     items: [
       {
@@ -504,21 +504,22 @@ function refresh({ props = false, setup = false } = {}) {
   });
 }
 
-// On Auto length, the content keeps at least the margin from the start:
-// anything closer moves along with the rest, and the label grows to fit
-// (the end gets the same space, see stripLength). Not while dragging, so
-// the other items stay put; it settles when the item is dropped.
-function keepStartMargin() {
-  const ends = userMargins().left;
-  if (!ends || drag || medium().lengthDots || design.length.mode === 'fixed' || !last) return false;
+// On Auto length (a roll or tape), the content starts at the margin, as in
+// P-touch Editor: the label is margin + content + margin, and where the
+// content sits along it is not a choice. Items keep their order and the
+// spacing between them; the whole moves to the margin. Not while dragging,
+// so nothing else moves under the pointer; it settles when dropped.
+function anchorContent() {
+  if (drag || medium().lengthDots || design.length.mode === 'fixed' || !last) return false;
   const along = last.portrait ? 'y' : 'x';
+  const anchor = last.portrait ? itemMargins().top : itemMargins().left;
   let start = Infinity;
   last.bounds.forEach((b, i) => {
     const slot = b && last.slots.find((sl) => sl.lane === last.lanes[i]);
     if (slot) start = Math.min(start, (along === 'x' ? b.x - slot.ox : b.y - slot.oy) / last.dpmm);
   });
-  if (!Number.isFinite(start) || start >= ends - 0.05) return false;
-  for (const it of design.items) it[along] = round1(it[along] + ends - start);
+  if (!Number.isFinite(start) || Math.abs(start - anchor) < 0.15) return false;
+  for (const it of design.items) it[along] = round1(it[along] + anchor - start);
   return true;
 }
 
@@ -591,7 +592,7 @@ function draw() {
   for (let k = 0; k < 3; k++) {
     const moved = fitItems();
     fitted ||= moved;
-    if (!(keepStartMargin() || moved)) break;
+    if (!(anchorContent() || moved)) break;
     last = render();
   }
   // The side panel shows the new sizes.
@@ -3486,8 +3487,22 @@ function onPointerMove(e) {
   // A small wobble during a click isn't a drag.
   if (!drag.moved && Math.hypot(pt.x - drag.from.x, pt.y - drag.from.y) * zoom < 3) return;
   drag.moved = true;
+  // On Auto length the content starts at the margin (see anchorContent):
+  // that margin is a wall, and an item alone on the label only moves across.
+  const autoRoll = !medium().lengthDots && design.length.mode !== 'fixed';
+  const k = portrait() ? 'y' : 'x';
+  const ib = last.bounds[design.items.indexOf(it)];
+  const slot = ib && last.slots.find((sl) => sl.lane === laneOf(it));
+  const offset = ib && slot ? (k === 'x' ? ib.x - slot.ox : ib.y - slot.oy) / last.dpmm - it[k] : 0;
+  const alone = design.items.filter((o) => laneOf(o) === laneOf(it)).length === 1;
+  const keep = it[k];
   it.x = Math.round((pt.x - drag.dx) * 10) / 10;
   it.y = Math.round((pt.y - drag.dy) * 10) / 10;
+  if (autoRoll) {
+    const anchor = portrait() ? itemMargins().top : itemMargins().left;
+    if (alone) it[k] = keep;
+    else if (it[k] + offset < anchor) it[k] = round1(anchor - offset);
+  }
   // With a design per label, dragging an item onto another label moves it there.
   const b = last.bounds[design.items.indexOf(it)];
   if (mode() === 'separate' && b) {

@@ -252,8 +252,9 @@ The app has its own welcome page and **Help** with the same information.
 - **Changing the label keeps the design on it:** if it no longer fits the
   new label or tape, it is shrunk evenly to fit (undo brings it back).
 - **Label length on rolls and tape:** the *Length* box in the toolbar says
-  *Auto* (as long as what is on it, with the same space after the content as
-  before it: saves tape when the text varies) or a length in mm, for labels
+  *Auto* or a length in mm. On Auto, as in P-touch Editor, the label is the
+  left margin, the content, then the right margin: the content always starts
+  at the margin, and it saves tape when the text varies. A length is for labels
   that must all match; type one, or drag the label's end as in P-touch
   Editor. On die-cut labels it shows their own length.
 - **Auto buttons on the label:** *Auto length* beside the end grip on rolls

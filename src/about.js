@@ -145,8 +145,8 @@ function tips() {
       li(b('Two labels per row'), ' (e.g. DYMO 30333): the preview shows the whole row. Choose the same design on '
         + 'all, a different design on each (click a label to add to it, drag items between them), or one at a time. '
         + 'The 🔓 Edit separately button on the dimmed copy unlinks it, starting from a copy of label 1.'),
-      li(b('Length'), ' (toolbar, on rolls and tape): Auto makes the label as long as its content, with the same space at '
-        + 'both ends, which saves tape when the text varies. Type a length, or drag the label\'s right end, when labels '
+      li(b('Length'), ' (toolbar, on rolls and tape): Auto makes the label the margin, the content, then the margin '
+        + '(the content always starts at the margin), which saves tape when the text varies. Type a length, or drag the label\'s right end, when labels '
         + 'must all match (drawer fronts, a batch).'),
       li(b('Margins'), ' (under Label: left & right, top & bottom) keep space clear from the edges: the guide, ',
         b('Fill safe area'), ' and new items keep inside them, and an Auto-length label grows to keep them.'),
