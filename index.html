@@ -85,7 +85,8 @@
         <label class="inline"><input type="radio" name="lenmode" value="auto"> Fit to content</label>
         <label class="inline"><input type="radio" name="lenmode" value="fixed"> Fixed</label>
         <label>Length (mm) <input id="len-mm" type="number" min="5" step="1"></label>
-        <label>End padding (mm) <input id="pad-mm" type="number" min="0" step="0.5"></label>
+        <label class="inline" id="even-ends"><input id="len-even" type="checkbox"> Same space after the content as before it</label>
+        <label>Space after the content (mm) <input id="pad-mm" type="number" min="0" step="0.5"></label>
       </div>
       <label class="inline"><input id="invert" type="checkbox"> Invert (print the background, not the text)</label>
       <div class="grid2" title="Labels and tapes come in colours, some clear, some with coloured ink. The printer prints in the ink the label or tape has: this only changes the preview.">
@@ -119,6 +120,8 @@
           <button class="icon" data-orient="landscape" title="Landscape: the label lying along the feed" aria-label="Landscape" data-icon="landscape"></button>
           <button class="icon" data-orient="portrait" title="Portrait: the label standing upright" aria-label="Portrait" data-icon="portrait"></button>
         </span>
+        <label id="len-quick" class="len-quick">Length <input id="len-box" type="text" inputmode="decimal" list="len-sizes" aria-label="Label length (mm), or Auto to fit the content"> mm</label>
+        <datalist id="len-sizes"><option value="Auto"><option value="25"><option value="40"><option value="50"><option value="75"><option value="100"><option value="150"></datalist>
         <button id="undo" class="icon" aria-label="Undo" title="Undo (Ctrl+Z)" data-icon="undo"></button>
         <button id="redo" class="icon" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" data-icon="redo"></button>
         <button id="zoom-out" class="icon" aria-label="Zoom out" title="Zoom out" data-icon="zoomOut"></button>

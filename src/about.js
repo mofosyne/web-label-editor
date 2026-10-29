@@ -145,6 +145,8 @@ function tips() {
       li(b('Two labels per row'), ' (e.g. DYMO 30333): the preview shows the whole row. Choose the same design on '
         + 'all, a different design on each (click a label to add to it, drag items between them), or one at a time. '
         + 'The 🔓 Edit separately button on the dimmed copy unlinks it, starting from a copy of label 1.'),
+      li(b('Length'), ' (toolbar, on rolls and tape): Auto makes the label as long as its content, with the same space at '
+        + 'both ends; type a length, or drag the label\'s right end, to fix it.'),
       li(b('Rulers'), ' measure from the label\'s starting edge and from each label\'s top, and mark the selected item.')),
     el('h3', { textContent: 'Batches: data, numbers and dates' }),
     el('ul', {},

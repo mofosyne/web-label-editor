@@ -39,7 +39,7 @@ function newDesign() {
     printer: 'dymo-lw450',
     medium: '30252',
     options: {},
-    length: { mode: 'auto', mm: 60, padMm: 2 },
+    length: { mode: 'auto', mm: 60, padMm: 2, even: true },
     invert: false,
     items: [
       {
@@ -662,10 +662,31 @@ function draw() {
       ctx.fillRect(h.x, h.y, h.size, h.size);
     }
   }
+  // The far end of a label on a roll, to drag (see lengthGripAt).
+  if (!med.lengthDots) {
+    const [gx, gy, gw, gh] = last.portrait ? [cssW / 2 - 16, cssH - 4, 32, 8] : [cssW - 4, cssH / 2 - 16, 8, 32];
+    ctx.fillStyle = 'rgba(255, 255, 255, .9)';
+    ctx.beginPath();
+    ctx.roundRect(gx - 1.5, gy - 1.5, gw + 3, gh + 3, 5);
+    ctx.fill();
+    ctx.fillStyle = drag?.length ? (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2463eb') : 'rgba(90, 90, 90, .8)';
+    ctx.beginPath();
+    ctx.roundRect(gx, gy, gw, gh, 4);
+    ctx.fill();
+  }
   drawRulers(selBounds, feed);
   placeLaneButtons(scale);
 
   const lenMm = geo.length / dpmm;
+  // The Length box in the toolbar (rolls only): Auto, or the fixed length.
+  const lenBox = $('len-box');
+  $('len-quick').hidden = !!med.lengthDots;
+  if (document.activeElement !== lenBox) {
+    lenBox.value = design.length.mode === 'fixed' ? String(design.length.mm) : 'Auto';
+    lenBox.title = design.length.mode === 'fixed'
+      ? 'Label length in mm. Auto makes it as long as the content. You can also drag the label\'s end.'
+      : `Auto: as long as the content (now ${lenMm.toFixed(0)} mm). Type a length to fix it, or drag the label's end.`;
+  }
   const lanes = med.lanes;
   const stock = m.family === 'brother-pt' ? 'tape' : med.continuous ? 'roll' : 'label';
   let tape = med.band ? `${med.tapeMm} mm ${stock}, ${(med.band.h / dpmm).toFixed(1)} mm printable` : `${acrossMm().toFixed(1)} mm wide`;
@@ -1167,7 +1188,9 @@ function buildSetup() {
   // Only the setting that applies: a length when fixed, padding when it fits the content.
   $('len-mm').closest('label').hidden = design.length.mode !== 'fixed';
   $('pad-mm').value = design.length.padMm;
-  $('pad-mm').closest('label').hidden = design.length.mode !== 'auto';
+  $('len-even').checked = design.length.even !== false;
+  $('even-ends').hidden = design.length.mode !== 'auto';
+  $('pad-mm').closest('label').hidden = design.length.mode !== 'auto' || design.length.even !== false;
   $('invert').checked = !!design.invert;
   const reported = tapeReported();
   const fixed = reported ? null : rollColors();
@@ -3237,6 +3260,19 @@ function labelOrigin(item) {
   return s ? { x: s.ox / last.dpmm, y: s.oy / last.dpmm } : { x: 0, y: 0 };
 }
 
+// On a roll, the label's far end (right, or bottom in portrait) can be
+// dragged to make it longer or shorter, as in P-touch Editor: the length
+// becomes Fixed. True when the pointer is on that edge.
+function lengthGripAt(e) {
+  if (!last || medium().lengthDots) return false;
+  const pt = canvasPointToMm(e);
+  const { width, height } = last.display;
+  const [along, across, end, size] = last.portrait
+    ? [pt.y, pt.x, height / last.dpmm, width / last.dpmm]
+    : [pt.x, pt.y, width / last.dpmm, height / last.dpmm];
+  return Math.abs(along - end) * zoom <= 6 && across >= 0 && across <= size;
+}
+
 let drag = null;
 function onPointerDown(e) {
   const pt = canvasPointToMm(e);
@@ -3244,6 +3280,12 @@ function onPointerDown(e) {
   if (handled) {
     undo.checkpoint();
     drag = { item: handled, resize: true };
+    $('canvas').setPointerCapture(e.pointerId);
+    return;
+  }
+  if (lengthGripAt(e)) {
+    undo.checkpoint();
+    drag = { length: true };
     $('canvas').setPointerCapture(e.pointerId);
     return;
   }
@@ -3264,10 +3306,19 @@ function onPointerDown(e) {
 function onPointerMove(e) {
   const canvas = $('canvas');
   if (!drag) {
-    canvas.style.cursor = onHandle(e) ? 'nwse-resize' : hitTest(canvasPointToMm(e)) ? 'move' : 'default';
+    canvas.style.cursor = onHandle(e) ? 'nwse-resize' : lengthGripAt(e) ? (last.portrait ? 'ns-resize' : 'ew-resize')
+      : hitTest(canvasPointToMm(e)) ? 'move' : 'default';
     return;
   }
   const pt = canvasPointToMm(e);
+  if (drag.length) {
+    const mm = Math.max(5, Math.round(last.portrait ? pt.y : pt.x));
+    if (design.length.mode !== 'fixed' || design.length.mm !== mm) {
+      design.length = { ...design.length, mode: 'fixed', mm };
+      refresh({ setup: true });
+    }
+    return;
+  }
   const it = drag.item;
   if (drag.resize) {
     const o = labelOrigin(it);
@@ -3305,6 +3356,11 @@ function onPointerMove(e) {
 // place, as in DYMO Label; the first click selects it.
 function onPointerUp() {
   if (!drag) return;
+  if (drag.length) {
+    drag = null;
+    refresh();
+    return;
+  }
   const { item, wasSelected, moved, resize } = drag;
   drag = null;
   refresh({ props: true });
@@ -3662,6 +3718,16 @@ function wire() {
   });
   $('len-mm').oninput = (e) => { design.length.mm = parseFloat(e.target.value) || 5; refresh(); };
   $('pad-mm').oninput = (e) => { design.length.padMm = parseFloat(e.target.value) || 0; refresh(); };
+  $('len-box').onfocus = (e) => e.target.select();
+  $('len-box').onchange = (e) => {
+    const v = e.target.value;
+    if (/^\s*a/i.test(v)) design.length.mode = 'auto';
+    else if (parseFloat(v.replace(',', '.')) > 0) design.length = { ...design.length, mode: 'fixed', mm: Math.max(5, round1(parseFloat(v.replace(',', '.')))) };
+    e.target.blur();
+    undo.checkpoint();
+    refresh({ setup: true });
+  };
+  $('len-even').onchange = (e) => { design.length.even = e.target.checked; refresh({ setup: true }); };
   $('invert').onchange = (e) => { design.invert = e.target.checked; refresh(); };
   $('label-color').onchange = (e) => { design.colors = { ...design.colors, label: e.target.value }; undo.checkpoint(); refresh(); };
   $('ink-color').onchange = (e) => { design.colors = { ...design.colors, ink: e.target.value }; undo.checkpoint(); refresh(); };

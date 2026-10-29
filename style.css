@@ -419,3 +419,5 @@ a.button { display: inline-block; text-decoration: none; }
 .data-bar tr:hover td { background: rgba(36, 99, 235, .06); cursor: pointer; }
 .with-picker .field-picker { margin-top: 4px; font-size: 12px; }
 #color-note { font-size: 12px; color: var(--muted); margin: 0 0 8px; }
+.len-quick { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); margin: 0 6px; }
+.len-quick input { width: 58px; }

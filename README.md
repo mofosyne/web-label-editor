@@ -251,8 +251,10 @@ The app has its own welcome page and **Help** with the same information.
   tape has, so this only changes how the preview looks.
 - **Changing the label keeps the design on it:** if it no longer fits the
   new label or tape, it is shrunk evenly to fit (undo brings it back).
-- **Continuous rolls:** *Fit to content* makes the label as long as what is on
-  it; *Fixed* sets a length. Die-cut labels use their own size.
+- **Label length on rolls and tape:** the *Length* box in the toolbar says
+  *Auto* (as long as what is on it, with the same space after the content as
+  before it) or a length in mm; type one, or drag the label's end as in
+  P-touch Editor. Die-cut labels use their own size.
 - **Portrait** (▭ ▯ in the toolbar):
   design the label standing upright, as in DYMO Label; it is turned for
   printing. On tape and continuous rolls the label grows downwards with the

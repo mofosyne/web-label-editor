@@ -372,20 +372,23 @@ function drawBox(ctx, item, dpmm) {
   ctx.fillRect(x + w - t, y, t, h);
 }
 
-// Length of the strip in dots: fixed for die-cut media, otherwise either the
-// user's fixed length or the furthest item edge plus padding.
 // The label's length along the feed, in dots: fixed, or (fit to content)
-// up to the furthest item: its right edge, or its bottom edge in portrait.
+// up to the furthest item (its right edge, or its bottom edge in portrait)
+// and then as much space again as before the first one, or `padMm`.
 export function stripLength(design, medium, dpi, ctx, items = design.items, portrait = false) {
   const dpmm = dpi / 25.4;
   if (medium.lengthDots) return medium.lengthDots;
   if (design.length.mode === 'fixed') return Math.max(1, Math.round(design.length.mm * dpmm));
   let right = 0;
+  let left = Infinity;
   for (const item of items) {
     const b = itemBounds(ctx, item, dpmm);
     right = Math.max(right, portrait ? b.y + b.h : b.x + b.w);
+    left = Math.min(left, portrait ? b.y : b.x);
   }
-  return Math.max(Math.round(5 * dpmm), Math.round(right + design.length.padMm * dpmm));
+  // The space after the content: the same as before it (even ends), or set.
+  const pad = design.length.even !== false && Number.isFinite(left) ? Math.max(0, left) : design.length.padMm * dpmm;
+  return Math.max(Math.round(5 * dpmm), Math.round(right + pad));
 }
 
 // Renders one label. opts.items: the items to draw (default all);
