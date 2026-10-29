@@ -256,10 +256,16 @@ The app has its own welcome page and **Help** with the same information.
   before it: saves tape when the text varies) or a length in mm, for labels
   that must all match; type one, or drag the label's end as in P-touch
   Editor. On die-cut labels it shows their own length.
-- **Your own margins:** *Margin at ends* and *Margin at sides* (under Label)
-  keep space clear from the label's edges, on die-cut labels and tape alike.
-  The safe-area guide, *Fill safe area* and new items keep inside them, and
-  an Auto-length label leaves at least that much after the content.
+- **Auto buttons on the label:** *Auto length* beside the end grip on rolls
+  and tape, and *Auto size* beside the selected item. For text, Auto size
+  fits it to its box; a QR code, barcode, symbol or image fills the safe
+  area across the label and follows it when the tape, label or margins
+  change (on a roll, what comes after it moves along).
+- **Your own margins:** *Left & right* and *Top & bottom* (Margins, under
+  Label) keep space clear from the label's edges as seen in the editor, on
+  die-cut labels and tape alike. The safe-area guide, *Fill safe area*, Auto
+  size and new items keep inside them, and an Auto-length label grows to
+  keep them at both ends.
 - **Portrait** (▭ ▯ in the toolbar):
   design the label standing upright, as in DYMO Label; it is turned for
   printing. On tape and continuous rolls the label grows downwards with the

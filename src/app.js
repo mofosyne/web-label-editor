@@ -315,6 +315,11 @@ const printerMargins = (lane) => {
 };
 // The user's own margins (Label → Margins), from the label's edges: at the
 // ends (along the feed) and the sides (across). Saved with the design.
+// The margin boxes as seen: left & right are the ends in landscape, the
+// sides in portrait.
+const marginBoxes = () => (portrait()
+  ? [['margin-lr', 'sidesMm'], ['margin-tb', 'endsMm']]
+  : [['margin-lr', 'endsMm'], ['margin-tb', 'sidesMm']]);
 const userMargins = () => {
   const ends = Math.max(0, Number(design.margins?.endsMm) || 0);
   const sides = Math.max(0, Number(design.margins?.sidesMm) || 0);
@@ -499,10 +504,98 @@ function refresh({ props = false, setup = false } = {}) {
   });
 }
 
+// On Auto length, the content keeps at least the margin from the start:
+// anything closer moves along with the rest, and the label grows to fit
+// (the end gets the same space, see stripLength). Not while dragging, so
+// the other items stay put; it settles when the item is dropped.
+function keepStartMargin() {
+  const ends = userMargins().left;
+  if (!ends || drag || medium().lengthDots || design.length.mode === 'fixed' || !last) return false;
+  const along = last.portrait ? 'y' : 'x';
+  let start = Infinity;
+  last.bounds.forEach((b, i) => {
+    const slot = b && last.slots.find((sl) => sl.lane === last.lanes[i]);
+    if (slot) start = Math.min(start, (along === 'x' ? b.x - slot.ox : b.y - slot.oy) / last.dpmm);
+  });
+  if (!Number.isFinite(start) || start >= ends - 0.05) return false;
+  for (const it of design.items) it[along] = round1(it[along] + ends - start);
+  return true;
+}
+
+// Auto size for QR codes, symbols, images and barcodes (`fit`): filling
+// the safe area across the label, centred, and on a die-cut label no longer
+// than it either; a barcode's bars grow, not their width. Measured from the
+// last render, so it settles in a pass or two.
+const AUTO_SIZED = ['qr', 'icon', 'image', 'barcode'];
+function fitItems() {
+  if (!last || drag) return false;
+  let changed = false;
+  const page = pageSize();
+  const up = portrait();
+  design.items.forEach((it, i) => {
+    if (!it.fit || !AUTO_SIZED.includes(it.type)) return;
+    const b = last.bounds[i];
+    const slot = b && last.slots.find((sl) => sl.lane === last.lanes[i]);
+    if (!slot) return;
+    const mg = itemMargins(laneOf(it));
+    const room = up ? page.w - mg.left - mg.right : page.h - mg.top - mg.bottom;
+    const alongRoom = (up ? page.hFixed : page.wFixed) ? (up ? page.h - mg.top - mg.bottom : page.w - mg.left - mg.right) : Infinity;
+    const across = (up ? b.w : b.h) / last.dpmm;
+    const along = (up ? b.h : b.w) / last.dpmm;
+    let size = across;
+    if (it.type === 'barcode') {
+      const h = Math.max(1, round1(it.height + room - across));
+      if (Math.abs(h - it.height) > 0.2) {
+        size = across + h - it.height;
+        it.height = h;
+        changed = true;
+      }
+    } else {
+      // A QR code's size is an upper bound (it draws the largest whole dots
+      // per module that fit) and a symbol's is exact, so they take the room
+      // as their size; an image scales by its width.
+      const target = Math.min(room, alongRoom);
+      const f = it.type === 'image' ? Math.min(room / across, alongRoom / along) : target / it.size;
+      if (it.type === 'image' ? Math.abs(f - 1) > 0.003 : Math.abs(it.size - target) > 0.05) {
+        if (it.type === 'image') it.w = +(it.w * f).toFixed(2); else it.size = +target.toFixed(2);
+        changed = true;
+        // On a roll, what comes after it moves along with its new length
+        // instead of being covered.
+        if (alongRoom === Infinity) {
+          const end = (up ? b.y - slot.oy + b.h : b.x - slot.ox + b.w) / last.dpmm;
+          const k = up ? 'y' : 'x';
+          design.items.forEach((o, j) => {
+            const ob = last.bounds[j];
+            const os = ob && last.slots.find((sl) => sl.lane === last.lanes[j]);
+            if (o !== it && os && (up ? ob.y - os.oy : ob.x - os.ox) / last.dpmm >= end - 0.5) o[k] = round1(o[k] + along * (f - 1));
+          });
+        }
+        size = across * f;
+      }
+    }
+    // Centred across.
+    const key = up ? 'x' : 'y';
+    const start = (up ? b.x - slot.ox : b.y - slot.oy) / last.dpmm;
+    const want = (up ? mg.left : mg.top) + (room - size) / 2;
+    if (Math.abs(want - start) > 0.2) { it[key] = round1(it[key] + want - start); changed = true; }
+  });
+  return changed;
+}
+
 function draw() {
   const m = model();
   const med = medium();
-  last = renderView(viewDesign(), m, med, { adj: adjust(), onAssetLoad: () => refresh(), laneItems: batchLaneItems() });
+  const render = () => renderView(viewDesign(), m, med, { adj: adjust(), onAssetLoad: () => refresh(), laneItems: batchLaneItems() });
+  last = render();
+  let fitted = false;
+  for (let k = 0; k < 3; k++) {
+    const moved = fitItems();
+    fitted ||= moved;
+    if (!(keepStartMargin() || moved)) break;
+    last = render();
+  }
+  // The side panel shows the new sizes.
+  if (fitted && !drag) queueMicrotask(() => refresh({ props: true }));
   updateDataBar();
   syncFormatBar();
   const { display, dpmm, geo, slots, toDisplay } = last;
@@ -695,17 +788,24 @@ function draw() {
   }
   drawRulers(selBounds, feed);
   placeLaneButtons(scale);
+  placeChips(scale, cssW, cssH, selBounds);
 
   const lenMm = geo.length / dpmm;
   // The Length box in the toolbar (rolls only): Auto, or the fixed length.
   const lenBox = $('len-box');
+  const lenAuto = $('len-auto');
   // Die-cut labels: their own length, shown greyed so the box is always there.
   lenBox.disabled = !!med.lengthDots;
+  lenAuto.disabled = !!med.lengthDots;
+  lenAuto.setAttribute('aria-pressed', String(!med.lengthDots && design.length.mode !== 'fixed'));
+  lenAuto.title = med.lengthDots ? 'Die-cut labels have their own length'
+    : design.length.mode === 'fixed' ? 'Auto: make the label as long as its content (saves tape when the text varies)'
+      : 'Auto is on: the label is as long as its content. Type a length (or drag the label\'s end) for labels that must all match.';
   if (med.lengthDots) {
     lenBox.value = String(round1(lenMm));
     lenBox.title = `Die-cut labels are ${round1(lenMm)} mm long. On a continuous roll or tape, set Auto or a length here.`;
   } else if (document.activeElement !== lenBox) {
-    lenBox.value = design.length.mode === 'fixed' ? String(design.length.mm) : 'Auto';
+    lenBox.value = design.length.mode === 'fixed' ? String(design.length.mm) : String(Math.round(lenMm));
     lenBox.title = design.length.mode === 'fixed'
       ? 'A set length: every label the same, e.g. to match drawer fronts or a batch. Auto makes it as long as the content. '
         + 'You can also drag the label\'s end.'
@@ -927,6 +1027,39 @@ function placeLaneButtons(scale) {
     const s = last.slots[Number(b.dataset.lane)];
     b.style.left = `${canvas.offsetLeft + viewOrigin.x + (s.label.x + s.label.w) * scale - 4}px`;
     b.style.top = `${canvas.offsetTop + viewOrigin.y + s.label.y * scale + 4}px`;
+  }
+}
+
+// Small Auto toggles on the canvas: beside the end grip of a label on a
+// roll (Auto length), and beside the selected text's corner handle (Auto
+// size: the text fits its box).
+function placeChips(scale, cssW, cssH, selBounds) {
+  const canvas = $('canvas');
+  const x0 = canvas.offsetLeft + viewOrigin.x;
+  const y0 = canvas.offsetTop + viewOrigin.y;
+  const len = $('chip-len-auto');
+  len.hidden = !!medium().lengthDots;
+  if (!len.hidden) {
+    const auto = design.length.mode !== 'fixed';
+    len.setAttribute('aria-pressed', String(auto));
+    len.title = auto ? 'Auto length: as long as the content. Drag the label\'s end, or click, to set a length.'
+      : 'Click for Auto length: as long as the content';
+    // Just past the grip: below the right end, or right of the bottom end.
+    len.style.left = `${x0 + (last.portrait ? cssW / 2 - 36 : cssW - 40)}px`;
+    len.style.top = `${y0 + cssH + 8}px`;
+  }
+  const chip = $('chip-text-auto');
+  const item = selected();
+  chip.hidden = !((item?.type === 'text' || AUTO_SIZED.includes(item?.type)) && selBounds && !editing);
+  if (!chip.hidden) {
+    chip.setAttribute('aria-pressed', String(!!item.fit));
+    chip.title = item.type === 'text'
+      ? (item.fit ? 'Auto size: the text is sized to fit its box. Click to keep it at this size instead.'
+        : 'Click for Auto size: the text fills its box, growing or shrinking with it')
+      : (item.fit ? 'Auto size: fills the label\'s safe area across, and follows it when the label or margins change. Click to keep this size.'
+        : 'Click for Auto size: fill the label\'s safe area across, and follow it when the label or margins change');
+    chip.style.left = `${x0 + (selBounds.x + selBounds.w) * scale + 12}px`;
+    chip.style.top = `${y0 + (selBounds.y + selBounds.h) * scale - 8}px`;
   }
 }
 
@@ -1210,7 +1343,7 @@ function buildSetup() {
   buildCustomMedia();
   $('request-label').hidden = !!m.custom || medium().id === 'custom';
 
-  for (const [id, key] of [['margin-ends', 'endsMm'], ['margin-sides', 'sidesMm']]) {
+  for (const [id, key] of marginBoxes()) {
     if (document.activeElement !== $(id)) $(id).value = design.margins?.[key] || '';
   }
   $('invert').checked = !!design.invert;
@@ -3301,6 +3434,8 @@ function onPointerDown(e) {
   const handled = onHandle(e);
   if (handled) {
     undo.checkpoint();
+    // Resizing by hand ends Auto size (a text's box stays fitted).
+    if (handled.type !== 'text') handled.fit = false;
     drag = { item: handled, resize: true };
     $('canvas').setPointerCapture(e.pointerId);
     return;
@@ -3737,11 +3872,31 @@ function wire() {
     disconnect().then(autoConnect);
   };
   $('medium').onchange = (e) => { keepFitting(() => selectMedium(e.target.value)); refresh({ setup: true }); };
-  for (const [id, key] of [['margin-ends', 'endsMm'], ['margin-sides', 'sidesMm']]) {
-    $(id).oninput = (e) => { design.margins = { ...design.margins, [key]: Math.max(0, parseFloat(e.target.value) || 0) }; refresh(); };
+  for (const id of ['margin-lr', 'margin-tb']) {
+    $(id).oninput = (e) => {
+      const key = new Map(marginBoxes()).get(id);
+      design.margins = { ...design.margins, [key]: Math.max(0, parseFloat(e.target.value) || 0) };
+      refresh();
+    };
     $(id).onchange = () => undo.checkpoint();
   }
   $('len-box').onfocus = (e) => e.target.select();
+  $('chip-len-auto').onclick = () => $('len-auto').click();
+  $('chip-text-auto').onclick = () => {
+    const it = selected();
+    if (!it) return;
+    if (it.type === 'text') toggleFit(it, !it.fit);
+    else if (AUTO_SIZED.includes(it.type)) it.fit = !it.fit;
+    else return;
+    undo.checkpoint();
+    refresh({ props: true });
+  };
+  $('len-auto').onclick = () => {
+    if (design.length.mode === 'fixed') design.length.mode = 'auto';
+    else design.length = { ...design.length, mode: 'fixed', mm: Math.round(last.geo.length / last.dpmm) };
+    undo.checkpoint();
+    refresh({ setup: true });
+  };
   $('len-box').onchange = (e) => {
     const v = e.target.value;
     if (/^\s*a/i.test(v)) design.length.mode = 'auto';
