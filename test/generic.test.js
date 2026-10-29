@@ -93,3 +93,15 @@ test('Kind chooses die-cut or continuous; the length is kept for switching back'
   m.configure({ kind: 'diecut', lengthMm: 40 });
   assert.deepEqual([m.media[0].continuous, m.media[0].lengthMm], [false, 40]);
 });
+
+test('PBM for print servers: P4, width across the head, first row out first', async () => {
+  const { encodePbm } = await import('../src/printers/generic.js');
+  // A strip 3 dots along the feed and 2 across, with ink at the left end's
+  // bottom dot: as it comes out (left end first, at the top), that dot is
+  // in the first row, at its left.
+  const bitmap = { width: 3, height: 2, data: Uint8Array.from([0, 0, 0, 1, 0, 0]) };
+  const pbm = encodePbm(bitmap);
+  const head = 'P4\n2 3\n';
+  assert.equal(Buffer.from(pbm.subarray(0, head.length)).toString('latin1'), head);
+  assert.deepEqual([...pbm.subarray(head.length)], [0x80, 0x00, 0x00]);
+});

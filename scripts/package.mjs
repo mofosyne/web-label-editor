@@ -8,6 +8,8 @@
 //   dist/web-label-editor/           the offline download, unpacked:
 //     start.sh                       serves it on localhost and opens it
 //     install-udev-rules.sh          USB access for the printers (Linux)
+//     print-server.py                share a printer on the network
+//                                    (docs/PRINT-SERVER-API.md)
 //     READ ME FIRST.txt
 //   dist/site/web-label-editor.zip   the same, zipped (needs `zip`)
 //
@@ -119,6 +121,13 @@ which most Linux systems have.
 
 Firefox and Safari can design labels but can't print: they have no WebUSB.
 
+3. Or share a printer on the network (e.g. from a Raspberry Pi), so any
+   browser on it can print, phones, Firefox and Safari included:
+     python3 print-server.py --model dymo-lw450 --device /dev/usb/lp0
+   then open http://<this computer>:8740/ on the other devices. --model is
+   the editor's printer id; the list is in docs/PRINT-SERVER-API.md on
+   GitHub. Anyone on the network can print, so use it on one you trust.
+
 Your labels are kept in that browser for this address; use File → Save to a file
 for copies. The latest version is at
 https://mofosyne.github.io/web-label-editor/ (it also works offline once
@@ -138,6 +147,8 @@ for (const dir of [SITE, APP]) {
 writeFileSync(join(APP, 'start.sh'), START);
 writeFileSync(join(APP, 'install-udev-rules.sh'), UDEV);
 writeFileSync(join(APP, 'READ ME FIRST.txt'), README);
+cpSync(join(ROOT, 'scripts', 'print-server.py'), join(APP, 'print-server.py'));
+chmodSync(join(APP, 'print-server.py'), 0o755);
 chmodSync(join(APP, 'start.sh'), 0o755);
 chmodSync(join(APP, 'install-udev-rules.sh'), 0o755);
 try {

@@ -64,6 +64,20 @@ export function rasterLines(bitmap, bytes, rotate = false) {
 }
 
 const ascii = (s) => Uint8Array.from(s, (ch) => ch.charCodeAt(0));
+
+// The label as a binary PBM (P4) image, for a print server with its own
+// printer driver (docs/PRINT-SERVER-API.md): as it comes out, read from the
+// printed side with the end that comes out first at the top. Its width is
+// the dots across the head, and its first row is printed first.
+export function encodePbm(bitmap) {
+  const bytes = Math.ceil(bitmap.height / 8);
+  const lines = rasterLines(bitmap, bytes);
+  const head = ascii(`P4\n${bitmap.height} ${lines.length}\n`);
+  const out = new Uint8Array(head.length + bytes * lines.length);
+  out.set(head);
+  lines.forEach((line, i) => out.set(line, head.length + i * bytes));
+  return out;
+}
 const hex = (bytes) => Array.from(bytes, (b) => b.toString(16).padStart(2, '0').toUpperCase()).join('');
 
 // cfg: the user's settings; job: { continuous, dpmm }.

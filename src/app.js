@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { MODELS, mediumMargins } from './printers/models.js';
-import { LANGUAGES, LANGUAGE_NAMES, printerRecord } from './printers/generic.js';
+import { LANGUAGES, LANGUAGE_NAMES, printerRecord, encodePbm } from './printers/generic.js';
 import { ALL_ICONS, ICON_GROUPS, SYMBOLS } from './icons.js';
 import { UI_ICONS } from './lucide.js';
 import { renderDesign, bitmapToCanvas, itemError, quarterTurns } from './render.js';
@@ -9,7 +9,7 @@ import {
   fieldTag, toTsv, EXAMPLES, DATA_FORMATS, formatData, dataFormat, withHeader, withoutHeader, looksHeaderless,
 } from './fields.js';
 import { SYMBOLOGIES } from './codes/barcode.js';
-import { UsbTransport, SerialTransport, support } from './transport.js';
+import { UsbTransport, SerialTransport, HttpTransport, support } from './transport.js';
 import { openHelp } from './help.js';
 import { openAbout } from './about.js';
 import { labels, history, openLibrary } from './library.js';
@@ -1416,6 +1416,10 @@ function buildSetup() {
   buildAdjust();
 
   const btns = $('connect-buttons');
+  const onServer = !!transport?.server;
+  btns.hidden = onServer;
+  $('printer').disabled = onServer && !!MODELS[transport.info.model];
+  $('printer').title = $('printer').disabled ? 'Set by the print server this page is on' : '';
   const connectLabels = { usb: 'Connect USB', serial: 'Connect Bluetooth / serial' };
   btns.replaceChildren(...m.transports.map((t) => {
     const b = document.createElement('button');
@@ -1431,7 +1435,7 @@ function buildSetup() {
   // browser that can't reach printers at all disables it.
   const canPrint = m.transports.some((t) => support[t]);
   $('btn-print').disabled = !transport && !canPrint;
-  $('browser-note').hidden = support.usb || support.serial;
+  $('browser-note').hidden = support.usb || support.serial || onServer;
   $('btn-print').title = transport ? '' : canPrint ? 'Print (asks which printer to use first)'
     : 'This browser can\'t reach printers: open the page in Chromium, Chrome or Edge to print';
 }
@@ -1972,12 +1976,37 @@ async function connect(kind) {
   }
 }
 
+// When a print server hosts this page (printer.json beside it), its printer
+// is the one to use: chosen, connected, and fixed while the page is there.
+let printServer;
+async function findPrintServer() {
+  if (printServer === undefined) printServer = await HttpTransport.discover();
+  if (!printServer) return false;
+  const { model: id, medium: mediumId } = printServer.info;
+  if (MODELS[id] && design.printer !== id) {
+    design.printer = id;
+    delete design.roll;
+    keepFitting(() => { design.medium = defaultMedium(model()); });
+  }
+  if (mediumId && model().media.some((m) => m.id === mediumId) && design.medium !== mediumId) {
+    keepFitting(() => selectMedium(mediumId));
+  }
+  if (!MODELS[id]) showBanner(`The print server names a printer this editor doesn't know ("${id}"). Pick it in the Printer panel.`);
+  transport = printServer;
+  setStatus(`Connected: ${transport.label}`, true);
+  refresh({ setup: true });
+  return true;
+}
+
 // Reconnects quietly to a printer this site may already use (after a
 // reload, a plug-in, or picking its model), so you don't have to click
 // Connect again.
 let reconnecting = false;
 async function autoConnect() {
-  if (transport || reconnecting || !support.usb || !model().usbFilters) return;
+  if (transport || reconnecting) return;
+  // A print server works in any browser, so it is looked for first.
+  if (await findPrintServer()) return;
+  if (!support.usb || !model().usbFilters) return;
   reconnecting = true;
   try {
     const t = await UsbTransport.reconnect(model().usbFilters);
@@ -2002,6 +2031,7 @@ async function disconnect() {
 // Reads the loaded tape and switches the layout to it. Returns the status,
 // or null if the printer could not be read.
 async function detect({ keep = false } = {}) {
+  if (transport?.server) return null; // a print server doesn't report the tape (yet)
   try {
     const status = await model().queryStatus(transport);
     if (!keep) await transport.release();
@@ -2595,6 +2625,11 @@ async function sendRows(rows, med = medium()) {
   };
   const opts = Object.fromEntries(model().options.map((o) => [o.id, option(o.id)]));
   opts.highRes = stretch > 1;
+  // A print server with its own driver takes each label as a bitmap.
+  if (transport.accepts === 'pbm') {
+    for (const row of rows) await transport.write(encodePbm(jobBitmap(row.bitmap, row.geo, model(), shift)));
+    return;
+  }
   // Printers that take several pages per job get all the copies at once.
   if (model().encodePages) {
     const bitmaps = new Map(rows.map((row) => [row, jobBitmap(row.bitmap, row.geo, model(), shift)]));

@@ -197,6 +197,23 @@ described [below](#adding-a-printer).
 - **Firefox and Safari** can design and download a PNG, but can't print:
   they have no WebUSB or Web Serial. The app says so where it matters.
 
+## Sharing a printer on the network
+
+A computer with the printer plugged in (a Raspberry Pi, a NAS, even an
+ESP32) can host the editor for every device on the network: phones,
+tablets, Firefox and Safari included, none of which can reach a USB
+printer themselves. The editor finds the printer on that server by itself,
+and Print sends the label there.
+
+```sh
+python3 scripts/print-server.py --model dymo-lw450 --device /dev/usb/lp0
+```
+
+That is the reference server (standard-library Python, also in the offline
+download). Other servers, such as brother_ql_web or a home-made one, can do
+the same by serving the editor's files next to two small endpoints:
+[docs/PRINT-SERVER-API.md](docs/PRINT-SERVER-API.md) is the contract.
+
 ## Getting started
 
 1. Open the [site](https://mofosyne.github.io/web-label-editor/), pick your

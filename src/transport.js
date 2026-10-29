@@ -207,3 +207,55 @@ export class SerialTransport {
     await this.port.close();
   }
 }
+
+// A print server: a web server that hosts this page next to a printer and
+// takes jobs over HTTP (docs/PRINT-SERVER-API.md). Found on load from
+// printer.json beside the page, so the printer is there with no setup.
+// Paths are relative, so a server can host the page under any path.
+export const PRINT_API = 'web-label-print/1';
+export class HttpTransport {
+  // The server's printer.json, or null when this page isn't on a print server.
+  static async discover(base = document.baseURI) {
+    try {
+      const res = await fetch(new URL('printer.json', base), { cache: 'no-store' });
+      if (!res.ok) return null;
+      const info = await res.json();
+      if (info?.api !== PRINT_API) return null;
+      return new HttpTransport(info, new URL('print', base));
+    } catch {
+      return null;
+    }
+  }
+
+  constructor(info, url) {
+    this.info = info;
+    this.url = url;
+    this.server = true;
+    // 'raw': the printer's own commands; 'pbm': the label as a bitmap, for
+    // servers with their own printer driver.
+    this.accepts = info.accepts === 'pbm' ? 'pbm' : 'raw';
+    this.label = info.name ? `${info.name} (print server)` : 'Print server';
+  }
+
+  // One job (one label, or the copies a printer takes at once) per request.
+  async write(bytes) {
+    let res;
+    try {
+      res = await fetch(this.url, {
+        method: 'POST',
+        headers: { 'Content-Type': this.accepts === 'pbm' ? 'image/x-portable-bitmap' : 'application/octet-stream' },
+        body: bytes,
+      });
+    } catch (err) {
+      throw new Error(`The print server didn't answer (${err.message})`);
+    }
+    if (!res.ok) {
+      const text = (await res.text().catch(() => '')).trim();
+      throw new Error(text || `The print server refused the label (${res.status} ${res.statusText})`);
+    }
+  }
+
+  // The server keeps the printer: nothing to claim, release or close.
+  async release() {}
+  async close() {}
+}
