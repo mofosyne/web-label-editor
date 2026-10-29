@@ -504,11 +504,12 @@ function refresh({ props = false, setup = false } = {}) {
   });
 }
 
-// On Auto length (a roll or tape), the content starts at the margin, as in
-// P-touch Editor: the label is margin + content + margin, and where the
-// content sits along it is not a choice. Items keep their order and the
-// spacing between them; the whole moves to the margin. Not while dragging,
-// so nothing else moves under the pointer; it settles when dropped.
+// On Auto length (a roll or tape) the label ends one margin after the
+// last item (see stripLength), and nothing starts before the margin:
+// content closer than that moves along with the rest, so raising the
+// margin pushes the content in and the label grows. Where the content
+// sits past the margin is the user's choice. Not while dragging (the
+// margin is a wall then, see onPointerMove).
 function anchorContent() {
   if (drag || medium().lengthDots || design.length.mode === 'fixed' || !last) return false;
   const along = last.portrait ? 'y' : 'x';
@@ -518,13 +519,13 @@ function anchorContent() {
     const slot = b && last.slots.find((sl) => sl.lane === last.lanes[i]);
     if (slot) start = Math.min(start, (along === 'x' ? b.x - slot.ox : b.y - slot.oy) / last.dpmm);
   });
-  if (!Number.isFinite(start) || Math.abs(start - anchor) < 0.15) return false;
+  if (!Number.isFinite(start) || start >= anchor - 0.15) return false;
   for (const it of design.items) it[along] = round1(it[along] + anchor - start);
   return true;
 }
 
 // Auto size for QR codes, symbols, images and barcodes (`fit`): filling
-// the safe area across the label, centred, and on a die-cut label no longer
+// the safe area across the label, and on a die-cut label no longer
 // than it either; a barcode's bars grow, not their width. Measured from the
 // last render, so it settles in a pass or two.
 const AUTO_SIZED = ['qr', 'icon', 'image', 'barcode'];
@@ -574,10 +575,11 @@ function fitItems() {
         size = across * f;
       }
     }
-    // Centred across.
+    // Kept inside the margins across (where it is placed is the user's).
     const key = up ? 'x' : 'y';
     const start = (up ? b.x - slot.ox : b.y - slot.oy) / last.dpmm;
-    const want = (up ? mg.left : mg.top) + (room - size) / 2;
+    const lo = up ? mg.left : mg.top;
+    const want = Math.min(Math.max(start, lo), lo + room - size);
     if (Math.abs(want - start) > 0.2) { it[key] = round1(it[key] + want - start); changed = true; }
   });
   return changed;
@@ -3487,21 +3489,17 @@ function onPointerMove(e) {
   // A small wobble during a click isn't a drag.
   if (!drag.moved && Math.hypot(pt.x - drag.from.x, pt.y - drag.from.y) * zoom < 3) return;
   drag.moved = true;
-  // On Auto length the content starts at the margin (see anchorContent):
-  // that margin is a wall, and an item alone on the label only moves across.
+  // On Auto length the start margin is a wall (see anchorContent).
   const autoRoll = !medium().lengthDots && design.length.mode !== 'fixed';
   const k = portrait() ? 'y' : 'x';
   const ib = last.bounds[design.items.indexOf(it)];
   const slot = ib && last.slots.find((sl) => sl.lane === laneOf(it));
   const offset = ib && slot ? (k === 'x' ? ib.x - slot.ox : ib.y - slot.oy) / last.dpmm - it[k] : 0;
-  const alone = design.items.filter((o) => laneOf(o) === laneOf(it)).length === 1;
-  const keep = it[k];
   it.x = Math.round((pt.x - drag.dx) * 10) / 10;
   it.y = Math.round((pt.y - drag.dy) * 10) / 10;
   if (autoRoll) {
     const anchor = portrait() ? itemMargins().top : itemMargins().left;
-    if (alone) it[k] = keep;
-    else if (it[k] + offset < anchor) it[k] = round1(anchor - offset);
+    if (it[k] + offset < anchor) it[k] = round1(anchor - offset);
   }
   // With a design per label, dragging an item onto another label moves it there.
   const b = last.bounds[design.items.indexOf(it)];

@@ -252,16 +252,16 @@ The app has its own welcome page and **Help** with the same information.
 - **Changing the label keeps the design on it:** if it no longer fits the
   new label or tape, it is shrunk evenly to fit (undo brings it back).
 - **Label length on rolls and tape:** the *Length* box in the toolbar says
-  *Auto* or a length in mm. On Auto, as in P-touch Editor, the label is the
-  left margin, the content, then the right margin: the content always starts
-  at the margin, and it saves tape when the text varies. A length is for labels
+  *Auto* or a length in mm. On Auto the label ends one margin after the last
+  item, so it grows as you add or move things along (and saves tape when the
+  text varies); nothing goes before the start margin. A length is for labels
   that must all match; type one, or drag the label's end as in P-touch
   Editor. On die-cut labels it shows their own length.
 - **Auto buttons on the label:** *Auto length* beside the end grip on rolls
   and tape, and *Auto size* beside the selected item. For text, Auto size
   fits it to its box; a QR code, barcode, symbol or image fills the safe
-  area across the label and follows it when the tape, label or margins
-  change (on a roll, what comes after it moves along).
+  area across the label (staying where you put it along it) and follows it
+  when the tape, label or margins change (on a roll, what comes after it moves along).
 - **Your own margins:** *Left & right* and *Top & bottom* (Margins, under
   Label) keep space clear from the label's edges as seen in the editor, on
   die-cut labels and tape alike. The safe-area guide, *Fill safe area*, Auto
