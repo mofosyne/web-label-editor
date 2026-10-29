@@ -39,7 +39,8 @@ function newDesign() {
     printer: 'dymo-lw450',
     medium: '30252',
     options: {},
-    length: { mode: 'auto', mm: 60, padMm: 2, even: true },
+    length: { mode: 'auto', mm: 60 },
+    margins: { endsMm: 0, sidesMm: 0 },
     invert: false,
     items: [
       {
@@ -300,7 +301,9 @@ const hardMargins = (lane) => {
   const r = reachMm(lane);
   return { left: Math.max(0, r.left), right: Math.max(0, r.right), top: Math.max(0, r.top), bottom: Math.max(0, r.bottom) };
 };
-const margins = (lane) => {
+// Where the printer prints reliably: the label's own margins and the
+// printer's reach.
+const printerMargins = (lane) => {
   const mg = mediumMargins(medium());
   const hard = hardMargins(lane);
   return {
@@ -309,6 +312,20 @@ const margins = (lane) => {
     top: Math.max(mg.top, hard.top),
     bottom: Math.max(mg.bottom, hard.bottom),
   };
+};
+// The user's own margins (Label → Margins), from the label's edges: at the
+// ends (along the feed) and the sides (across). Saved with the design.
+const userMargins = () => {
+  const ends = Math.max(0, Number(design.margins?.endsMm) || 0);
+  const sides = Math.max(0, Number(design.margins?.sidesMm) || 0);
+  return { left: ends, right: ends, top: sides, bottom: sides };
+};
+// The safe area items keep to: the printer's, or the user's margins where
+// they are wider. Guides, warnings, Fill safe area and new items use it.
+const margins = (lane) => {
+  const p = printerMargins(lane);
+  const u = userMargins();
+  return { left: Math.max(p.left, u.left), right: Math.max(p.right, u.right), top: Math.max(p.top, u.top), bottom: Math.max(p.bottom, u.bottom) };
 };
 // The whole area an item can cover, overprint border included (mm, label
 // coordinates): the label plus its overprint border, within reach.
@@ -625,14 +642,16 @@ function draw() {
   ctx.fillRect(0, hard.y1, cssW, cssH - hard.y1);
   ctx.fillRect(0, hard.y0, hard.x0, hard.y1 - hard.y0);
   ctx.fillRect(hard.x1, hard.y0, cssW - hard.x1, hard.y1 - hard.y0);
-  const safe = slots.map((s) => {
-    const mg = round ? evenMargins(margins(s.lane)) : margins(s.lane);
+  const safeRects = (of) => slots.map((s) => {
+    const mg = round ? evenMargins(of(s.lane)) : of(s.lane);
     const a = px(toDisplay({
       x: mg.left * dpmm, y: s.y + mg.top * dpmm,
       w: geo.length - (mg.left + mg.right) * dpmm, h: geo.labelDots - (mg.top + mg.bottom) * dpmm,
     }));
     return { x0: a.x, y0: a.y, x1: a.x + a.w, y1: a.y + a.h };
   });
+  const safe = safeRects(margins);
+  const printerSafe = safeRects(printerMargins);
   ctx.strokeStyle = 'rgba(120, 120, 120, .6)';
   ctx.lineWidth = 1;
   ctx.setLineDash([3, 3]);
@@ -680,12 +699,18 @@ function draw() {
   const lenMm = geo.length / dpmm;
   // The Length box in the toolbar (rolls only): Auto, or the fixed length.
   const lenBox = $('len-box');
-  $('len-quick').hidden = !!med.lengthDots;
-  if (document.activeElement !== lenBox) {
+  // Die-cut labels: their own length, shown greyed so the box is always there.
+  lenBox.disabled = !!med.lengthDots;
+  if (med.lengthDots) {
+    lenBox.value = String(round1(lenMm));
+    lenBox.title = `Die-cut labels are ${round1(lenMm)} mm long. On a continuous roll or tape, set Auto or a length here.`;
+  } else if (document.activeElement !== lenBox) {
     lenBox.value = design.length.mode === 'fixed' ? String(design.length.mm) : 'Auto';
     lenBox.title = design.length.mode === 'fixed'
-      ? 'Label length in mm. Auto makes it as long as the content. You can also drag the label\'s end.'
-      : `Auto: as long as the content (now ${lenMm.toFixed(0)} mm). Type a length to fix it, or drag the label's end.`;
+      ? 'A set length: every label the same, e.g. to match drawer fronts or a batch. Auto makes it as long as the content. '
+        + 'You can also drag the label\'s end.'
+      : `Auto: as long as the content (now ${lenMm.toFixed(0)} mm), which saves tape when the text varies. `
+        + 'Type a length for labels that must all match, or drag the label\'s end.';
   }
   const lanes = med.lanes;
   const stock = m.family === 'brother-pt' ? 'tape' : med.continuous ? 'roll' : 'label';
@@ -721,8 +746,10 @@ function draw() {
     return [[b.x, b.y], [b.x + b.w, b.y], [b.x, b.y + b.h], [b.x + b.w, b.y + b.h]]
       .some(([x, y]) => ((x * scale - cx) / rx) ** 2 + ((y * scale - cy) / ry) ** 2 > 1);
   };
-  const pastSafe = (b, i) => b && outside(b, safe[last.lanes[i]]) || (b && round && outsideCircle(b, safe[last.lanes[i]]));
+  const pastSafe = (b, i, area = printerSafe) => b && outside(b, area[last.lanes[i]]) || (b && round && outsideCircle(b, area[last.lanes[i]]));
   const unsafe = offLabel ? [] : last.inks.map((b, i) => (pastSafe(b, i) ? design.items[i] : null)).filter(Boolean);
+  // Inside the user's own margins (but printable): worth a word, not a warning about printing.
+  const inMargin = offLabel || unsafe.length ? [] : last.inks.map((b, i) => (pastSafe(b, i, safe) ? design.items[i] : null)).filter(Boolean);
   const overprint = unsafe.length > 0;
   const dims = $('dims');
   // In words: the ends as seen in the preview.
@@ -735,6 +762,8 @@ function draw() {
     + cutNote
     + (overprint ? `  ·  ⚠ The ${kinds[unsafe[0].type]}${short(unsafe[0])}${unsafe.length > 1 ? ` and ${unsafe.length - 1} more` : ''} `
       + `${unsafe.length > 1 ? 'go' : 'goes'} past the safe area: it may be trimmed or not print` : '')
+    + (inMargin.length ? `  ·  The ${kinds[inMargin[0].type]}${short(inMargin[0])}${inMargin.length > 1 ? ` and ${inMargin.length - 1} more` : ''} `
+      + `${inMargin.length > 1 ? 'are' : 'is'} inside your margins` : '')
     + (last.hidden ? `  ·  ${last.hidden} item${last.hidden > 1 ? 's' : ''} on the other label${lanes?.count > 2 ? 's' : ''} hidden (choose "A different design on each")` : '')
     + `  ·  ${feedNote}`;
   dims.classList.toggle('warn', offLabel);
@@ -1181,16 +1210,9 @@ function buildSetup() {
   buildCustomMedia();
   $('request-label').hidden = !!m.custom || medium().id === 'custom';
 
-  const fixedLength = !!medium().lengthDots;
-  $('length-controls').hidden = fixedLength;
-  document.querySelectorAll('input[name="lenmode"]').forEach((r) => { r.checked = r.value === design.length.mode; });
-  $('len-mm').value = design.length.mm;
-  // Only the setting that applies: a length when fixed, padding when it fits the content.
-  $('len-mm').closest('label').hidden = design.length.mode !== 'fixed';
-  $('pad-mm').value = design.length.padMm;
-  $('len-even').checked = design.length.even !== false;
-  $('even-ends').hidden = design.length.mode !== 'auto';
-  $('pad-mm').closest('label').hidden = design.length.mode !== 'auto' || design.length.even !== false;
+  for (const [id, key] of [['margin-ends', 'endsMm'], ['margin-sides', 'sidesMm']]) {
+    if (document.activeElement !== $(id)) $(id).value = design.margins?.[key] || '';
+  }
   $('invert').checked = !!design.invert;
   const reported = tapeReported();
   const fixed = reported ? null : rollColors();
@@ -3606,7 +3628,9 @@ function drawActualPanel(real) {
   ctx.clip();
   ctx.beginPath();
   for (const s of slots) {
-    const mg = round ? evenMargins(margins(s.lane)) : margins(s.lane);
+    // The printer's limits, not the user's margins: those are a choice, not
+    // something the printer leaves off.
+    const mg = round ? evenMargins(printerMargins(s.lane)) : printerMargins(s.lane);
     const a = px(toDisplay({
       x: mg.left * dpmm, y: s.y + mg.top * dpmm,
       w: geo.length - (mg.left + mg.right) * dpmm, h: geo.labelDots - (mg.top + mg.bottom) * dpmm,
@@ -3713,11 +3737,10 @@ function wire() {
     disconnect().then(autoConnect);
   };
   $('medium').onchange = (e) => { keepFitting(() => selectMedium(e.target.value)); refresh({ setup: true }); };
-  document.querySelectorAll('input[name="lenmode"]').forEach((r) => {
-    r.onchange = () => { design.length.mode = r.value; refresh({ setup: true }); };
-  });
-  $('len-mm').oninput = (e) => { design.length.mm = parseFloat(e.target.value) || 5; refresh(); };
-  $('pad-mm').oninput = (e) => { design.length.padMm = parseFloat(e.target.value) || 0; refresh(); };
+  for (const [id, key] of [['margin-ends', 'endsMm'], ['margin-sides', 'sidesMm']]) {
+    $(id).oninput = (e) => { design.margins = { ...design.margins, [key]: Math.max(0, parseFloat(e.target.value) || 0) }; refresh(); };
+    $(id).onchange = () => undo.checkpoint();
+  }
   $('len-box').onfocus = (e) => e.target.select();
   $('len-box').onchange = (e) => {
     const v = e.target.value;
@@ -3727,7 +3750,6 @@ function wire() {
     undo.checkpoint();
     refresh({ setup: true });
   };
-  $('len-even').onchange = (e) => { design.length.even = e.target.checked; refresh({ setup: true }); };
   $('invert').onchange = (e) => { design.invert = e.target.checked; refresh(); };
   $('label-color').onchange = (e) => { design.colors = { ...design.colors, label: e.target.value }; undo.checkpoint(); refresh(); };
   $('ink-color').onchange = (e) => { design.colors = { ...design.colors, ink: e.target.value }; undo.checkpoint(); refresh(); };

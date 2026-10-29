@@ -253,8 +253,13 @@ The app has its own welcome page and **Help** with the same information.
   new label or tape, it is shrunk evenly to fit (undo brings it back).
 - **Label length on rolls and tape:** the *Length* box in the toolbar says
   *Auto* (as long as what is on it, with the same space after the content as
-  before it) or a length in mm; type one, or drag the label's end as in
-  P-touch Editor. Die-cut labels use their own size.
+  before it: saves tape when the text varies) or a length in mm, for labels
+  that must all match; type one, or drag the label's end as in P-touch
+  Editor. On die-cut labels it shows their own length.
+- **Your own margins:** *Margin at ends* and *Margin at sides* (under Label)
+  keep space clear from the label's edges, on die-cut labels and tape alike.
+  The safe-area guide, *Fill safe area* and new items keep inside them, and
+  an Auto-length label leaves at least that much after the content.
 - **Portrait** (▭ ▯ in the toolbar):
   design the label standing upright, as in DYMO Label; it is turned for
   printing. On tape and continuous rolls the label grows downwards with the

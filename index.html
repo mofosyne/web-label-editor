@@ -81,12 +81,9 @@
       </details>
 
       <h2>Label</h2>
-      <div id="length-controls">
-        <label class="inline"><input type="radio" name="lenmode" value="auto"> Fit to content</label>
-        <label class="inline"><input type="radio" name="lenmode" value="fixed"> Fixed</label>
-        <label>Length (mm) <input id="len-mm" type="number" min="5" step="1"></label>
-        <label class="inline" id="even-ends"><input id="len-even" type="checkbox"> Same space after the content as before it</label>
-        <label>Space after the content (mm) <input id="pad-mm" type="number" min="0" step="0.5"></label>
+      <div class="grid2" title="Space to keep clear, from the label's edges. A guide shows it, new and filled items keep inside it, and on Auto length the label leaves at least this much after the content.">
+        <label>Margin at ends (mm) <input id="margin-ends" type="number" min="0" step="0.5" placeholder="0"></label>
+        <label>Margin at sides (mm) <input id="margin-sides" type="number" min="0" step="0.5" placeholder="0"></label>
       </div>
       <label class="inline"><input id="invert" type="checkbox"> Invert (print the background, not the text)</label>
       <div class="grid2" title="Labels and tapes come in colours, some clear, some with coloured ink. The printer prints in the ink the label or tape has: this only changes the preview.">

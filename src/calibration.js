@@ -67,7 +67,7 @@ export function testPatternDesign(pattern, lengthMm, widthMm, dpmm, { printer, m
     printer,
     medium,
     options: {},
-    length: { mode: 'fixed', mm: lengthMm, padMm: 0 },
+    length: { mode: 'fixed', mm: lengthMm },
     invert: false,
     items,
   };

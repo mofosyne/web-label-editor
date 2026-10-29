@@ -374,7 +374,8 @@ function drawBox(ctx, item, dpmm) {
 
 // The label's length along the feed, in dots: fixed, or (fit to content)
 // up to the furthest item (its right edge, or its bottom edge in portrait)
-// and then as much space again as before the first one, or `padMm`.
+// and then as much space again as before the first one (at least the
+// margin at the ends).
 export function stripLength(design, medium, dpi, ctx, items = design.items, portrait = false) {
   const dpmm = dpi / 25.4;
   if (medium.lengthDots) return medium.lengthDots;
@@ -386,8 +387,10 @@ export function stripLength(design, medium, dpi, ctx, items = design.items, port
     right = Math.max(right, portrait ? b.y + b.h : b.x + b.w);
     left = Math.min(left, portrait ? b.y : b.x);
   }
-  // The space after the content: the same as before it (even ends), or set.
-  const pad = design.length.even !== false && Number.isFinite(left) ? Math.max(0, left) : design.length.padMm * dpmm;
+  // The space after the content: as much as before it, and at least the
+  // user's margin at the ends.
+  const ends = (Number(design.margins?.endsMm) || 0) * dpmm;
+  const pad = Math.max(ends, Number.isFinite(left) ? left : 0);
   return Math.max(Math.round(5 * dpmm), Math.round(right + pad));
 }
 
