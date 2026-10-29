@@ -3,7 +3,7 @@ import { MODELS, mediumMargins } from './printers/models.js';
 import { LANGUAGES, LANGUAGE_NAMES, printerRecord, encodePbm } from './printers/generic.js';
 import { ALL_ICONS, ICON_GROUPS, SYMBOLS } from './icons.js';
 import { UI_ICONS } from './lucide.js';
-import { renderDesign, bitmapToCanvas, itemError, quarterTurns } from './render.js';
+import { renderDesign, bitmapToCanvas, itemError, quarterTurns, userMarginsMm } from './render.js';
 import {
   parseData, usedFields, hasFields, usesData, chosenRows, fieldValues, fillItems, labelRuns, counterText, COUNTER,
   fieldTag, toTsv, EXAMPLES, DATA_FORMATS, formatData, dataFormat, withHeader, withoutHeader, looksHeaderless,
@@ -40,7 +40,7 @@ function newDesign() {
     medium: '30252',
     options: {},
     length: { mode: 'auto', mm: 60 },
-    margins: { endsMm: 3, sidesMm: 0 },
+    margins: {},
     invert: false,
     items: [
       {
@@ -321,8 +321,7 @@ const marginBoxes = () => (portrait()
   ? [['margin-lr', 'sidesMm'], ['margin-tb', 'endsMm']]
   : [['margin-lr', 'endsMm'], ['margin-tb', 'sidesMm']]);
 const userMargins = () => {
-  const ends = Math.max(0, Number(design.margins?.endsMm) || 0);
-  const sides = Math.max(0, Number(design.margins?.sidesMm) || 0);
+  const { ends, sides } = userMarginsMm(design, medium());
   return { left: ends, right: ends, top: sides, bottom: sides };
 };
 // The safe area items keep to: the printer's, or the user's margins where
@@ -1346,8 +1345,13 @@ function buildSetup() {
   buildCustomMedia();
   $('request-label').hidden = !!m.custom || medium().id === 'custom';
 
+  // Unset, a box shows its default (greyed) instead of a value.
+  const defaults = userMarginsMm({}, medium());
   for (const [id, key] of marginBoxes()) {
-    if (document.activeElement !== $(id)) $(id).value = design.margins?.[key] || '';
+    const set = design.margins?.[key];
+    if (document.activeElement !== $(id)) $(id).value = set ?? '';
+    $(id).placeholder = String(key === 'endsMm' ? defaults.ends : defaults.sides);
+    $(id).title = set == null ? 'The default: type a number to set your own (0 for none)' : 'Clear the box for the default';
   }
   $('invert').checked = !!design.invert;
   const reported = tapeReported();
@@ -3930,7 +3934,11 @@ function wire() {
   for (const id of ['margin-lr', 'margin-tb']) {
     $(id).oninput = (e) => {
       const key = new Map(marginBoxes()).get(id);
-      design.margins = { ...design.margins, [key]: Math.max(0, parseFloat(e.target.value) || 0) };
+      // An empty box means the default; a number, even 0, is the user's own.
+      const v = e.target.value.trim();
+      design.margins = { ...design.margins };
+      if (v === '') delete design.margins[key];
+      else design.margins[key] = Math.max(0, parseFloat(v) || 0);
       refresh();
     };
     $(id).onchange = () => undo.checkpoint();

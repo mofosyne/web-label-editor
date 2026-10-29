@@ -286,7 +286,8 @@ The app has its own welcome page and **Help** with the same information.
   the app remembers.
 - **Your own margins:** *Left & right* and *Top & bottom* (Margins, under
   Label) keep space clear from the label's edges as seen in the editor, on
-  die-cut labels and tape alike. The safe-area guide, *Fill safe area*, Auto
+  die-cut labels and tape alike. Tape and rolls keep 3 mm at each end
+  unless you set your own (0 for none); die-cut labels need none. The safe-area guide, *Fill safe area*, Auto
   size and new items keep inside them, and an Auto-length label grows to
   keep them at both ends.
 - **Portrait** (▭ ▯ in the toolbar):

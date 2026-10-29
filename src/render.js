@@ -372,6 +372,19 @@ function drawBox(ctx, item, dpmm) {
   ctx.fillRect(x + w - t, y, t, h);
 }
 
+// The user's margins (mm) from the label's edges: at the ends, along the
+// feed, and the sides, across it. Unset, a roll or tape keeps a little space
+// at each end (a label shouldn't start right at the cut); die-cut labels
+// have their own edges and need none.
+export const DEFAULT_ENDS_MM = 3;
+export function userMarginsMm(design, medium) {
+  const num = (v, def) => (v === undefined || v === null || v === '' ? def : Math.max(0, Number(v) || 0));
+  return {
+    ends: num(design.margins?.endsMm, medium.lengthDots ? 0 : DEFAULT_ENDS_MM),
+    sides: num(design.margins?.sidesMm, 0),
+  };
+}
+
 // The label's length along the feed, in dots: fixed, or (fit to content)
 // up to the furthest item (its right edge, or its bottom edge in portrait)
 // and the margin after it.
@@ -387,7 +400,7 @@ export function stripLength(design, medium, dpi, ctx, items = design.items, port
   // Then the margin at the end: the user's, or the label's own if wider.
   // (The editor keeps the content starting at the same margin.)
   const own = portrait ? medium.margins?.bottom : medium.margins?.right;
-  const pad = Math.max(Number(design.margins?.endsMm) || 0, own || 0) * dpmm;
+  const pad = Math.max(userMarginsMm(design, medium).ends, own || 0) * dpmm;
   return Math.max(Math.round(5 * dpmm), Math.round(right + pad));
 }
 

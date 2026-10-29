@@ -148,7 +148,7 @@ function tips() {
       li(b('Length'), ' (toolbar, on rolls and tape): Auto ends the label one margin after the last item, so it grows as you '
         + 'add or move things along, which saves tape when the text varies. Type a length, or drag the label\'s right end, when labels '
         + 'must all match (drawer fronts, a batch).'),
-      li(b('Margins'), ' (under Label: left & right, top & bottom) keep space clear from the edges: the guide, ',
+      li(b('Margins'), ' (under Label: left & right, top & bottom) keep space clear from the edges (tape and rolls: 3 mm at each end unless you set your own): the guide, ',
         b('Fill safe area'), ' and new items keep inside them, and an Auto-length label grows to keep them.'),
       li('The small ', b('Auto length'), ' and ', b('Auto size'), ' buttons on the label switch those on and off. A QR code, '
         + 'barcode, symbol or image on Auto size fills the label across and follows it when the tape or margins change.'),
