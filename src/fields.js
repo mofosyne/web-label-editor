@@ -112,22 +112,60 @@ export function toTsv({ columns, rows }, header = true) {
   return [...(header ? [columns] : []), ...rows].map((r) => r.map(cell).join('\t')).join('\n');
 }
 
-// A small example to try a batch with: a few parts and their bins.
-export const EXAMPLE_DATA = {
-  name: 'Example: parts bins',
-  columns: ['Part', 'Size', 'Bin'],
-  rows: [
-    ['Hex bolt', 'M3 × 10', 'A1'],
-    ['Hex bolt', 'M4 × 12', 'A2'],
-    ['Nyloc nut', 'M3', 'B1'],
-    ['Nyloc nut', 'M4', 'B2'],
-    ['Washer', 'M3', 'C1'],
-    ['Washer', 'M4', 'C2'],
-  ],
+// The same data written out in each format the app reads, to show in the
+// paste box: so an example can be seen as CSV, JSON and so on.
+const objects = ({ columns, rows }) => rows.map((r) => Object.fromEntries(columns.map((c, i) => [c, r[i] ?? ''])));
+const WRITERS = {
+  tsv: toTsv,
+  csv: ({ columns, rows }) => [columns, ...rows]
+    .map((r) => r.map((v) => (/[,"\n\r]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : String(v))).join(',')).join('\n'),
+  markdown: ({ columns, rows }) => {
+    const cell = (v) => String(v).replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ');
+    const line = (r) => `| ${r.map(cell).join(' | ')} |`;
+    return [line(columns), line(columns.map(() => '---')), ...rows.map(line)].join('\n');
+  },
+  json: (data) => JSON.stringify(objects(data), null, 2),
+  rec: ({ columns, rows }) => {
+    const names = columns.map((c) => c.replace(/[^A-Za-z0-9_]+/g, '_').replace(/^([^A-Za-z])/, 'F$1'));
+    return rows.map((r) => names.map((n, i) => `${n}: ${String(r[i] ?? '').replace(/\n/g, '\n+ ')}`).join('\n')).join('\n\n');
+  },
+  // A plain list: the first column, one per line, no name.
+  list: ({ rows }) => rows.map((r) => r[0] ?? '').join('\n'),
 };
+export const DATA_FORMATS = {
+  tsv: 'Spreadsheet cells', csv: 'CSV', markdown: 'Markdown table', json: 'JSON', rec: 'recfile', list: 'Plain list',
+};
+export function formatData(data, format) {
+  return WRITERS[format](data);
+}
 
-// Reads data from a file's text, by its name's extension or, failing that,
-// by what the text looks like. Returns { columns, rows }.
+// Examples to try a batch with, each with a label that shows its fields
+// (put on the label when it has none yet). A list of serial numbers is only
+// written as a plain list, with no column names.
+export const EXAMPLES = [
+  {
+    name: 'Example: parts bins',
+    columns: ['Part', 'Size', 'Bin'],
+    rows: [
+      ['Hex bolt', 'M3 × 10', 'A1'],
+      ['Hex bolt', 'M4 × 12', 'A2'],
+      ['Nyloc nut', 'M3', 'B1'],
+      ['Nyloc nut', 'M4', 'B2'],
+      ['Washer', 'M3', 'C1'],
+      ['Washer', 'M4', 'C2'],
+    ],
+    formats: ['csv', 'tsv', 'markdown', 'json', 'rec'],
+    label: '{{Part}} {{Size}}\nBin {{Bin}}',
+  },
+  {
+    name: 'Example: serial numbers',
+    columns: ['A'],
+    rows: Array.from({ length: 8 }, (_, i) => [`SN-${String(i + 1).padStart(4, '0')}`]),
+    formats: ['list'],
+    label: '{{A}}',
+  },
+];
+
 // Which kind of data a file's text is, by its name's extension or, failing
 // that, by what the text looks like: 'json', 'markdown', 'rec' or 'csv'.
 export function dataFormat(text, name = '') {

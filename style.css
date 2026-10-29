@@ -391,6 +391,9 @@ a.small-link { display: block; font-size: 12px; color: var(--accent); margin: -4
 /* Data rows, counter and date: under the editor while the design has fields. */
 .data-bar[hidden] { display: none; }
 dialog.data-paste textarea { width: 100%; box-sizing: border-box; min-height: 220px; font: 12px/1.45 ui-monospace, monospace; tab-size: 16; }
+dialog.data-paste .examples p { margin: 6px 0; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+dialog.data-paste .chip { border-radius: 999px; padding: 3px 12px; font-size: 13px; }
+dialog.data-paste .chip[aria-pressed="true"] { border-color: var(--accent); font-weight: 600; }
 .generic-box { border-left: 3px solid var(--accent); padding: 4px 0 4px 10px; margin: 6px 0; }
 .generic-box h3 { margin: 0 0 4px; font-size: 13px; }
 .generic-report { margin: 8px 0; }

@@ -6,7 +6,7 @@ import { UI_ICONS } from './lucide.js';
 import { renderDesign, bitmapToCanvas, itemError, quarterTurns } from './render.js';
 import {
   parseData, usedFields, hasFields, usesData, chosenRows, fieldValues, fillItems, labelRuns, counterText, COUNTER,
-  fieldTag, toTsv, EXAMPLE_DATA, dataFormat, withHeader, withoutHeader, looksHeaderless,
+  fieldTag, toTsv, EXAMPLES, DATA_FORMATS, formatData, dataFormat, withHeader, withoutHeader, looksHeaderless,
 } from './fields.js';
 import { SYMBOLOGIES } from './codes/barcode.js';
 import { UsbTransport, SerialTransport, support } from './transport.js';
@@ -1987,8 +1987,9 @@ function useData(data, { keepSkip = false } = {}) {
 
 // The paste box: spreadsheet cells (tab-separated), CSV, a Markdown table,
 // JSON or a recfile, read as it is typed. Opens with the current data, as
-// tab-separated text, to edit.
-function openDataPaste() {
+// tab-separated text, to edit; or with an example (`example`: its index in
+// EXAMPLES), which its buttons show in each format.
+function openDataPaste({ example: startExample = null } = {}) {
   const dialog = $('data-dialog');
   const el = (tag, props = {}, ...kids) => {
     const e = Object.assign(document.createElement(tag), props);
@@ -2010,6 +2011,8 @@ function openDataPaste() {
   const headerLabel = el('label', { className: 'inline' }, headerBox, ' First row has the column names');
   const use = el('button', { type: 'button', className: 'primary', textContent: design.data ? 'Use the changes' : 'Use this data' });
   let parsed = null;
+  const formatName = (d) => (d.format === 'csv' ? (d.columns.length === 1 ? 'a plain list' : text.value.includes('\t') ? 'spreadsheet cells' : 'CSV')
+    : { json: 'JSON', markdown: 'a Markdown table', rec: 'a recfile' }[d.format]);
   const read = () => {
     parsed = null;
     if (!text.value.trim()) { status.textContent = 'Nothing pasted yet.'; use.disabled = true; return; }
@@ -2019,19 +2022,55 @@ function openDataPaste() {
       parsed = d;
       headerLabel.hidden = d.format !== 'csv';
       headerBox.checked = d.header !== false;
-      status.textContent = `${d.rows.length} row${d.rows.length === 1 ? '' : 's'} (one label each) · `
+      status.textContent = `Read as ${formatName(d)}: ${d.rows.length} row${d.rows.length === 1 ? '' : 's'} (one label each) · `
         + `${d.header === false ? 'no column names, so the columns are' : 'columns'} ${d.columns.join(', ')}`;
     } catch (err) {
       status.textContent = `Can't read this yet: ${err.message}`;
     }
     use.disabled = !parsed;
   };
+
+  // Examples: the same data in each format, one click each.
+  let example = null;
+  let exampleText = '';
+  const exampleButtons = [];
+  const showExample = (i, format) => {
+    const ex = EXAMPLES[i];
+    const value = formatData(ex, format);
+    if (text.value.trim() && text.value !== exampleText && !confirm('Replace what is in the box with the example?')) return;
+    example = ex;
+    exampleText = value;
+    text.value = value;
+    header = null;
+    for (const b of exampleButtons) b.ariaPressed = String(b.dataset.key === `${i}:${format}`);
+    read();
+  };
+  const examples = el('div', { className: 'examples' }, ...EXAMPLES.map((ex, i) => el('p', {},
+    el('span', { className: 'muted', textContent: `${ex.name.replace(/^Example: (.)/, (_, c) => c.toUpperCase())}: ` }),
+    ...ex.formats.map((f) => {
+      const b = el('button', { type: 'button', className: 'chip', textContent: DATA_FORMATS[f] });
+      b.dataset.key = `${i}:${f}`;
+      b.onclick = () => showExample(i, f);
+      exampleButtons.push(b);
+      return b;
+    }))));
+
   text.oninput = read;
   use.onclick = () => {
     if (!parsed) return;
     dialog.close();
+    // An example on a label with no fields yet: put its fields on it.
+    if (example && !usesData({ ...design, data: parsed }) && example.columns.every((c) => parsed.columns.includes(c))) {
+      const item = design.items.find((it) => it.type === 'text');
+      if (item) item.text = example.label;
+      else {
+        addText();
+        selected().text = example.label;
+      }
+    }
     const same = design.data && design.data.columns.join('\t') === parsed.columns.join('\t');
-    useData({ name: design.data && same ? design.data.name : 'Pasted data', ...parsed }, { keepSkip: same });
+    const name = example && text.value === exampleText ? example.name : same ? design.data.name : 'Pasted data';
+    useData({ name, ...parsed }, { keepSkip: same });
   };
   const close = el('button', { type: 'button', className: 'close', textContent: '×', ariaLabel: 'Close' });
   close.onclick = () => dialog.close();
@@ -2042,26 +2081,13 @@ function openDataPaste() {
     el('p', { className: 'note', textContent: 'One label per row. Column names in the first row become fields; without them '
       + 'the columns are A, B, C…. Spreadsheet cells, a plain list, CSV, a Markdown table, JSON or a recfile all work.' }),
     text, headerLabel, status,
+    el('details', { open: startExample != null }, el('summary', { textContent: 'Examples in each format' }), examples),
     el('div', { className: 'row' }, use, cancel),
   );
-  read();
+  if (startExample != null) showExample(startExample, EXAMPLES[startExample].formats[0]);
+  else read();
   if (!dialog.open) dialog.showModal();
   text.focus();
-}
-
-// "Try an example": the example data, and if the label has no fields yet,
-// its first text (or a new one) showing them, so a batch shows at once.
-function tryExample() {
-  if (!usesData({ ...design, data: EXAMPLE_DATA })) {
-    const text = design.items.find((it) => it.type === 'text');
-    const fields = `${fieldTag('Part')} ${fieldTag('Size')}\nBin ${fieldTag('Bin')}`;
-    if (text) text.text = fields;
-    else {
-      addText();
-      selected().text = fields;
-    }
-  }
-  useData(EXAMPLE_DATA);
 }
 
 // The bar under the editor while the design has fields or data: the data,
@@ -2146,7 +2172,7 @@ function updateDataBar() {
       el('div', { className: 'row' },
         button('Open data file…', () => $('data-file').click(), { className: 'primary' }),
         button('Paste data…', () => openDataPaste(), { title: 'Paste cells copied from a spreadsheet' }),
-        button('Try an example', () => tryExample(), { title: 'A few parts and bins, to see how a batch works' })),
+        button('Try an example', () => openDataPaste({ example: 0 }), { title: 'Example data in each format the app reads: parts and bins, or serial numbers' })),
       el('p', { className: 'muted', textContent: 'Each row becomes a label: a CSV, spreadsheet cells, a Markdown table, JSON or '
         + 'a recfile. Skip this to number or date labels.' }));
 

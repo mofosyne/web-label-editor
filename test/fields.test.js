@@ -87,3 +87,19 @@ test('CSV without column names: A, B, C… and the first row as data; a guess at
   assert.deepEqual(columnLetters(28).slice(24), ['Y', 'Z', 'AA', 'AB']);
   assert.deepEqual(['a.json', 'a.md', 'a.rec', 'a.csv', ''].map((n) => dataFormat(n ? 'x' : 'a\tb', n)), ['json', 'markdown', 'rec', 'csv', 'csv']);
 });
+
+test('examples read back the same from every format they are shown in', async () => {
+  const { EXAMPLES, formatData, withoutHeader, looksHeaderless } = await import('../src/fields.js');
+  for (const ex of EXAMPLES) {
+    for (const f of ex.formats) {
+      let d = parseData(formatData(ex, f));
+      if (f === 'list') {
+        assert.equal(looksHeaderless(d), true, 'a plain list has no column names');
+        d = withoutHeader(d);
+      }
+      assert.deepEqual([d.columns, d.rows], [ex.columns, ex.rows], `${ex.name} as ${f}`);
+    }
+  }
+  const tricky = { columns: ['Name', 'Note'], rows: [['a, b', 'x | y'], ['say "hi"', 'two\nlines']] };
+  for (const f of ['csv', 'tsv', 'json', 'rec']) assert.deepEqual(parseData(formatData(tricky, f)).rows, tricky.rows, f);
+});

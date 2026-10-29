@@ -154,7 +154,7 @@ function tips() {
         + 'Its column names become fields, e.g. ', b('{{Name}}'), '; Print makes one label per row (times Copies).'),
       li(b('Paste data…'), ' takes cells copied from a spreadsheet, or a plain list such as serial numbers, one per line. '
         + 'Without column names the columns are ', b('{{A}}'), ', ', b('{{B}}'), '…; untick ', b('First row has the column names'),
-        ' if the first row was taken for names by mistake.'),
+        ' if the first row was taken for names by mistake. ', b('Try an example'), ' shows example data in each format the app reads.'),
       li('Fields are just text in braces, so you can also type them in any text, QR code or barcode (or use ',
         b('Insert field'), ' under its content): ', b('{{n}}'), ' is a counter, ', b('{{date}}'), ' and ', b('{{time}}'),
         ' are when you print.'),
