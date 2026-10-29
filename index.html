@@ -27,9 +27,9 @@
         <summary data-icon="file">File ▾</summary>
         <div class="menu-list" role="menu">
           <button id="btn-new" role="menuitem" data-icon="new">New design</button>
-          <button id="btn-import" role="menuitem" data-icon="openFile">Open file…</button>
-          <button id="btn-export" role="menuitem" data-icon="saveFile">Save file…</button>
-          <button id="btn-lib-saveas" role="menuitem" data-icon="labels">Save as new label…</button>
+          <button id="btn-import" role="menuitem" data-icon="openFile" title="Open a label saved as a file (.json)">Open from a file…</button>
+          <button id="btn-export" role="menuitem" data-icon="saveFile" title="Save this label as a file (.json), to keep or share">Save to a file…</button>
+          <button id="btn-lib-saveas" role="menuitem" data-icon="labels" title="Save a copy in My labels, under a new name">Save as new label in My labels…</button>
           <button id="btn-png" role="menuitem" data-icon="png">Download PNG</button>
           <button id="btn-install" role="menuitem" data-icon="saveFile" hidden>Install as an app</button>
           <a id="btn-offline" role="menuitem" data-icon="saveFile" href="https://mofosyne.github.io/web-label-editor/web-label-editor.zip" download>Download for offline use (.zip)</a>
@@ -44,6 +44,7 @@
 
   <main class="layout">
     <aside class="panel" id="setup">
+      <button type="button" class="panel-toggle" data-panel="setup" data-name="Printer &amp; label"></button>
       <h2>Printer</h2>
       <label>Model
         <select id="printer"></select>
@@ -121,12 +122,16 @@
         <span id="len-quick" class="len-quick">Length
           <button id="len-auto" type="button" class="len-auto" aria-pressed="true">Auto</button>
           <input id="len-box" type="text" inputmode="decimal" aria-label="Label length (mm)"> mm</span>
+        <span class="grp">
         <button id="undo" class="icon" aria-label="Undo" title="Undo (Ctrl+Z)" data-icon="undo"></button>
         <button id="redo" class="icon" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" data-icon="redo"></button>
+        </span>
+        <span class="grp">
         <button id="zoom-out" class="icon" aria-label="Zoom out" title="Zoom out" data-icon="zoomOut"></button>
         <span id="zoom-label">100%</span>
         <button id="zoom-in" class="icon" aria-label="Zoom in" title="Zoom in" data-icon="zoomIn"></button>
         <button id="zoom-actual" class="icon" aria-label="Actual size">1:1</button>
+        </span>
         </span>
       </div>
       <div id="format-bar" class="toolbar format-bar" role="toolbar" aria-label="Text format"></div>
@@ -162,6 +167,7 @@
     </section>
 
     <aside class="panel" id="props">
+      <button type="button" class="panel-toggle" data-panel="props" data-name="Items"></button>
       <h2>Items</h2>
       <ol id="item-list" class="item-list"></ol>
       <div id="item-props"></div>

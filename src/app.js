@@ -1427,10 +1427,12 @@ function buildSetup() {
     return b;
   }).slice(0, transport ? 1 : undefined));
   $('btn-detect').hidden = !(m.queryStatus && transport);
-  $('btn-print').disabled = !transport;
-  const canPrint = support.usb || support.serial;
-  $('browser-note').hidden = canPrint;
-  $('btn-print').title = transport ? '' : canPrint ? 'Connect the printer first (in the Printer panel)'
+  // Print stays clickable: without a printer it connects first. Only a
+  // browser that can't reach printers at all disables it.
+  const canPrint = m.transports.some((t) => support[t]);
+  $('btn-print').disabled = !transport && !canPrint;
+  $('browser-note').hidden = support.usb || support.serial;
+  $('btn-print').title = transport ? '' : canPrint ? 'Print (asks which printer to use first)'
     : 'This browser can\'t reach printers: open the page in Chromium, Chrome or Edge to print';
 }
 
@@ -2038,7 +2040,13 @@ async function checkTapeBeforePrint() {
 }
 
 async function print() {
-  if (!transport) return;
+  // Not connected yet: connect (the browser asks which printer), then print.
+  if (!transport) {
+    const t = model().transports.find((k) => support[k]);
+    if (!t) return;
+    await connect(t);
+    if (!transport) return;
+  }
   const btn = $('btn-print');
   btn.disabled = true;
   setPrintLabel('Printing…');
@@ -2866,9 +2874,8 @@ function openSymbols() {
   dialog.replaceChildren(
     el('header', {}, el('h2', { textContent: 'Symbols' }), close),
     filter,
-    el('p', { className: 'note', textContent: 'Symbols are items of their own, sized like a QR code (Lucide icons, ISC licence; '
-      + 'brand icons from Simple Icons, public domain, the brands being trademarks of their owners). Characters go into the '
-      + 'selected text, at the cursor if you are editing it on the label, or into a new text.' }),
+    el('p', { className: 'note', textContent: 'Click a symbol to add it to the label, sized like a QR code. Characters (at the '
+      + 'end) go into the selected text instead. Brands are trademarks of their owners; sources in Help → Other tools & credits.' }),
     el('div', { className: 'symbol-scroll' }, ...iconSections, charSection),
   );
   if (!dialog.open) dialog.showModal();
@@ -3296,7 +3303,7 @@ function fitToggle(item) {
     toggleFit(item, input.checked);
     refresh({ props: true });
   };
-  l.append(input, ' Fit text in a fixed box (size is automatic)');
+  l.append(input, ' Auto size: fit the text to its box');
   return l;
 }
 
@@ -3922,6 +3929,36 @@ function wire() {
   $('label-color').onchange = (e) => { design.colors = { ...design.colors, label: e.target.value }; undo.checkpoint(); refresh(); };
   $('ink-color').onchange = (e) => { design.colors = { ...design.colors, ink: e.target.value }; undo.checkpoint(); refresh(); };
   $('btn-detect').onclick = detect;
+  // Side panels fold to a strip, remembered on this browser.
+  const PANELS_KEY = 'web-label-editor:panels';
+  const chevrons = { left: 'M18 17l-5-5 5-5M11 17l-5-5 5-5', right: 'M6 17l5-5-5-5M13 17l5-5-5-5' };
+  let hidden = {};
+  try { hidden = JSON.parse(localStorage.getItem(PANELS_KEY)) || {}; } catch { /* none saved */ }
+  const showPanels = () => {
+    for (const t of document.querySelectorAll('.panel-toggle')) {
+      const id = t.dataset.panel;
+      const off = !!hidden[id];
+      $(id).classList.toggle('collapsed', off);
+      document.querySelector('.layout').classList.toggle(`hide-${id}`, off);
+      // Points the way the panel goes: towards its edge to hide, back to show.
+      const towardsEdge = id === 'setup' ? 'left' : 'right';
+      const away = towardsEdge === 'left' ? 'right' : 'left';
+      t.replaceChildren(svgIcon(chevrons[off ? away : towardsEdge]),
+        Object.assign(document.createElement('span'), { className: 'rail-label', textContent: t.dataset.name }));
+      t.title = off ? `Show the ${t.dataset.name} panel` : `Hide the ${t.dataset.name} panel for more room`;
+      t.setAttribute('aria-label', t.title);
+      t.setAttribute('aria-expanded', String(!off));
+    }
+  };
+  for (const t of document.querySelectorAll('.panel-toggle')) {
+    t.onclick = () => {
+      hidden[t.dataset.panel] = !hidden[t.dataset.panel];
+      try { localStorage.setItem(PANELS_KEY, JSON.stringify(hidden)); } catch { /* not saved */ }
+      showPanels();
+      refresh();
+    };
+  }
+  showPanels();
   // Icons on the buttons that name one (data-icon).
   for (const e of document.querySelectorAll('[data-icon]')) e.prepend(svgIcon(UI_ICONS[e.dataset.icon]));
   $('btn-usb-help').onclick = () => showUsbHelp();

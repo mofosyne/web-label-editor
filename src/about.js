@@ -35,8 +35,8 @@ function welcome(go, canPrint = true) {
       li(b('Pick your printer and label'), ' in the Printer panel. See ', linkTo('printers', 'which printers work'), '.'),
       li(b('Click the text on the label and type.'), ' It sizes itself to fit. Use ', b('Text'), ', ', b('QR code'),
         ' and the rest above the label to add more.'),
-      li(b('Connect'), ' in the Printer panel, then ', b('Print'), '. If the browser is refused access, the app explains the '
-        + 'one-time fix for your system.')),
+      li(b('Print'), '. The first time, the browser asks which printer to use (or use ', b('Connect'),
+        ' in the Printer panel). If the browser is refused access, the app explains the one-time fix for your system.')),
     canPrint ? null : p(el('strong', { className: 'warn', textContent: 'This browser can\'t reach printers.' }),
       ' Open this page in Chromium, Chrome or Edge to print; Firefox and Safari have no WebUSB or Web Serial. '
       + 'You can design here and download a PNG.'),
@@ -140,7 +140,7 @@ function tips() {
         + 'and its text refits.'),
       li('On a die-cut label, new text (', b('Text'), ' or a double-click) is a box that fills the free space and '
         + 'sizes its text to fit; on tape and rolls it has a set size, and the label grows with it.'),
-      li(b('Fit text in a fixed box'), ' picks the largest size that fits; ', b('Fill safe area'), ' makes the box '
+      li(b('Auto size'), ' (the size box\'s Auto, or the chip by the text) picks the largest size that fits its box; ', b('Fill safe area'), ' makes the box '
         + 'cover the safe area, ', b('Fill to edge'), ' the whole label. Drag the corner handle to resize.'),
       li(b('Two labels per row'), ' (e.g. DYMO 30333): the preview shows the whole row. Choose the same design on '
         + 'all, a different design on each (click a label to add to it, drag items between them), or one at a time. '
@@ -175,7 +175,7 @@ function tips() {
     el('ol', {},
       li('Set ', b('Length'), ' to ', b('Fixed'), ': twice the flag length plus once around the cable (e.g. 30 mm flags on '
         + 'a 6 mm cable: 2 × 30 + 3.14 × 6 ≈ 79 mm).'),
-      li('Add text, tick ', b('Fit text in a fixed box'), ', click ', b('Fill safe area'), ', then set the box width to '
+      li('Add text, turn on ', b('Auto size'), ', click ', b('Fill safe area'), ', then set the box width to '
         + 'the flag length so it covers the first flag.'),
       li(b('Ctrl+D'), ' duplicates it; move the copy to the far end, leaving the wrap in the middle blank.'),
       li('Print one and wrap it round the cable. If the far side reads upside down, set the copy\'s ', b('Rotate'),
@@ -190,7 +190,7 @@ function tips() {
     el('h3', { textContent: 'Your designs' }),
     p('The ', b('My labels'), ' button keeps your saved labels (open one, or use it as a template for a new label) and the '
       + 'history of what you printed, so you can reprint it. They and the current design are kept in this browser; use ',
-    b('File'), ' → ', b('Save file…'), ' / ', b('Open file…'), ' for copies you can back up or share. Source code, issues and the full '
+    b('File'), ' → ', b('Save to a file…'), ' / ', b('Open from a file…'), ' for copies you can back up or share. Source code, issues and the full '
       + 'guide: ', link(REPO_URL, 'GitHub'), '.'),
   ];
 }

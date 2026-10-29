@@ -103,6 +103,9 @@ right, copy it; don't make users discover the same problems again.
   history.
 - **Nothing leaves your computer.** It is a static page; designs stay in your
   browser unless you save them to a file.
+- **Keep it that way.** [docs/UX-CHECKLIST.md](docs/UX-CHECKLIST.md) has
+  the lessons learned so far and a checklist to run before merging anything
+  a user can see.
 - **Build on others' work, and say when another tool fits better.** The
   printer protocols come from projects that worked them out first, and
   [Other tools](#other-tools) lists the alternatives honestly.
@@ -262,6 +265,8 @@ The app has its own welcome page and **Help** with the same information.
   fits it to its box; a QR code, barcode, symbol or image fills the safe
   area across the label (staying where you put it along it) and follows it
   when the tape, label or margins change (on a roll, what comes after it moves along).
+- **Fold the side panels away** (« ») for more room on a small screen;
+  the app remembers.
 - **Your own margins:** *Left & right* and *Top & bottom* (Margins, under
   Label) keep space clear from the label's edges as seen in the editor, on
   die-cut labels and tape alike. The safe-area guide, *Fill safe area*, Auto
@@ -678,6 +683,9 @@ npm run screenshots  # regenerate docs/screenshots (needs Playwright + Chromium)
 The published site registers a service worker (`sw.js`) that caches the app
 for offline use; it isn't registered on plain `http`, so local development
 always loads the files as they are.
+
+Before merging a change a user can see, go through
+[docs/UX-CHECKLIST.md](docs/UX-CHECKLIST.md).
 
 Tests check every encoder's command stream byte by byte against its reference
 implementation's logic, the catalogue against `recsel`/`recfix` (when

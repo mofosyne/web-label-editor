@@ -155,3 +155,6 @@ npm run screenshots # only if the editor's look changed
 
 CI runs the same (recfix, the tests, and a browser smoke test that opens
 the app and fails on any page error).
+
+A change to what users see also goes through
+[UX-CHECKLIST.md](UX-CHECKLIST.md).

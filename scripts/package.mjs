@@ -119,7 +119,7 @@ which most Linux systems have.
 
 Firefox and Safari can design labels but can't print: they have no WebUSB.
 
-Your labels are kept in that browser for this address; use File → Save file
+Your labels are kept in that browser for this address; use File → Save to a file
 for copies. The latest version is at
 https://mofosyne.github.io/web-label-editor/ (it also works offline once
 opened, and can be installed from File → Install as an app).
