@@ -3,6 +3,7 @@
 // model's `media` list. See the comments in that file for the fields.
 import { parseRec, field } from './recfile.js';
 import { genericPrinter } from './printers/generic.js';
+import { LABEL_COLORS, INK_COLORS } from './colors.js';
 
 export const CATALOG_URL = 'catalog/media.rec';
 export const PRINTERS_URL = 'catalog/printers.rec';
@@ -78,6 +79,13 @@ function toMedium(rec, model) {
   const shape = text('Shape');
   if (shape && shape !== 'rect' && shape !== 'round') throw new Error(`${where}: Shape must be rect or round`);
   if (shape === 'round') medium.shape = 'round';
+  // A roll that only comes in one colour: the preview uses it.
+  for (const [name, key, list] of [['LabelColor', 'labelColor', LABEL_COLORS], ['InkColor', 'inkColor', INK_COLORS]]) {
+    const v = text(name);
+    if (v == null) continue;
+    if (!list[v]) throw new Error(`${where}: ${name} must be one of ${Object.keys(list).join(', ')}`);
+    medium[key] = v;
+  }
   const statusMm = num('StatusMm');
   if (statusMm != null) medium.statusMm = statusMm;
   return medium;

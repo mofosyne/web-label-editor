@@ -25,6 +25,7 @@ import {
 import { newRollId, rollCode, parseRollCode } from './rolls.js';
 import { UndoHistory } from './undo.js';
 import { actualPxPerMm, openScreenCalibration, ESTIMATED_PX_PER_MM } from './screen.js';
+import { LABEL_COLORS, INK_COLORS } from './colors.js';
 
 const STORAGE_KEY = 'web-label-editor:design';
 const $ = (id) => document.getElementById(id);
@@ -167,21 +168,16 @@ const hexToRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)
 // overridden by what a P-touch reports about the tape it has loaded.
 // Clear is see-through: [r, g, b, alpha].
 const CLEAR = [233, 238, 240, 60];
-const LABEL_COLORS = {
-  white: ['White', '#ffffff'], clear: ['Clear', null], yellow: ['Yellow', '#f6d32b'], orange: ['Orange', '#ff7b22'],
-  red: ['Red', '#d8352f'], pink: ['Pink', '#f29abf'], blue: ['Blue', '#2468c9'], green: ['Green', '#2f9e55'],
-  silver: ['Silver', '#c3c6ca'], gold: ['Gold', '#c9a54b'], black: ['Black', '#151515'],
-};
-const INK_COLORS = {
-  black: ['Black', '#111111'], white: ['White', '#ffffff'], red: ['Red', '#d8352f'], blue: ['Blue', '#2468c9'], gold: ['Gold', '#b8902e'],
-};
 const tapeReported = () => loaded?.mediumId === design.medium && loaded.tapeColor.hex && loaded.textColor.hex;
+// A roll that comes in one colour (a Brother QL DK roll) sets its own.
+const rollColors = () => (medium().labelColor || medium().inkColor ? medium() : null);
 function previewColors() {
   if (tapeReported()) {
     return { ink: hexToRgb(loaded.textColor.hex), paper: /clear/i.test(loaded.tapeColor.name) ? CLEAR : hexToRgb(loaded.tapeColor.hex) };
   }
-  const label = LABEL_COLORS[design.colors?.label] ?? LABEL_COLORS.white;
-  const ink = INK_COLORS[design.colors?.ink] ?? INK_COLORS.black;
+  const roll = rollColors();
+  const label = LABEL_COLORS[roll?.labelColor ?? design.colors?.label] ?? LABEL_COLORS.white;
+  const ink = INK_COLORS[roll?.inkColor ?? design.colors?.ink] ?? INK_COLORS.black;
   return { ink: hexToRgb(ink[1]), paper: label[1] ? hexToRgb(label[1]) : CLEAR };
 }
 const cssColor = ([r, g, b, a = 255]) => `rgba(${r}, ${g}, ${b}, ${a / 255})`;
@@ -1174,15 +1170,17 @@ function buildSetup() {
   $('pad-mm').closest('label').hidden = design.length.mode !== 'auto';
   $('invert').checked = !!design.invert;
   const reported = tapeReported();
-  for (const [id, list, key, def] of [['label-color', LABEL_COLORS, 'label', 'white'], ['ink-color', INK_COLORS, 'ink', 'black']]) {
+  const fixed = reported ? null : rollColors();
+  for (const [id, list, key, rollKey, def] of [['label-color', LABEL_COLORS, 'label', 'labelColor', 'white'], ['ink-color', INK_COLORS, 'ink', 'inkColor', 'black']]) {
     const sel = $(id);
     if (!sel.options.length) sel.append(...Object.entries(list).map(([v, [name]]) => new Option(name, v)));
-    sel.value = design.colors?.[key] ?? def;
-    sel.disabled = !!reported;
+    sel.value = fixed?.[rollKey] ?? design.colors?.[key] ?? def;
+    sel.disabled = !!(reported || fixed);
   }
   $('color-note').textContent = reported
     ? `Colours of the loaded tape: ${loaded.textColor.name.toLowerCase()} on ${loaded.tapeColor.name.toLowerCase()}.`
-    : 'Colours are for the preview only: the printer prints the ink the label or tape has.';
+    : fixed ? 'Set by this roll, which comes in these colours (preview only).'
+      : 'Colours are for the preview only: the printer prints the ink the label or tape has.';
 
   const opts = $('model-options');
   opts.replaceChildren(...m.options.map((o) => {
@@ -1825,7 +1823,9 @@ async function detect({ keep = false } = {}) {
     const status = await model().queryStatus(transport);
     if (!keep) await transport.release();
     loaded = status;
-    if (status.mediumId && status.mediumId !== design.medium) {
+    // Several entries can match what the printer reports (a QL's 62 mm roll
+    // in white, clear or yellow): keep the chosen one if it is among them.
+    if (status.mediumId && !(status.mediumIds ?? [status.mediumId]).includes(design.medium)) {
       keepFitting(() => { design.medium = status.mediumId; delete design.roll; });
     }
     setStatus(`Connected: ${transport.label} · ${describeTape(status)}`, true);

@@ -181,10 +181,11 @@ function brotherQL(name, { editorLite = false, status = 'experimental' } = {}) {
       await transport.write(init);
       const parsed = parseQLStatus(await transport.read(32, 3000));
       if (!parsed) throw new Error('Printer did not return a valid status reply.');
-      const medium = this.media.find((m) => Math.round(m.widthMm) === parsed.tapeMm
+      // Every entry of that size: one roll size can come in several colours.
+      const matches = this.media.filter((m) => Math.round(m.widthMm) === parsed.tapeMm
         && m.continuous === parsed.continuous
-        && (m.continuous || Math.round(m.lengthMm) === parsed.lengthMm)) ?? null;
-      return { ...parsed, mediumId: medium?.id ?? null };
+        && (m.continuous || Math.round(m.lengthMm) === parsed.lengthMm));
+      return { ...parsed, mediumId: matches[0]?.id ?? null, mediumIds: matches.map((m) => m.id) };
     },
   };
 }

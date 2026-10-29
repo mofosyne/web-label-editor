@@ -152,3 +152,22 @@ test('Brother QL: round DK labels, and a custom size built as a QL record', asyn
   assert.deepEqual([roll.continuous, roll.feedMarginDots], [true, 35]);
   assert.ok(Math.abs(roll.band.h - 554) <= 1, 'a 50 mm roll within a dot of brother_ql\'s "50" (554)');
 });
+
+test('QL rolls in one colour carry it, and a status report matches every roll of that size', async () => {
+  const models = applyCatalog(catalogText, freshModels());
+  const ql = Object.values(models).find((m) => m.family === 'brother-ql' && m.media.some((x) => x.id === 'ql-62-clear'));
+  const byId = (id) => ql.media.find((x) => x.id === id);
+  assert.equal(byId('ql-62-clear').labelColor, 'clear');
+  assert.equal(byId('ql-62-yellow').labelColor, 'yellow');
+  assert.equal(byId('ql-62').labelColor, undefined, 'plain rolls leave the colour to the user');
+  assert.throws(() => applyCatalog(catalogText.replace('LabelColor: clear', 'LabelColor: mauve'), freshModels()), /LabelColor must be one of/);
+  const reply = new Uint8Array(32);
+  reply[0] = 0x80;
+  reply[1] = 0x20;
+  reply[10] = 62;
+  reply[11] = 0x0a;
+  const transport = { write: async () => {}, read: async () => reply };
+  const status = await ql.queryStatus.call(ql, transport);
+  assert.equal(status.mediumId, 'ql-62');
+  assert.deepEqual(status.mediumIds, ['ql-62', 'ql-62-clear', 'ql-62-yellow', 'ql-62-yellow-removable', 'ql-62-red-black']);
+});

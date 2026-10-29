@@ -17,6 +17,7 @@ const FILES = [
   'src/catalog.js',
   'src/codes/barcode.js',
   'src/codes/qr.js',
+  'src/colors.js',
   'src/compat.js',
   'src/credits.js',
   'src/fields.js',
