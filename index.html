@@ -87,7 +87,12 @@
         <label>Length (mm) <input id="len-mm" type="number" min="5" step="1"></label>
         <label>End padding (mm) <input id="pad-mm" type="number" min="0" step="0.5"></label>
       </div>
-      <label class="inline"><input id="invert" type="checkbox"> Invert (white on black)</label>
+      <label class="inline"><input id="invert" type="checkbox"> Invert (print the background, not the text)</label>
+      <div class="grid2" title="Labels and tapes come in colours, some clear, some with coloured ink. The printer prints in the ink the label or tape has: this only changes the preview.">
+        <label>Label colour <select id="label-color"></select></label>
+        <label>Ink colour <select id="ink-color"></select></label>
+      </div>
+      <p id="color-note"></p>
     </aside>
 
     <section class="stage">

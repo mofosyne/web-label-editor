@@ -418,3 +418,4 @@ a.button { display: inline-block; text-decoration: none; }
 .data-bar th, .data-bar td { border-bottom: 1px solid var(--line, rgba(0, 0, 0, .1)); padding: 3px 8px; text-align: left; white-space: pre-line; }
 .data-bar tr:hover td { background: rgba(36, 99, 235, .06); cursor: pointer; }
 .with-picker .field-picker { margin-top: 4px; font-size: 12px; }
+#color-note { font-size: 12px; color: var(--muted); margin: 0 0 8px; }

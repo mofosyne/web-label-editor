@@ -245,6 +245,10 @@ The app has its own welcome page and **Help** with the same information.
   where the printer allows. Step through the labels before printing to check
   each one fits; the counter carries on from where the last print stopped.
   The data is saved with the label, so a saved label is a template.
+- **Label and ink colours in the preview:** yellow or clear labels, white or
+  gold ink on black tape and so on, chosen under Label (a P-touch reports
+  its loaded tape's colours itself). The printer prints the ink the label or
+  tape has, so this only changes how the preview looks.
 - **Changing the label keeps the design on it:** if it no longer fits the
   new label or tape, it is shrunk evenly to fit (undo brings it back).
 - **Continuous rolls:** *Fit to content* makes the label as long as what is on

@@ -161,13 +161,30 @@ let loaded = null; // last tape status reported by the printer
 
 const hexToRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 
-// Preview in the loaded tape's colours when the printer told us what they are.
+// Preview colours. Label stock and tape come in colours, some clear, and
+// some tape (P-touch) has coloured ink; the printer prints whatever ink the
+// label has, so these only change the preview. Saved with the label, and
+// overridden by what a P-touch reports about the tape it has loaded.
+// Clear is see-through: [r, g, b, alpha].
+const CLEAR = [233, 238, 240, 60];
+const LABEL_COLORS = {
+  white: ['White', '#ffffff'], clear: ['Clear', null], yellow: ['Yellow', '#f6d32b'], orange: ['Orange', '#ff7b22'],
+  red: ['Red', '#d8352f'], pink: ['Pink', '#f29abf'], blue: ['Blue', '#2468c9'], green: ['Green', '#2f9e55'],
+  silver: ['Silver', '#c3c6ca'], gold: ['Gold', '#c9a54b'], black: ['Black', '#151515'],
+};
+const INK_COLORS = {
+  black: ['Black', '#111111'], white: ['White', '#ffffff'], red: ['Red', '#d8352f'], blue: ['Blue', '#2468c9'], gold: ['Gold', '#b8902e'],
+};
+const tapeReported = () => loaded?.mediumId === design.medium && loaded.tapeColor.hex && loaded.textColor.hex;
 function previewColors() {
-  if (loaded?.mediumId === design.medium && loaded.tapeColor.hex && loaded.textColor.hex) {
-    return { ink: hexToRgb(loaded.textColor.hex), paper: hexToRgb(loaded.tapeColor.hex) };
+  if (tapeReported()) {
+    return { ink: hexToRgb(loaded.textColor.hex), paper: /clear/i.test(loaded.tapeColor.name) ? CLEAR : hexToRgb(loaded.tapeColor.hex) };
   }
-  return { ink: [17, 17, 17], paper: [255, 255, 255] };
+  const label = LABEL_COLORS[design.colors?.label] ?? LABEL_COLORS.white;
+  const ink = INK_COLORS[design.colors?.ink] ?? INK_COLORS.black;
+  return { ink: hexToRgb(ink[1]), paper: label[1] ? hexToRgb(label[1]) : CLEAR };
 }
+const cssColor = ([r, g, b, a = 255]) => `rgba(${r}, ${g}, ${b}, ${a / 255})`;
 
 function describeTape(s) {
   if (!s.tapeMm) return 'no tape detected';
@@ -558,7 +575,7 @@ function draw() {
   ctx.shadowColor = 'rgba(0, 0, 0, .25)';
   ctx.shadowBlur = 4;
   ctx.shadowOffsetY = 1;
-  ctx.fillStyle = `rgb(${colors.paper.join(',')})`;
+  ctx.fillStyle = cssColor(colors.paper);
   ctx.beginPath();
   if (plain) labelOutline(ctx, 0, 0, cssW, cssH, radius, round);
   else ctx.rect(0, 0, cssW, cssH);
@@ -780,13 +797,13 @@ function drawFeedStub(ctx, o) {
   for (const pt of wave(far)) region.lineTo(...pt);
   region.lineTo(...P(near, c1));
   region.closePath();
-  ctx.fillStyle = dieCut ? 'rgba(230, 190, 110, .6)' : `rgb(${colors.paper.join(',')})`;
+  ctx.fillStyle = dieCut ? 'rgba(230, 190, 110, .6)' : cssColor(colors.paper);
   ctx.fill(region);
   if (dieCut) {
     // The next label after the gap, clipped by the torn edge.
     ctx.save();
     ctx.clip(region);
-    ctx.fillStyle = `rgb(${colors.paper.join(',')})`;
+    ctx.fillStyle = cssColor(colors.paper);
     const a = near + dir * gap;
     const len = stub;
     const [x, y] = P(Math.min(a, a + dir * len), 1);
@@ -1156,6 +1173,16 @@ function buildSetup() {
   $('pad-mm').value = design.length.padMm;
   $('pad-mm').closest('label').hidden = design.length.mode !== 'auto';
   $('invert').checked = !!design.invert;
+  const reported = tapeReported();
+  for (const [id, list, key, def] of [['label-color', LABEL_COLORS, 'label', 'white'], ['ink-color', INK_COLORS, 'ink', 'black']]) {
+    const sel = $(id);
+    if (!sel.options.length) sel.append(...Object.entries(list).map(([v, [name]]) => new Option(name, v)));
+    sel.value = design.colors?.[key] ?? def;
+    sel.disabled = !!reported;
+  }
+  $('color-note').textContent = reported
+    ? `Colours of the loaded tape: ${loaded.textColor.name.toLowerCase()} on ${loaded.tapeColor.name.toLowerCase()}.`
+    : 'Colours are for the preview only: the printer prints the ink the label or tape has.';
 
   const opts = $('model-options');
   opts.replaceChildren(...m.options.map((o) => {
@@ -3508,7 +3535,7 @@ function drawActualPanel(real) {
   ctx.shadowColor = 'rgba(0, 0, 0, .25)';
   ctx.shadowBlur = 4;
   ctx.shadowOffsetY = 1;
-  ctx.fillStyle = `rgb(${colors.paper.join(',')})`;
+  ctx.fillStyle = cssColor(colors.paper);
   ctx.beginPath();
   for (const s of slots) {
     const l = px(s.label);
@@ -3636,6 +3663,8 @@ function wire() {
   $('len-mm').oninput = (e) => { design.length.mm = parseFloat(e.target.value) || 5; refresh(); };
   $('pad-mm').oninput = (e) => { design.length.padMm = parseFloat(e.target.value) || 0; refresh(); };
   $('invert').onchange = (e) => { design.invert = e.target.checked; refresh(); };
+  $('label-color').onchange = (e) => { design.colors = { ...design.colors, label: e.target.value }; undo.checkpoint(); refresh(); };
+  $('ink-color').onchange = (e) => { design.colors = { ...design.colors, ink: e.target.value }; undo.checkpoint(); refresh(); };
   $('btn-detect').onclick = detect;
   // Icons on the buttons that name one (data-icon).
   for (const e of document.querySelectorAll('[data-icon]')) e.prepend(svgIcon(UI_ICONS[e.dataset.icon]));

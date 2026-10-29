@@ -277,7 +277,7 @@ function drawImage(ctx, item, dpmm, onLoad) {
       }
       const v = black ? 0 : 255;
       id.data[i * 4] = id.data[i * 4 + 1] = id.data[i * 4 + 2] = v;
-      id.data[i * 4 + 3] = 255;
+      id.data[i * 4 + 3] = col[3] ?? 255;
     }
   }
   t.putImageData(id, 0, 0);
@@ -461,6 +461,7 @@ export function renderDesign(design, model, medium, onAssetLoad, opts = {}) {
 }
 
 // Turn a 1-bit bitmap into a canvas, e.g. for preview or PNG export.
+// Colours are [r, g, b] or, see-through, [r, g, b, alpha].
 export function bitmapToCanvas(bitmap, ink = [0, 0, 0], paper = [255, 255, 255]) {
   const c = document.createElement('canvas');
   c.width = bitmap.width;
@@ -472,7 +473,7 @@ export function bitmapToCanvas(bitmap, ink = [0, 0, 0], paper = [255, 255, 255])
     id.data[i * 4] = col[0];
     id.data[i * 4 + 1] = col[1];
     id.data[i * 4 + 2] = col[2];
-    id.data[i * 4 + 3] = 255;
+    id.data[i * 4 + 3] = col[3] ?? 255;
   }
   ctx.putImageData(id, 0, 0);
   return c;
