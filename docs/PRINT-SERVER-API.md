@@ -174,7 +174,9 @@ The editor is about 160 kB gzipped, so it fits in an ESP32's flash
 serial port, or, on an ESP32 with Bluetooth Classic, an SPP printer.
 USB printers need an ESP32-S3 running as a USB host, with a driver that
 writes the job to the printer's bulk OUT endpoint: that part is real work
-and isn't shown.
+and isn't shown. [LabelSis](https://github.com/aalarchiv/labelsis) shows it
+can be done: an ESP32-S3 (or S2) as the USB host for a Brother PT-P700-family
+printer, serving its own browser designer.
 
 ```cpp
 #include <WiFi.h>

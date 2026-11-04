@@ -756,6 +756,7 @@ This editor does less on purpose: fewer features than some of the tools below, b
 - [labelle-web](https://github.com/labelle-org/labelle-web) (🤖 AI-assisted): browser designer for DYMO LabelManager printers through Labelle.
 - [ptouch-labelmaker](https://github.com/danhoban/ptouch-labelmaker) (🤖 AI-assisted): web app for designing and printing on a Brother P-touch from a Raspberry Pi.
 - [labeler](https://github.com/PhilippMundhenk/labeler): web interface for Brother P-touch printers around ptouch-print.
+- [LabelSis](https://github.com/aalarchiv/labelsis) (🤖 AI-assisted): firmware for an ESP32-S3 or S2 that drives a Brother PT-P700-family printer (PT-P700, PT-H500, PT-P750W, PT-E500) over USB and serves a browser label designer with CSV batches to the network; beta, tested on the PT-P700.
 
 **Libraries, drivers and command-line tools**
 
