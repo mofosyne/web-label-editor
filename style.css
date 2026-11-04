@@ -472,7 +472,7 @@ aside h3.sub { font-size: 12px; font-weight: 600; color: var(--muted); margin: 8
 
 /* A menu with a star beside it: favourites to the top of the list. */
 .pick { display: flex; gap: 4px; align-items: center; margin-top: 3px; }
-.pick select { flex: 1; min-width: 0; margin-top: 0 !important; }
+.pick select { flex: 1; min-width: 0; margin-top: 0 !important; color: var(--text); }
 .pick .star { flex: none; padding: 5px 6px; color: var(--muted); }
 .pick .star[aria-pressed="true"] { color: #e0a100; }
 .pick .star[aria-pressed="true"] svg { fill: currentColor; }
