@@ -42,6 +42,10 @@ function welcome(go, canPrint = true) {
       + 'You can design here and download a PNG.'),
     p('The panel under the label shows it at ', b('its real size'), ': calibrate once with a bank card, then hold up '
       + 'the thing it goes on. More in ', linkTo('tips', 'Tips'), '.'),
+    p('Free software, written in the open: ', link(REPO_URL, 'the source code'), ' is on GitHub, and developers are welcome to '
+      + 'send improvements (', link(`${REPO_URL}/blob/main/docs/UX-CHECKLIST.md`, 'keeping it easy to use'), ' and ',
+    link(`${REPO_URL}/blob/main/docs/MAINTAINING.md`, 'adding printers and labels'), ' have guides). Everyone can ',
+    link(`${REPO_URL}/issues`, 'report a problem or an idea'), '.'),
     p(el('small', {}, 'Printing needs Chrome, Edge or another Chromium browser on desktop or Android; elsewhere you can '
       + 'still design and Download PNG. Works offline once opened: install it from File, or download a copy for a '
       + 'computer without internet (File → Download for offline use).')),
@@ -56,6 +60,13 @@ function about(go) {
     p(b('Why:'), ' the makers\' own label editors don\'t run on Linux, and the Linux tools that exist don\'t handle '
       + 'continuous rolls or auto-sizing text well. Linux users shouldn\'t be second-class citizens with label printers; a '
       + 'web page that talks to the printer directly works the same everywhere.'),
+    el('h3', { textContent: 'Contribute' }),
+    p('The source is on ', link(REPO_URL, 'GitHub'), ' (GPL-3.0). Developers can send improvements directly: ',
+      link(`${REPO_URL}/blob/main/docs/UX-CHECKLIST.md`, 'the UX checklist'), ' says how to keep it easy to use, ',
+      link(`${REPO_URL}/blob/main/docs/MAINTAINING.md`, 'the maintainer guide'), ' how printers and labels get added, and ',
+      link(`${REPO_URL}/blob/main/docs/PRINT-SERVER-API.md`, 'the print server API'), ' how another server can host the editor. '
+      + 'No code needed to help: ', link(`${REPO_URL}/issues`, 'report a problem or an idea'),
+      ', or send in a printer report from the app (Generate report) to get your printer its own entry.'),
     el('h3', { textContent: 'Philosophy' }),
     p(b('Ease of use over features.'), ' Making a label should be quick and obvious: click the text and type, it fits '
       + 'its box, the preview is what prints, and the printer just works. A feature earns its place only if it doesn\'t '
@@ -148,6 +159,7 @@ function tips() {
       li(b('Length'), ' (toolbar, on rolls and tape): Auto ends the label one margin after the last item, so it grows as you '
         + 'add or move things along, which saves tape when the text varies. Type a length, or drag the label\'s right end, when labels '
         + 'must all match (drawer fronts, a batch).'),
+      li('The ', b('★'), ' beside the Model and Media menus makes the current choice a favourite, listed at the top of the menu.'),
       li(b('Margins'), ' (under Label: left & right, top & bottom) keep space clear from the edges (tape and rolls: 3 mm at each end unless you set your own): the guide, ',
         b('Fill safe area'), ' and new items keep inside them, and an Auto-length label grows to keep them.'),
       li('The small ', b('Auto length'), ' and ', b('Auto size'), ' buttons on the label switch those on and off. A QR code, '

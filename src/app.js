@@ -1309,10 +1309,45 @@ function printerSummary(m) {
   }).filter(Boolean).join(' · ');
 }
 
+// Favourite printers and labels, starred beside their menus and listed at
+// the top of them. Kept in this browser; label ids are shared by a printer
+// family, so a favourite label shows for every printer that has it.
+const FAVS_KEY = 'web-label-editor:favorites';
+let favs = { printers: [], media: [] };
+try {
+  const saved = JSON.parse(localStorage.getItem(FAVS_KEY));
+  favs = { printers: saved?.printers ?? [], media: saved?.media ?? [] };
+} catch { /* none saved */ }
+function toggleFav(kind, id) {
+  const list = favs[kind];
+  favs[kind] = list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
+  try { localStorage.setItem(FAVS_KEY, JSON.stringify(favs)); } catch { /* not saved */ }
+  buildSetup();
+}
+
+// The star beside a menu: filled when the current choice is a favourite.
+function starButton(b, kind, id, what, disabled) {
+  const on = favs[kind].includes(id);
+  if (!b.firstChild) b.append(svgIcon(UI_ICONS.star));
+  b.disabled = disabled;
+  b.setAttribute('aria-pressed', String(on));
+  b.title = disabled ? (what === 'label' ? 'Rolls are kept under My rolls; custom sizes can\'t be favourites' : 'Set by the print server this page is on')
+    : on ? `A favourite ${what}: click to remove it from the top of the list` : `Make this a favourite ${what}, listed at the top`;
+  b.setAttribute('aria-label', b.title);
+  b.onclick = () => toggleFav(kind, id);
+}
+
 function buildSetup() {
   const m = model();
   const printerSel = $('printer');
   const brands = new Map();
+  const favPrinters = favs.printers.filter((id) => MODELS[id]);
+  if (favPrinters.length) {
+    const g = document.createElement('optgroup');
+    g.label = '★ Favourites';
+    g.append(...favPrinters.map((id) => new Option(MODELS[id].status === 'tested' ? MODELS[id].name : `${MODELS[id].name} (experimental)`, id)));
+    brands.set('★', g);
+  }
   for (const [id, mm] of Object.entries(MODELS)) {
     if (!brands.has(mm.brand)) {
       const g = document.createElement('optgroup');
@@ -1320,26 +1355,40 @@ function buildSetup() {
       brands.set(mm.brand, g);
     }
     const label = mm.status === 'tested' ? mm.name : `${mm.name} (experimental)`;
-    brands.get(mm.brand).append(new Option(label, id, false, id === design.printer));
+    brands.get(mm.brand).append(new Option(label, id));
   }
   printerSel.replaceChildren(...brands.values());
+  printerSel.value = design.printer;
+  starButton($('fav-printer'), 'printers', design.printer, 'printer', !!transport?.server);
 
   const mediumSel = $('medium');
   const roll = currentRoll();
   const types = document.createElement('optgroup');
   types.label = 'Label types';
-  types.append(...m.media.filter((md) => md.id !== 'custom' || m.custom)
-    .map((md) => new Option(md.name, md.id, false, !roll && md.id === medium().id)));
+  const usable = m.media.filter((md) => md.id !== 'custom' || m.custom);
+  const favMedia = favs.media.map((id) => usable.find((md) => md.id === id)).filter(Boolean);
+  if (favMedia.length) {
+    const g = document.createElement('optgroup');
+    g.label = '★ Favourites';
+    g.append(...favMedia.map((md) => new Option(md.name, md.id)));
+    mediumSel.replaceChildren(g);
+  } else {
+    mediumSel.replaceChildren();
+  }
+  types.append(...usable.map((md) => new Option(md.name, md.id)));
   const custom = !m.custom && m.media.find((md) => md.id === 'custom');
   if (custom) types.append(new Option('Custom size… (any size, round too)', 'custom', false, !roll && medium().id === 'custom'));
-  mediumSel.replaceChildren(types);
+  mediumSel.append(types);
   const mine = rolls.filter((r) => r.printer === design.printer && m.media.some((md) => md.id === r.medium));
   if (mine.length) {
     const group = document.createElement('optgroup');
     group.label = 'My rolls';
-    group.append(...mine.map((r) => new Option(`${r.name} (${r.id})`, `roll:${r.id}`, false, roll?.id === r.id)));
+    group.append(...mine.map((r) => new Option(`${r.name} (${r.id})`, `roll:${r.id}`)));
     mediumSel.append(group);
   }
+  mediumSel.value = roll ? `roll:${roll.id}` : medium().id;
+  // A roll is already kept under My rolls, and a custom size isn't a label type.
+  starButton($('fav-medium'), 'media', medium().id, 'label', !!roll || medium().id === 'custom');
 
   buildGeneric();
   buildCustomMedia();
@@ -4012,6 +4061,8 @@ function wire() {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fileMenu.open = false; });
   $('btn-help').onclick = () => showAbout();
   $('btn-shortcuts').onclick = () => showAbout('tips');
+  $('btn-contribute').onclick = () => showAbout('about');
+  $('link-source').prepend(svgIcon(ALL_ICONS.github.path, true));
   $('btn-print').onclick = print;
   $('btn-png').onclick = downloadPng;
 

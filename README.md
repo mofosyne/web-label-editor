@@ -282,6 +282,9 @@ The app has its own welcome page and **Help** with the same information.
   fits it to its box; a QR code, barcode, symbol or image fills the safe
   area across the label (staying where you put it along it) and follows it
   when the tape, label or margins change (on a roll, what comes after it moves along).
+- **Favourite printers and labels:** the ★ beside the Model and Media menus
+  puts the current choice in a Favourites group at the top of the list, for
+  the few you actually use among the dozens listed. Kept in this browser.
 - **Fold the side panels away** (« ») for more room on a small screen;
   the app remembers.
 - **Your own margins:** *Left & right* and *Top & bottom* (Margins, under

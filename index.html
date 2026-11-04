@@ -47,10 +47,10 @@
       <button type="button" class="panel-toggle" data-panel="setup" data-name="Printer &amp; label"></button>
       <h2>Printer</h2>
       <label>Model
-        <select id="printer"></select>
+        <span class="pick"><select id="printer"></select><button type="button" id="fav-printer" class="icon star" aria-pressed="false"></button></span>
       </label>
       <label>Media
-        <select id="medium"></select>
+        <span class="pick"><select id="medium"></select><button type="button" id="fav-medium" class="icon star" aria-pressed="false"></button></span>
       </label>
       <a id="request-label" class="small-link" target="_blank" rel="noopener">Missing a label size? Request it</a>
       <div id="generic-box" class="generic-box" hidden></div>
@@ -157,13 +157,6 @@
       <input id="data-file" type="file" accept=".csv,.tsv,.md,.markdown,.json,.rec,.txt,text/csv,application/json,text/markdown,text/plain" hidden>
       <p class="hint">Click text to edit it · drag to move · double-click empty space to add text ·
         <button id="btn-shortcuts" type="button" class="linklike">Shortcuts and tips</button></p>
-      <footer class="site-footer">
-        Web Label Editor ·
-        <a href="https://github.com/mofosyne/web-label-editor" target="_blank" rel="noopener">Source code on GitHub</a> ·
-        <a href="https://github.com/mofosyne/web-label-editor/issues" target="_blank" rel="noopener">Report a problem or idea</a> ·
-        <a href="https://mofosyne.github.io/web-label-editor/web-label-editor.zip" download>Offline download</a> ·
-        Free software, <a href="https://github.com/mofosyne/web-label-editor/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a>
-      </footer>
     </section>
 
     <aside class="panel" id="props">
@@ -173,6 +166,16 @@
       <div id="item-props"></div>
     </aside>
   </main>
+
+  <footer class="site-footer">
+    <span class="site-name">Web Label Editor <span class="muted">· free software, <a href="https://github.com/mofosyne/web-label-editor/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a></span></span>
+    <nav aria-label="About this project">
+      <a id="link-source" href="https://github.com/mofosyne/web-label-editor" target="_blank" rel="noopener" title="Read the source code, or send an improvement">Source code on GitHub</a>
+      <button id="btn-contribute" type="button" class="linklike" title="How to help: improvements, printers, labels">Contribute</button>
+      <a href="https://github.com/mofosyne/web-label-editor/issues" target="_blank" rel="noopener">Report a problem or idea</a>
+      <a href="https://mofosyne.github.io/web-label-editor/web-label-editor.zip" download>Offline download</a>
+    </nav>
+  </footer>
 
   <dialog id="help-dialog" class="help" aria-label="Printer connection help"></dialog>
   <dialog id="data-dialog" class="help data-paste" aria-label="Paste data"></dialog>
